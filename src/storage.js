@@ -1,0 +1,5 @@
+import {seed} from './model.js';
+let db;
+export async function open(){db=await new Promise((resolve,reject)=>{const request=indexedDB.open('pronto-pos-demo',1);request.onupgradeneeded=()=>request.result.createObjectStore('data');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});const existing=await read();if(!existing)await update(()=>seed());return read();}
+export function read(){return new Promise((resolve,reject)=>{const tx=db.transaction('data','readonly');const request=tx.objectStore('data').get('state');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
+export function update(mutator){return new Promise((resolve,reject)=>{const tx=db.transaction('data','readwrite');const store=tx.objectStore('data');let next;const request=store.get('state');request.onsuccess=()=>{try{next=mutator(request.result);store.put(next,'state');}catch(error){reject(error);tx.abort();}};tx.oncomplete=()=>{window.dispatchEvent(new Event('pos-updated'));resolve(next);};tx.onerror=()=>reject(tx.error);});}

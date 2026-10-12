@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {seed,createSale,addProduct,can} from '../src/model.js';
+const request={tenantId:'t1',role:'cashier',cart:[{productId:'p1',quantity:2.5}],method:'cash',received:25000,deviceId:'phone-1',userId:'u2',id:'sale-1'};
+test('Fractional sale computes total, change and stock without mutating the source',()=>{const initial=seed();const next=createSale(initial,request);assert.equal(next.sales[0].total,21250);assert.equal(next.sales[0].change,3750);assert.equal(next.products[0].stock,45.5);assert.equal(initial.products[0].stock,48);assert.equal(next.sales[0].syncStatus,'local');});
+test('Same operation ID is idempotent',()=>{const next=createSale(seed(),request);assert.strictEqual(createSale(next,request),next);});
+test('Cannot sell another tenant’s product',()=>assert.throws(()=>createSale(seed(),{...request,cart:[{productId:'p6',quantity:1}]}),/product/));
+test('Cash must cover the sale',()=>assert.throws(()=>createSale(seed(),{...request,received:20000}),/received/));
+test('Stock cannot go negative',()=>assert.throws(()=>createSale(seed(),{...request,cart:[{productId:'p1',quantity:49}]}),/stock/));
+test('Unit products cannot have fractional quantities',()=>assert.throws(()=>createSale(seed(),{...request,cart:[{productId:'p3',quantity:1.5}]}),/quantity/));
+test('Stock role cannot sell',()=>{assert.equal(can('stock','sell'),false);assert.throws(()=>createSale(seed(),{...request,role:'stock'}),/permission/);});
+test('Duplicate product lines are rejected',()=>assert.throws(()=>createSale(seed(),{...request,cart:[request.cart[0],request.cart[0]]}),/product/));
+test('Barcode uniqueness is scoped to a business',()=>{const product={name:'Test',category:'Test',code:'10001',unit:'un',price:100,stock:1,min:0};assert.throws(()=>addProduct(seed(),'t1',product),/code/);assert.equal(addProduct(seed(),'t2',product).products.length,8);});
+test('Invalid prices and stock are rejected',()=>{const p={name:'Test',unit:'un',price:100,stock:1,min:0,code:''};assert.throws(()=>addProduct(seed(),'t1',{...p,price:NaN}),/product/);assert.throws(()=>addProduct(seed(),'t1',{...p,stock:-1}),/product/);});
+test('Non-cash payments have no fictitious change',()=>{const next=createSale(seed(),{...request,method:'mpesa',received:0});assert.equal(next.sales[0].change,0);assert.equal(next.sales[0].received,21250);});
