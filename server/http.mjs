@@ -16,13 +16,18 @@ export function createApp(store,{root=process.cwd(),origin}={}){
  const token=(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('pronto_session='))?.slice(15);
  const path=url.pathname;
  if(path==='/api/login'&&req.method==='POST'){const key=req.socket.remoteAddress;const time=Date.now();for(const [k,v]of attempts)if(v.until<time)attempts.delete(k);const rate=attempts.get(key)||{count:0,until:time+600000};if(rate.count>=10)throw new HttpError(429,'rate_limit');rate.count++;attempts.set(key,rate);const result=store.login(input.username,input.password,input.deviceId);attempts.delete(key);res.setHeader('Set-Cookie',cookie(result.token));send(res,200,result.user);return;}
- const user=store.session(token);
+ const authenticated=store.session(token);
+ const isAccountRoute=['/api/me','/api/logout','/api/password','/api/sessions','/api/sessions/revoke'].includes(path);
+ const isBusinessAdminRoute=path.startsWith('/api/businesses')||path.startsWith('/api/plans')||path.startsWith('/api/licenses')||path.startsWith('/api/branches');
+ const user=(!isAccountRoute&&!isBusinessAdminRoute)?store.branchContext(authenticated,req.headers['x-pronto-branch']):authenticated;
  if(path==='/api/me'&&req.method==='GET')send(res,200,store.publicUser(user));
  else if(path==='/api/logout'&&req.method==='POST'){store.logout(token);res.setHeader('Set-Cookie',cookie('',true));send(res,200,{ok:true});}
  else if(path==='/api/password'&&req.method==='POST')send(res,200,store.changePassword(user,input.currentPassword,input.newPassword,token));
  else if(path==='/api/sessions'&&req.method==='GET')send(res,200,store.sessions(user,token));
  else if(path==='/api/sessions/revoke'&&req.method==='POST'){store.revoke(user,input.id);send(res,200,{ok:true});}
  else if(path==='/api/state'&&req.method==='GET')send(res,200,store.snapshot(user,url.searchParams.get('tenantId')));
+ else if(path==='/api/branches'&&req.method==='POST')send(res,201,store.branchCreate(user,input));
+ else if(path==='/api/branches/status'&&req.method==='POST')send(res,200,store.branchStatus(user,input));
  else if(path==='/api/businesses'&&req.method==='POST')send(res,201,store.createBusiness(user,input));
  else if(path==='/api/businesses/edit'&&req.method==='POST')send(res,200,store.businessEdit(user,input));
  else if(path==='/api/businesses/status'&&req.method==='POST')send(res,200,store.businessStatus(user,input));
