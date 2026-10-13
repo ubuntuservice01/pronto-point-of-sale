@@ -86,6 +86,81 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  sessions(user,token){ready(user);return db.prepare('SELECT token_hash,device,expires FROM sessions WHERE user_id=? AND expires>?').all(user.id,now()).map(s=>({id:s.token_hash,device:s.device,expires:s.expires,current:s.token_hash===digest(token)}));},
  revoke(user,id){ready(user);db.prepare('DELETE FROM sessions WHERE token_hash=? AND user_id=?').run(text(id,64),user.id);audit(user,user.business_id,'session_revoked');},
  snapshot,
+ planCreate(user,input){
+  superOnly(user);
+  const name=text(input?.name,80),price=input?.priceCents,days=input?.durationDays;
+  if(!Number.isSafeInteger(price)||price<0||price>100000000000||!Number.isSafeInteger(days)||days<1||days>3660)fail(400,'invalid_plan');
+  return transaction(()=>{
+   if(db.prepare('SELECT id FROM subscription_plans WHERE name=? COLLATE NOCASE').get(name))fail(409,'plan_name_exists');
+   db.prepare('INSERT INTO subscription_plans VALUES(?,?,?,?,1,?)').run(randomUUID(),name,price,days,new Date(now()).toISOString());
+   audit(user,null,'plan_created');return snapshot(user);
+  });
+ },
+ planStatus(user,input){
+  superOnly(user);
+  if(typeof input?.planId!=='string'||typeof input?.active!=='boolean')fail(400,'invalid_plan');
+  return transaction(()=>{
+   const plan=db.prepare('SELECT * FROM subscription_plans WHERE id=?').get(input.planId);
+   if(!plan)fail(404,'not_found');
+   if(!!plan.active===input.active)fail(400,'no_change');
+   db.prepare('UPDATE subscription_plans SET active=? WHERE id=?').run(input.active?1:0,input.planId);
+   audit(user,null,input.active?'plan_reactivated':'plan_deactivated');return snapshot(user);
+  });
+ },
+ licenseAssign(user,input){
+  superOnly(user);
+  const id=validatedBusiness(input),reason=text(input?.reason,250);
+  if(typeof input.planId!=='string'||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0)fail(400,'license_input');
+  if(typeof input.operationId!=='string'||input.operationId.length<10||input.operationId.length>80)fail(400,'operation_id');
+  return transaction(()=>{
+   const duplicate=db.prepare('SELECT * FROM license_events WHERE id=?').get(input.operationId);
+   if(duplicate){if(duplicate.business_id===id&&duplicate.action==='assigned'&&duplicate.plan_id===input.planId&&duplicate.reason===reason)return snapshot(user);fail(409,'operation_conflict');}
+   const plan=db.prepare('SELECT * FROM subscription_plans WHERE id=?').get(input.planId);
+   if(!plan||!plan.active)fail(400,'plan_unavailable');
+   const previous=db.prepare('SELECT * FROM subscriptions WHERE business_id=?').get(id);
+   if((previous?.revision??0)!==input.expectedRevision)fail(409,'revision_conflict');
+   if(previous&&!previous.cancelled&&previous.expires_ms>now())fail(409,'license_already_active');
+   const start=now(),end=start+plan.duration_days*DAY;
+   if(!Number.isSafeInteger(end)||end>Date.UTC(9999,0,1))fail(400,'license_input');
+   if(previous)db.prepare('UPDATE subscriptions SET plan_id=?,started_ms=?,expires_ms=?,cancelled=0,revision=revision+1 WHERE business_id=?').run(plan.id,start,end,id);
+   else db.prepare('INSERT INTO subscriptions VALUES(?,?,?,?,0,0)').run(id,plan.id,start,end);
+   licenseEvent(id,user,'assigned',plan.id,previous?.expires_ms??null,end,reason,'',input.operationId);
+   return snapshot(user);
+  });
+ },
+ licenseRenew(user,input){
+  superOnly(user);
+  const id=validatedBusiness(input),reason=text(input?.reason,250),periods=input?.periods,ref=input?.reference??'';
+  if(!Number.isSafeInteger(periods)||periods<1||periods>12||!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0||typeof ref!=='string'||ref.length>100)fail(400,'license_input');
+  if(typeof input.operationId!=='string'||input.operationId.length<10||input.operationId.length>80)fail(400,'operation_id');
+  return transaction(()=>{
+   const duplicate=db.prepare('SELECT * FROM license_events WHERE id=?').get(input.operationId);
+   if(duplicate){if(duplicate.business_id===id&&duplicate.action==='renewed'&&duplicate.reason===reason&&duplicate.reference===ref)return snapshot(user);fail(409,'operation_conflict');}
+   const previous=db.prepare('SELECT s.*,p.duration_days FROM subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.business_id=?').get(id);
+   if(!previous)fail(404,'license_not_found');
+   if(previous.revision!==input.expectedRevision)fail(409,'revision_conflict');
+   const base=previous.cancelled?now():Math.max(now(),previous.expires_ms),end=base+previous.duration_days*periods*DAY;
+   if(!Number.isSafeInteger(end)||end>Date.UTC(9999,0,1))fail(400,'license_input');
+   db.prepare('UPDATE subscriptions SET expires_ms=?,cancelled=0,revision=revision+1 WHERE business_id=?').run(end,id);
+   licenseEvent(id,user,'renewed',previous.plan_id,previous.expires_ms,end,reason,ref,input.operationId);
+   return snapshot(user);
+  });
+ },
+ licenseCancel(user,input){
+  superOnly(user);
+  const id=validatedBusiness(input),reason=text(input?.reason,250);
+  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0)fail(400,'revision');
+  return transaction(()=>{
+   const previous=db.prepare('SELECT * FROM subscriptions WHERE business_id=?').get(id);
+   if(!previous)fail(404,'license_not_found');
+   if(previous.revision!==input.expectedRevision)fail(409,'revision_conflict');
+   if(previous.cancelled)fail(400,'no_change');
+   db.prepare('UPDATE subscriptions SET cancelled=1,revision=revision+1 WHERE business_id=?').run(id);
+   db.prepare('DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE business_id=?)').run(id);
+   licenseEvent(id,user,'cancelled',previous.plan_id,previous.expires_ms,previous.expires_ms,reason);
+   return snapshot(user);
+  });
+ },
  createBusiness(user,input){
   ready(user);if(user.role!=='super')fail(403,'forbidden');
   const fields=businessFields(input);
