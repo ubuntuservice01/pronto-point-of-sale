@@ -100,7 +100,7 @@
 - [x] Perfis proprietário protegidos; produtos inactivos indisponíveis na nova venda e scanner.
 - [x] No servidor real, criação e recepção existentes mantidas; operações sem endpoint são explicitamente bloqueadas.
 - [x] Endpoints autorizados para edição, activação/inactivação de produtos e ajustes com auditoria no servidor.
-- [ ] Endpoints de edição/inactivação de colaboradores e revogação de acessos reais.
+- [x] Endpoints de edição/inactivação de colaboradores e revogação de acessos reais.
 - [ ] Testar interface e scanner em browser/Android/iOS e executar testes automatizados.
 
 ## Fase 2 — Caixa autenticado, descontos e pagamentos mistos
@@ -181,3 +181,14 @@
 - [x] Testes de regras de inventário, isolamento e permissões acrescentados à suite Node.
 - [ ] Homologação visual no Lovable/Android e teste de concorrência de dois operadores reais.
 - [ ] Paginação, filtros e exportação de todo o histórico para operações de grande volume.
+
+## Equipa — Entrega 0.7
+- [x] Editar nome e papel de contas reais com autorização do proprietário.
+- [x] Revogar sessões em qualquer alteração de perfil ou estado.
+- [x] Desactivação bloqueia login e reactivação conserva a palavra-passe.
+- [x] Isolamento entre negócios, impedimento de editar proprietários e controlo de revisão.
+- [x] Histórico das alterações de equipa para o proprietário.
+- [x] Migração da coluna de revisão nas instalações SQLite existentes.
+- [x] Testes de servidor, rotas HTTP e migração integrados no GitHub Actions.
+- [ ] Testar sessões com dois dispositivos reais e o fluxo completo de criação/edição nos navegadores.
+- [ ] Recuperação de acesso e gestão de credenciais perdidas.
