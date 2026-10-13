@@ -9,7 +9,7 @@ test('dashboard presents an empty business without inventing profits or sales',(
  const html=dashboardInsightsHTML(state,'t1',{lang:'pt',money:n=>(n/100).toFixed(2)+' MT',showFinances:true,showDebts:true});
  assert.match(html,/Dívidas por receber/);
  assert.match(html,/5 produtos mais vendidos/);
- assert.match(html,/não é lucro líquido/);
+ assert.match(html,/pode excluir outros custos/);
 });
 test('cashier dashboard hides business-wide finances',()=>{
  const html=dashboardInsightsHTML(seed(),'t1',{lang:'pt',money:n=>String(n),showFinances:false,showDebts:false});
