@@ -65,7 +65,7 @@ export function receiveBatch(state,tenantId,input,actorId){
  if(old){if(old.action==='batch_receive'&&old.tenantId===tenantId&&old.actorId===actorId&&old.signature===signature)return state;throw Error('operation_conflict');}
  const incoming=addIncomingBatch(state,tenantId,product,input),after=q(product.stock+input.quantity);
  if(after>100000000)throw Error('invalid_quantity');
- const event={id:input.id,tenantId,productId:product.id,productName:product.name,batchId:incoming.batchId,batchNumber:input.batchNumber.trim(),expiryDate:normalizeExpiryDate(input.expiryDate),action:'batch_receive',type:'batch_receive',before:product.stock,after,delta:input.quantity,unit:product.unit,actorId,reason:input.reason.trim(),createdAt:new Date().toISOString(),signature:sig};
+ const event={id:input.id,tenantId,productId:product.id,productName:product.name,batchId:incoming.batchId,batchNumber:input.batchNumber.trim(),expiryDate:normalizeExpiryDate(input.expiryDate),action:'batch_receive',type:'batch_receive',before:product.stock,after,delta:input.quantity,unit:product.unit,actorId,reason:input.reason.trim(),createdAt:new Date().toISOString(),signature};
  return {...state,stockBatches:incoming.stockBatches,products:state.products.map(p=>p.id===product.id&&p.tenantId===tenantId?{...p,stock:after}:p),inventoryEvents:[event,...(state.inventoryEvents||[])],stockMovements:[event,...(state.stockMovements||[])]};
 }
 export function adjustProductBatch(state,tenantId,input,actorId){
@@ -85,7 +85,7 @@ export function adjustProductBatch(state,tenantId,input,actorId){
  const nextStock=q(p.stock+delta);
  if(nextStock<0||nextStock>100000000)throw Error('invalid_quantity');
  const nextBatches=current.id?(state.stockBatches||[]).map(b=>b.id===current.id?{...b,quantity:input.quantity}:b):(state.stockBatches||[]);
- const event={id:input.id,tenantId,productId:p.id,productName:p.name,batchId:current.id,batchNumber:current.number,expiryDate:current.expiryDate,action:'batch_adjust',type:'batch_adjust',before:current.quantity,after:input.quantity,delta,unit:p.unit,actorId,reason:input.reason.trim(),createdAt:new Date().toISOString(),signature};
+ const event={id:input.id,tenantId,productId:p.id,productName:p.name,batchId:current.id,batchNumber:current.number,expiryDate:current.expiryDate,action:'batch_adjust',type:'batch_adjust',before:current.quantity,after:input.quantity,delta,unit:p.unit,actorId,reason:input.reason.trim(),createdAt:new Date().toISOString(),signature:sig};
  return {...state,stockBatches:nextBatches,products:state.products.map(x=>x.id===p.id&&x.tenantId===tenantId?{...x,stock:nextStock}:x),inventoryEvents:[event,...(state.inventoryEvents||[])],stockMovements:[event,...(state.stockMovements||[])]};
 }
 export function afterBatchSale(state,lines){
