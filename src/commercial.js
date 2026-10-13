@@ -1,3 +1,4 @@
+import {customerOutstanding} from './debts.js';
 import {addIncomingBatch} from './batches.js';
 // Commercial management: pure business logic, money in integer cents.
 const moneyCents = value => Number.isSafeInteger(value) && value >= 0;
@@ -16,7 +17,7 @@ export function saveCustomer(state,tenantId,input){
  if(other)throw Error('customer_id');
  const fields={name:input.name.trim(),phone:(input.phone||'').trim(),email:(input.email||'').trim(),note:(input.note||'').trim()};
  if(existing)return {...state,customers:state.customers.map(c=>c===existing?{...c,...fields,updatedAt:new Date().toISOString()}:c)};
- const customer={id,tenantId,...fields,createdAt:new Date().toISOString()};
+ const customer={id,tenantId,...fields,creditLimit:0,creditBlocked:false,creditRevision:0,createdAt:new Date().toISOString()};
  return {...state,customers:[customer,...(state.customers||[])]};
 }
 export function recordPurchase(state,tenantId,input,userId){

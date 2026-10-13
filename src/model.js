@@ -1,8 +1,9 @@
+import {checkNewDebt,addSaleDebt} from './debts.js';
 import {allocateFEFO,afterBatchSale} from './batches.js';
 import {normalizeExpiryDate} from './expiry.js';
 export const units=['un','m','m²','kg','g','l','ml','caixa','pacote','saco','rolo','par','conjunto'];
 export const roles=['owner','manager','cashier','stock','finance'];
-export const permissions={owner:['sell','stock','team','history','refund','discount','customers','purchases','expenses','reports'],manager:['sell','stock','history','refund','discount','customers','purchases','expenses','reports'],cashier:['sell','history','customers'],stock:['stock','purchases'],finance:['history','expenses','reports']};
+export const permissions={owner:['sell','stock','team','history','refund','discount','customers','purchases','expenses','reports','debts','debts'],manager:['sell','stock','history','refund','discount','customers','purchases','expenses','reports'],cashier:['sell','history','customers','debts'],stock:['stock','purchases'],finance:['history','expenses','reports','debts']};
 export const can=(role,action)=>(permissions[role]||[]).includes(action);
 export function seed(){return {version:1,tenants:[{id:'t1',name:'Mercearia Boa Compra',type:'Mercearia',owner:'Gabriel'},{id:'t2',name:'Ferragem Horizonte',type:'Ferragem',owner:'Ana'}],products:[
 {id:'p1',tenantId:'t1',name:'Arroz',category:'Alimentação',unit:'kg',price:8500,stock:48,min:10,code:'10001',emoji:'🍚'},
@@ -12,7 +13,7 @@ export function seed(){return {version:1,tenants:[{id:'t1',name:'Mercearia Boa C
 {id:'p5',tenantId:'t1',name:'Creme hidratante',category:'Cuidados pessoais',unit:'un',price:28000,stock:12,min:4,code:'10005',emoji:'🧴'},
 {id:'p6',tenantId:'t2',name:'Cabo eléctrico',category:'Electricidade',unit:'m',price:6500,stock:100,min:15,code:'20001',emoji:'🔌'},
 {id:'p7',tenantId:'t2',name:'Cimento 50 kg',category:'Construção',unit:'saco',price:48000,stock:30,min:5,code:'20002',emoji:'🧱'}],sales:[],members:[{id:'u1',tenantId:'t1',name:'Gabriel',role:'owner'},{id:'u2',tenantId:'t1',name:'Maria',role:'cashier'},{id:'u3',tenantId:'t2',name:'Ana',role:'owner'}]};}
-export function createSale(state,{tenantId,role,cart,method,received,discount=0,payments,deviceId,id,userId,customerId=null}){
+export function createSale(state,{tenantId,role,cart,method,received,discount=0,payments,deviceId,id,userId,customerId=null,debtDueDate=null}){
  if(!can(role,'sell'))throw Error('permission');
  if(state.sales.some(s=>s.id===id))return state;
  if(!state.tenants.some(t=>t.id===tenantId)||!Array.isArray(cart)||!cart.length)throw Error('cart');
@@ -33,6 +34,7 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
  if(discount>0&&!can(role,'discount'))throw Error('permission');
  const total=subtotal-discount;
  const methods=['cash','mpesa','emola','transfer'];
+ const isDebt=method==='credit'&&payments===undefined;
  let normalized;
  if(payments!==undefined){
   if(!Array.isArray(payments)||!payments.length||payments.length>methods.length)throw Error('payment');
@@ -43,18 +45,20 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
   });
   if(normalized.reduce((sum,p)=>sum+p.amount,0)!==total)throw Error('payment_total');
  }else{
-  if(!methods.includes(method))throw Error('payment');
+  if(!methods.includes(method)&&!isDebt)throw Error('payment');
   normalized=[{method,amount:total}];
  }
+ if(isDebt)checkNewDebt(state,tenantId,customerId,total,debtDueDate);
  const cashAmount=normalized.find(p=>p.method==='cash')?.amount||0;
  if(cashAmount&&(!Number.isSafeInteger(received)||received<cashAmount))throw Error('received');
- const tender=cashAmount?received:total;
+ const tender=isDebt?0:cashAmount?received:total;
  const sale={id,tenantId,deviceId,userId,customerId:customerId||null,createdAt:new Date().toISOString(),lines,subtotal,discount,total,payments:normalized,method:normalized.length===1?normalized[0].method:'mixed',received:tender,change:cashAmount?received-cashAmount:0,syncStatus:'local'};
  const stockEvents=lines.map(line=>{
   const before=state.products.find(p=>p.id===line.productId&&p.tenantId===tenantId).stock;
   const after=Math.round((before-line.quantity)*1000)/1000;
   return {id:crypto.randomUUID(),tenantId,productId:line.productId,productName:line.name,unit:line.unit,action:'sale',type:'sale',referenceId:id,createdAt:sale.createdAt,actorId:userId||'demo',reason:'Venda #'+String(id).slice(0,10),before,after,delta:-line.quantity};
  });
- return {...state,products:state.products.map(p=>{const line=lines.find(l=>l.productId===p.id);return line?{...p,stock:Math.round((p.stock-line.quantity)*1000)/1000}:p;}),sales:[sale,...state.sales],stockBatches:afterBatchSale(state,lines),inventoryEvents:[...stockEvents,...(state.inventoryEvents||[])],stockMovements:[...stockEvents,...(state.stockMovements||[])]};
+ const afterSale={...state,products:state.products.map(p=>{const line=lines.find(l=>l.productId===p.id);return line?{...p,stock:Math.round((p.stock-line.quantity)*1000)/1000}:p;}),sales:[sale,...state.sales],stockBatches:afterBatchSale(state,lines),inventoryEvents:[...stockEvents,...(state.inventoryEvents||[])],stockMovements:[...stockEvents,...(state.stockMovements||[])]};
+ return isDebt?addSaleDebt(afterSale,sale,debtDueDate):afterSale;
 }
 export function addProduct(state,tenantId,product){if(!state.tenants.some(t=>t.id===tenantId))throw Error('tenant');if(!product.name.trim()||!units.includes(product.unit)||!Number.isSafeInteger(product.price)||product.price<=0||!Number.isFinite(product.stock)||product.stock<0||!Number.isFinite(product.min)||product.min<0)throw Error('product');if(['un','caixa','pacote','saco','rolo','par','conjunto'].includes(product.unit)&&!Number.isInteger(product.stock))throw Error('quantity');if(product.code&&state.products.some(p=>p.tenantId===tenantId&&p.code===product.code))throw Error('code');return {...state,products:[...state.products,{...product,expiryDate:normalizeExpiryDate(product.expiryDate),id:crypto.randomUUID(),tenantId,active:true,revision:0}]};}

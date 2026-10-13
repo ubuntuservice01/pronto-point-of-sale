@@ -1,3 +1,4 @@
+import {debtBalance} from './debts.js';
 import {afterBatchRefund} from './batches.js';
 export const paymentMethods=['cash','mpesa','emola','transfer'];
 export function activeCash(state,{tenantId,userId,deviceId}){return (state.cashSessions||[]).find(s=>s.tenantId===tenantId&&s.userId===userId&&s.deviceId===deviceId&&s.status==='open');}
@@ -5,11 +6,12 @@ function allocations(sale){return Array.isArray(sale.payments)&&sale.payments.le
 export function cashSummary(state,session){
  const sales=(state.sales||[]).filter(s=>s.tenantId===session.tenantId&&s.cashSessionId===session.id);
  const refunds=(state.refunds||[]).filter(r=>r.tenantId===session.tenantId&&r.cashSessionId===session.id);
- const payments=Object.fromEntries(paymentMethods.map(method=>[method,sales.reduce((n,s)=>n+allocations(s).filter(p=>p.method===method).reduce((a,p)=>a+p.amount,0),0)-refunds.reduce((n,r)=>n+allocations(r).filter(p=>p.method===method).reduce((a,p)=>a+p.amount,0),0)]));
+ const debtReceipts=(state.debtPayments||[]).filter(p=>p.tenantId===session.tenantId&&p.cashSessionId===session.id);
+ const payments=Object.fromEntries(paymentMethods.map(method=>[method,sales.reduce((n,s)=>n+allocations(s).filter(p=>p.method===method).reduce((a,p)=>a+p.amount,0),0)-refunds.reduce((n,r)=>n+allocations(r).filter(p=>p.method===method).reduce((a,p)=>a+p.amount,0),0)+debtReceipts.filter(p=>p.method===method).reduce((n,p)=>n+p.amount,0)]));
  const incoming=session.movements.filter(m=>m.type==='in').reduce((n,m)=>n+m.amount,0);
  const outgoing=session.movements.filter(m=>m.type==='out').reduce((n,m)=>n+m.amount,0);
  const gross=sales.reduce((n,s)=>n+s.total,0),refundTotal=refunds.reduce((n,r)=>n+r.total,0);
- return {sales,refunds,payments,incoming,outgoing,refundTotal,expected:{...payments,cash:session.opening+payments.cash+incoming-outgoing},total:gross-refundTotal};
+ return {sales,refunds,payments,debtReceipts,debtReceived:debtReceipts.reduce((n,p)=>n+p.amount,0),incoming,outgoing,refundTotal,expected:{...payments,cash:session.opening+payments.cash+incoming-outgoing},total:gross-refundTotal};
 }
 function cents(value){if(!Number.isSafeInteger(value)||value<0)throw Error('cash_amount');}
 export function openCash(state,context,opening){
@@ -45,6 +47,8 @@ export function refundSale(state,context,{saleId,id,reason}){
  const sale=state.sales.find(s=>s.id===saleId&&s.tenantId===context.tenantId);
  if(!sale)throw Error('sale_not_found');
  if(sale.refundId||(state.refunds||[]).some(r=>r.saleId===saleId))throw Error('already_refunded');
+ const debt=(state.debts||[]).find(d=>d.tenantId===context.tenantId&&d.saleId===saleId);
+ if(debt&&debtBalance(state,debt)<debt.amount)throw Error('debt_has_payments');
  const session=activeCash(state,context);if(!session)throw Error('cash_not_open');
  const methods=allocations(sale);
  const cashRefund=methods.find(p=>p.method==='cash')?.amount||0;

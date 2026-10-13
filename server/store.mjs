@@ -1,3 +1,4 @@
+import {saveCreditPolicy,registerDebtPayment} from '../src/debts.js';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, scryptSync, timingSafeEqual, createHash, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
@@ -24,7 +25,7 @@ function businessFields(input){
 }
 function businessReason(input){return text(input?.reason,250);}
 const validInventoryId=v=>typeof v==='string'&&v.length>0&&v.length<=80;
-const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[],stockBatches:[],memberEvents:[]});
+const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],debts:[],debtPayments:[],debtEvents:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[],stockBatches:[],memberEvents:[]});
 export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,now=()=>Date.now()}={}){
  if(path!==':memory:')mkdirSync(dirname(path),{recursive:true,mode:0o700});
  const db=new DatabaseSync(path);db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS businesses(id TEXT PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,owner TEXT NOT NULL); CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password_hash TEXT NOT NULL,business_id TEXT REFERENCES businesses(id),role TEXT NOT NULL,must_change INTEGER NOT NULL DEFAULT 1,active INTEGER NOT NULL DEFAULT 1); CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL,device TEXT NOT NULL); CREATE TABLE IF NOT EXISTS payloads(business_id TEXT PRIMARY KEY REFERENCES businesses(id),data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,user_id TEXT,business_id TEXT,action TEXT NOT NULL,created_at TEXT NOT NULL);`);
@@ -68,7 +69,10 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  function businessFor(user,id){ready(user);const business=id||user.business_id;if(!business)fail(400,'business_required');if(user.role!=='super'&&business!==user.business_id)fail(403,'forbidden');const found=db.prepare('SELECT id,active FROM businesses WHERE id=?').get(business);if(!found)fail(404,'not_found');if(user.role!=='super'&&!found.active)fail(403,'business_suspended');if(user.role!=='super')licenseGate(business);return business;}
  function authorize(user,action,id){const business=businessFor(user,id);if(user.role==='super'||!can(user.role,action))fail(403,'forbidden');return business;}
  function snapshot(user,id){ready(user);if(user.role==='super'&&!id)return {...empty(),tenants:db.prepare('SELECT * FROM businesses ORDER BY name COLLATE NOCASE').all().map(b=>({...b,license:licenseFor(b.id)})),plans:db.prepare('SELECT id,name,price_cents AS priceCents,duration_days AS durationDays,active,created_at AS createdAt FROM subscription_plans ORDER BY created_at DESC').all().map(p=>({...p,active:!!p.active})),licenseEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.plan_id AS planId,e.previous_expiry_ms AS previousExpiryMs,e.new_expiry_ms AS newExpiryMs,e.reason,e.reference,e.periods,e.created_at AS createdAt FROM license_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC LIMIT 250').all(),businessEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.before_data AS beforeData,e.after_data AS afterData,e.reason,e.created_at AS createdAt FROM business_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC,e.rowid DESC LIMIT 250').all().map(e=>({...e,before:JSON.parse(e.beforeData),after:JSON.parse(e.afterData),beforeData:undefined,afterData:undefined})),auth:publicUser(user)};const business=businessFor(user,id);const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);const data=JSON.parse(row.data);const members=['owner','super'].includes(user.role)?db.prepare('SELECT id,name,username,role,active,revision,business_id AS tenantId FROM users WHERE business_id=? ORDER BY name COLLATE NOCASE').all(business).map(m=>({...m,active:!!m.active})):[];const actorNames=new Map(db.prepare('SELECT id,name FROM users WHERE business_id=?').all(business).map(m=>[m.id,m.name]));return {...data,
-  customers:can(user.role,'customers')?(data.customers||[]):[],
+  customers:can(user.role,'customers')||can(user.role,'debts')?(data.customers||[]):[],
+  debts:can(user.role,'debts')?(data.debts||[]):[],
+  debtPayments:can(user.role,'debts')?(data.debtPayments||[]):[],
+  debtEvents:['owner','manager'].includes(user.role)?(data.debtEvents||[]).map(e=>({...e,actorName:actorNames.get(e.actorId)||null})):[],
   purchases:can(user.role,'purchases')||can(user.role,'reports')?(data.purchases||[]):[],
   expenses:can(user.role,'expenses')||can(user.role,'reports')?(data.expenses||[]):[],
   products:user.role==='cashier'?(data.products||[]).map(({cost,...product})=>product):(data.products||[]),
@@ -328,6 +332,19 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   audit(user,business,'batch_adjusted');return snapshot(user);
  },
  customerSave(user,input){const business=authorize(user,'customers');try{save(business,current=>saveCustomer(current,business,input));}catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}audit(user,business,'customer_saved');return snapshot(user);},
+ customerCredit(user,input){
+  const business=authorize(user,'debts');
+  try{save(business,current=>saveCreditPolicy(current,business,{...input,actorRole:user.role},user.id));}
+  catch(e){if(e instanceof HttpError)throw e;fail(e.message==='revision_conflict'?409:400,e.message);}
+  audit(user,business,'customer_credit_updated');return snapshot(user);
+ },
+ debtPayment(user,input){
+  const business=authorize(user,'sell');
+  const context={tenantId:business,userId:user.id,deviceId:user.session_device,role:user.role};
+  try{save(business,current=>registerDebtPayment(current,business,input,context));}
+  catch(e){if(e instanceof HttpError)throw e;fail(['payment_conflict','debt_amount'].includes(e.message)?409:400,e.message);}
+  audit(user,business,'debt_payment_recorded');return snapshot(user);
+ },
  purchaseCreate(user,input){const business=authorize(user,'purchases');try{save(business,current=>recordPurchase(current,business,input,user.id));}catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}audit(user,business,'purchase_created');return snapshot(user);},
  expenseCreate(user,input){const business=authorize(user,'expenses');try{save(business,current=>recordExpense(current,business,input,user.id));}catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}audit(user,business,'expense_created');return snapshot(user);},
  cashOpen(user,input){const business=authorize(user,'sell');const context={tenantId:business,userId:user.id,role:user.role,deviceId:user.session_device};try{save(business,current=>openCash(current,context,input.opening));}catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}audit(user,business,'cash_open');return snapshot(user);},
@@ -338,7 +355,7 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   const business=authorize(user,'sell',input.tenantId);
   if(typeof input.id!=='string'||input.id.length>80||!Array.isArray(input.cart)||!input.cart.length||input.cart.length>500)fail(400,'invalid');
   const deviceId=user.session_device,context={tenantId:business,userId:user.id,role:user.role,deviceId};
-  const signature=JSON.stringify({cart:input.cart,method:input.method,payments:input.payments??null,discount:input.discount??0,customerId:input.customerId??null,received:input.received??null});
+  const signature=JSON.stringify({cart:input.cart,method:input.method,payments:input.payments??null,discount:input.discount??0,customerId:input.customerId??null,debtDueDate:input.debtDueDate??null,received:input.received??null});
   try{save(business,current=>{
     const previous=current.sales.find(s=>s.id===input.id);
     if(previous){
