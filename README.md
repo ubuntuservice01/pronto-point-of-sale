@@ -147,3 +147,7 @@ O mesmo artigo aceita vários lotes independentes (número, quantidade e data de
 - **Saídas e devoluções:** cada linha de venda guarda os lotes e respectivas quantidades consumidas; a devolução integral repõe as unidades no respectivo lote de origem. A validade é confirmada de novo em cada venda e as alterações são executadas numa transacção SQLite no servidor.
 - **Protecção de contagens:** a correcção de lote exige indicar a quantidade actual esperada; se outra operação o alterar, o pedido é rejeitado. Ajustes genéricos não podem reduzir silenciosamente lotes identificados.
 - **Limitações:** as vendas históricas anteriores ao novo controlo não dispõem de identificação retroactiva de lotes. A interface permite receber lotes expirados para registar e isolar perdas, mas o POS impede a sua venda. Não há integração fiscal, quarentena automatizada, recolha de lotes ou impressão de etiquetas por lote nesta fase.
+
+
+### Corrigir número e validade de um lote
+Na opção **Produtos e stock → Lotes → Corrigir dados do lote**, pode alterar o número e a data de validade de um lote existente com motivo obrigatório. O servidor verifica se o lote foi alterado entretanto, impede números repetidos no mesmo produto e conserva um histórico de auditoria. Este formulário não altera o stock agregado nem modifica as vendas anteriores; a disponibilidade futura é recalculada com a nova validade.

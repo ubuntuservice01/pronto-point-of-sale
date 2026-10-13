@@ -81,3 +81,5 @@ Em cada execução, registar data, perfil, dispositivo, browser, ID do cenário,
 | QA-42 | Devolver integralmente venda de vários lotes | Stock regressa aos lotes usados originalmente | Pendente |
 | QA-43 | Testar artigo anterior à versão de lotes | Saldo aparece como stock legado sem número inventado | Pendente |
 | QA-44 | Registar compra com lote e validade | Compra aumenta stock total e saldo do lote | Pendente |
+
+| QA-45 | Corrigir validade ou número de lote já registado | Saldo permanece igual, histórico guarda antes/depois e lote vencido deixa de poder ser vendido | Pendente |

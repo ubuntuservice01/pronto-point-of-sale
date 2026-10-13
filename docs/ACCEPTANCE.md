@@ -238,3 +238,5 @@
 - [x] Servidor com isolamento de comerciante e permissões para movimentos.
 - [ ] Testar leitura de códigos reais e venda de lotes no Android/desktop.
 - [ ] Etiquetas por lote, gestão de recolhas e normalização de alto volume.
+
+- [x] Corrigir o número e a validade do lote sem alterar o stock, com auditoria e controlo de concorrência.
