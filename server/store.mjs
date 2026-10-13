@@ -236,7 +236,10 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
    if(groupBranches(root).some(b=>b.name.toLocaleLowerCase()===name.toLocaleLowerCase()))fail(409,'branch_name_exists');
    const id=randomUUID();
    db.prepare('INSERT INTO businesses(id,name,type,owner,phone,email,address,active,revision,parent_id) VALUES(?,?,?,?,?,?,?,1,0,?)').run(id,name,origin.type,origin.owner,phone,origin.email||'',address,root);
-   db.prepare('INSERT INTO payloads(business_id,data) VALUES(?,?)').run(id,JSON.stringify({...empty(),tenants:[{id,name,type:origin.type,owner:origin.owner}]}));
+   const mainData=JSON.parse(db.prepare('SELECT data FROM payloads WHERE business_id=?').get(root).data);
+   // Copy only the catalogue and prices. Never copy stock, batches, transactions or customers.
+   const catalogue=input.copyProducts===true?(mainData.products||[]).filter(p=>p.tenantId===root).map(p=>({...p,id:randomUUID(),tenantId:id,stock:0,expiryDate:'',revision:0})):[]; 
+   db.prepare('INSERT INTO payloads(business_id,data) VALUES(?,?)').run(id,JSON.stringify({...empty(),products:catalogue,tenants:[{id,name,type:origin.type,owner:origin.owner}]}));
    audit(user,id,'branch_created');
    // Return the ROOT shop snapshot, now including the newly created branch.
    return snapshot(user);
