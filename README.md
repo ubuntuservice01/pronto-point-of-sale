@@ -2,7 +2,7 @@
 
 **O seu negócio na palma da mão.** POS geral mobile first da Ubuntu Service, Lda.
 
-## Estado actual — 0.7
+## Estado actual — 0.8
 
 Duas modalidades separadas:
 
@@ -106,3 +106,13 @@ Os testes originais cobriam HTTP, cookies, sessões e vendas. A versão 0.5 foi 
 - Actualização automática da estrutura SQLite para suportar controlo de revisão e conflitos de edição.
 - Validação: 67 testes automatizados aprovados, incluindo segurança, rotas e migração.
 - Ainda faltam testes manuais de multi-dispositivo e recuperação administrativa de acessos.
+
+
+## Entrega 0.8 — Super Admin, comerciantes e suspensão efectiva
+- O Super Admin pode pesquisar e filtrar comerciantes por tipo e estado (activo/suspenso), editar a ficha do negócio e suspender/reactivar o acesso de toda a empresa.
+- Dados editáveis: nome comercial, tipo, nome de referência do proprietário, contacto, email e endereço. O nome de referência **não altera** o nome de login nem a palavra-passe da conta de proprietário.
+- A suspensão **revoga todas as sessões** da empresa (incluindo proprietário e colaboradores) e impede novos logins; a reactivação permite criar sessões novas usando as palavras-passe existentes. Nenhum registo de venda, produto ou stock é eliminado.
+- Só o Super Admin executa estas operações, mediante motivo obrigatório. Revisões evitam sobrescrever alterações concorrentes. Um histórico permanente de eventos administrativos é guardado em SQLite, com actor, data, motivo e valores anteriores/novos.
+- Migração aditiva de negócios antigos para campos de contacto, `active` e `revision`. O Super Admin ainda pode inspecionar uma empresa suspensa em modo leitura.
+- Os planos comerciais, preços de assinatura, cobranças e gestão de mensalidades **não** estão incluídos nesta entrega; não são simulados como se estivessem activos.
+- Antes do lançamento comercial, validar os fluxos de suspensão e reactivação em dispositivos reais e a política de comunicação aos comerciantes.
