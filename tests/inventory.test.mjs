@@ -24,7 +24,7 @@ test('Product edition preserves stock and past sales, records operator and is id
 
 test('Barcode uniqueness applies inside the business, never across unrelated stores',()=>{
  let s=state();s.products[1].code='B';
- assert.throws(()=>editInventoryProduct(s,'t1',{...change(),code:'10001'},'operator-id'),/no_change|barcode_in_use|invalid_product/); // same product is allowed only when data differs
+ assert.equal(editInventoryProduct(s,'t1',{...change(),id:'same',code:'10001'},'operator-id').products[0].code,'10001');
  s.products.push({...product(),id:'z',code:'OTHER'});
  assert.throws(()=>editInventoryProduct(s,'t1',{...change(),code:'OTHER'},'operator-id'),/barcode_in_use/);
  s=editInventoryProduct(s,'t1',{...change(),code:'B'},'operator-id');
