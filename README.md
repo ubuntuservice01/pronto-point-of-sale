@@ -2,7 +2,7 @@
 
 **O seu negócio na palma da mão.** POS geral mobile first da Ubuntu Service, Lda.
 
-## Estado actual — 0.2
+## Estado actual — 0.4
 
 Duas modalidades separadas:
 
@@ -29,7 +29,7 @@ Desenvolvimento: http://localhost:5173. Build estático: `dist/`. Servir na raiz
 
 ## Validação
 
-17 testes de domínio e servidor cobrem quantidades, arredondamento, troco, stock, idempotência, permissões e associação de produtos ao negócio. Sintaxe e build verificados. Teste visual automatizado bloqueado pela ausência de Chromium no ambiente; scanner real, instalação e recarga offline exigem validação num navegador/dispositivo.
+Os testes iniciais de domínio e servidor cobrem quantidades, arredondamento, troco, stock, idempotência, permissões e associação de produtos ao negócio. Foram acrescentados testes nas versões seguintes; a bateria integral da versão 0.4 ainda exige execução em Node. A verificação sintáctica foi efectuada nos ficheiros alterados. Teste visual automatizado bloqueado pela ausência de Chromium no ambiente; scanner real, instalação e recarga offline exigem validação num navegador/dispositivo.
 
 Ver [plano de arquitectura](docs/ARCHITECTURE.md) e [lista de validação](docs/ACCEPTANCE.md).
 

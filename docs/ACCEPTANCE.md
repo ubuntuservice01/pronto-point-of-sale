@@ -139,3 +139,8 @@
 - [x] Endpoints autenticados e permissões por negócio para gestão comercial.
 - [ ] Executar testes completos Node e validação visual real em dispositivo.
 - [ ] Fornecedores avançados, compras/vendas a crédito, custos médios e contabilidade fiscal.
+
+## Consolidação da versão 0.4
+- [x] `npm run check` inclui o domínio e a interface de gestão comercial.
+- [x] Testes automáticos de clientes, compras, despesas, relatórios, protecção de CSV, permissões e isolamento incluídos em `tests/commercial.test.mjs`.
+- [ ] Execução integrada da suite Node no ambiente de execução e testes funcionais em navegador/dispositivos reais.
