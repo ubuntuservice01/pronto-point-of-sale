@@ -73,3 +73,17 @@
 .report-progress::-webkit-progress-bar{background:#e8eeec;border-radius:6px}
 .report-progress::-webkit-progress-value{background:#087f68;border-radius:6px}
 .report-progress::-moz-progress-bar{background:#087f68;border-radius:6px}
+
+/* Fase 4 — histórico, fluxo de caixa e acessibilidade */
+.history-filters{display:grid;grid-template-columns:minmax(190px,1.5fr) repeat(4,minmax(115px,1fr)) auto;align-items:end;gap:12px;margin-bottom:16px}
+.history-filters label{margin:0}.history-filters button{min-height:45px}
+.result-count{font-size:12px;color:var(--muted)}
+.cart-validation{border:1px solid #efbd64;background:#fff6e5;border-radius:9px;padding:12px;font-size:12px;color:#754808;line-height:1.5;margin:12px 0}
+.cart-row-invalid{background:#fff8ed;border-radius:9px;padding:8px}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #59bbaa;outline-offset:2px}
+dialog:focus-visible{outline:3px solid #59bbaa;outline-offset:2px}
+.panel:focus-within{scroll-margin:30px}
+@media(max-width:1250px){.history-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.history-filters label:first-child{grid-column:1/-1}}
+@media(max-width:760px){.history-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.history-filters label:first-child{grid-column:1/-1}.history-filters button{grid-column:1/-1}.sale-layout .checkout{max-width:100%}.cart-row{flex-wrap:wrap}.cart-row>div:first-child{min-width:100px}.cart-row .quantity{margin-left:auto}.cart-row .quantity button{min-width:36px;min-height:40px}}
+@media(max-width:390px){.history-filters{grid-template-columns:1fr}.history-filters label:first-child{grid-column:auto}.panel{padding:16px}.cart{padding:16px}.cart-row .quantity{gap:3px}}
+@media print{.report-print{max-width:190mm;margin:10mm auto;font-size:12pt;color:#111}.report-print h2{font-size:21pt}.report-print small{font-size:10pt}.report-print dt,.report-print dd{font-size:12pt}.report-print+button,#print-business-report{display:none!important}}
