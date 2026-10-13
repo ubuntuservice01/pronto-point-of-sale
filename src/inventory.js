@@ -1,3 +1,4 @@
+import {normalizeExpiryDate} from './expiry.js';
 // Inventory mutations shared by the authenticated API and the local demo.
 // All financial values are integer cents; stock supports up to 3 decimals.
 const discrete=new Set(['un','caixa','pacote','saco','rolo','par','conjunto']);
@@ -26,14 +27,15 @@ export function editInventoryProduct(state,tenantId,input,actorId){
  const name=input.name?.trim(),category=input.category?.trim(),code=input.code?.trim();
  if(!required(name,100)||!required(category,60)||typeof code!=='string'||code.length>80||!Number.isSafeInteger(input.price)||input.price<=0||!Number.isFinite(input.min)||input.min<0||input.min>100000000||Math.abs(input.min*1000-Math.round(input.min*1000))>0.00001)throw Error('invalid_product');
  const nextFields={name,category,code,price:input.price,min:Math.round(input.min*1000)/1000};
+ if(Object.prototype.hasOwnProperty.call(input,'expiryDate'))nextFields.expiryDate=normalizeExpiryDate(input.expiryDate);
  const request={...input,...nextFields};
- const sig=signature(request,['productId','expectedRevision','name','category','code','price','min','reason']);
+ const sig=signature(request,['productId','expectedRevision','name','category','code','price','min','expiryDate','reason']);
  if(protect(state,input,tenantId,actorId,'edit',sig))return state;
  const p=own(state,input.productId,tenantId);
  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision!==revision(p))throw Error('revision_conflict');
  if(state.products.some(x=>x.tenantId===tenantId&&x.id!==p.id&&code&&x.code===code))throw Error('barcode_in_use');
- if(Object.entries(nextFields).every(([k,v])=>p[k]===v))throw Error('no_change');
- const before=Object.fromEntries(Object.keys(nextFields).map(k=>[k,p[k]]));
+ if(Object.entries(nextFields).every(([k,v])=>(k==='expiryDate'?(p[k]??''):p[k])===v))throw Error('no_change');
+ const before=Object.fromEntries(Object.keys(nextFields).map(k=>[k,k==='expiryDate'?(p[k]??''):p[k]]));
  const updated={...p,...nextFields,revision:revision(p)+1};
  const event={id:input.id,tenantId,productId:p.id,productName:updated.name,action:'edit',actorId,createdAt:new Date().toISOString(),reason:input.reason.trim(),before,after:nextFields,signature:sig};
  return updateLog({...state,products:state.products.map(x=>x.id===p.id&&x.tenantId===tenantId?updated:x)},event);
