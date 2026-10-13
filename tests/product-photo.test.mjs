@@ -14,3 +14,21 @@ test('photo HTML uses a real image safely and falls back for demo records',()=>{
  assert.match(photoFieldHTML('',false,true),/accept="image\/\*".+required/);
  assert.match(photoFieldHTML('data:image/jpeg;base64,/9j/abcd'),/Remover fotografia actual/);
 });
+
+import {seed,addProduct} from '../src/model.js';
+import {editInventoryProduct} from '../src/inventory.js';
+const sample='data:image/jpeg;base64,/9j/abcd';
+test('demo product retains uploaded photograph and can replace it without copying raw images into history',()=>{
+ const input={name:'Arroz 1kg',category:'Alimentação',unit:'un',code:'AR-1',price:7000,stock:12,min:2,photo:sample};
+ let state=addProduct(seed(),'t1',input);
+ const product=state.products.at(-1);
+ assert.equal(product.photo,sample);
+ const edit={id:'photo-change',productId:product.id,expectedRevision:0,name:product.name,category:product.category,code:product.code,price:product.price,min:product.min,reason:'Actualizar fotografia',photo:''};
+ state=editInventoryProduct(state,'t1',edit,'operator-1');
+ assert.equal(state.products.at(-1).photo,'');
+ assert.equal(state.inventoryEvents[0].before.photo,true);
+ assert.equal(state.inventoryEvents[0].after.photo,false);
+ assert.ok(!JSON.stringify(state.inventoryEvents).includes(sample));
+ assert.equal(editInventoryProduct(state,'t1',edit,'operator-1'),state);
+ assert.throws(()=>addProduct(seed(),'t1',{...input,code:'AR-2',photo:'https://invalid/photo.jpg'}),/invalid_product_photo/);
+});
