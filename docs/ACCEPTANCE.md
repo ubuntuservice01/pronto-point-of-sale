@@ -90,3 +90,14 @@
 - Diferenças exigem observação; resumo do fecho fica preservado e consultável.
 - Modo autenticado apresenta a função como ainda não ligada, sem guardar movimentos no servidor.
 - 23 testes passaram, incluindo reconciliação, diferenças, dispositivos e limites. Validação visual continua pendente.
+
+
+## Frontend — Fase 1: produtos, stock e equipa
+- [x] Pesquisa e filtros no catálogo, indicadores de stock e produtos activos/inactivos.
+- [x] Edição e activação/desactivação de produtos na demonstração, sem apagar vendas históricas.
+- [x] Recepção e ajuste de stock com motivo, quantidades validadas e movimentos locais na demonstração.
+- [x] Equipa com pesquisa, filtros, edição de perfil e activação/desactivação na demonstração.
+- [x] Perfis proprietário protegidos; produtos inactivos indisponíveis na nova venda e scanner.
+- [x] No servidor real, criação e recepção existentes mantidas; operações sem endpoint são explicitamente bloqueadas.
+- [ ] Implementar endpoints autorizados para edição/inactivação, ajustes e histórico de movimentos e gestão de contas.
+- [ ] Testar interface e scanner em browser/Android/iOS e executar testes automatizados.

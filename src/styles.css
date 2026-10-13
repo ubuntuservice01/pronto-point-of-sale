@@ -11,3 +11,29 @@
 @media(max-width:760px){.quick-actions{gap:8px;margin-bottom:18px}.quick-actions button{min-height:70px}.mobile-sale-bar{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#fffffffa;border-top:1px solid var(--border);box-shadow:0 -7px 25px #16372c08;z-index:2;backdrop-filter:blur(8px)}.mobile-sale-bar small{font-size:9px}.mobile-sale-bar strong{display:block;font-size:20px;margin-top:3px}.mobile-sale-bar .primary{padding:12px 20px}.mobile-sale-bar button span{background:#ffffff25;padding:2px 7px;border-radius:5px}.sale-layout{padding-bottom:95px}.cart{scroll-margin-top:20px}.cart .checkout{position:static}.cash-shortcuts button{min-height:42px;padding:10px;font-size:11px}.product-card{min-height:195px}.quantity input{min-height:44px}.sale-layout+ .mobile-sale-bar~footer{padding-bottom:170px}}
 .cash-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.cash-actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.cash-history{margin-top:20px}.cash-direction{height:35px;width:35px;border-radius:9px;display:grid;place-items:center;color:var(--green);background:#e9f5ef}.cash-direction.out{color:#a96616;background:#fff4df}.cash-reconciliation section{border:1px solid var(--border);border-radius:10px;padding:15px;margin:12px 0}.cash-reconciliation section>div small{margin-top:7px}.cash-reconciliation label{font-size:11px}.cash-reconciliation+label textarea{width:100%;border:1px solid var(--border);border-radius:9px;margin-top:9px;padding:12px;font:inherit}.cash-history .sale-row>span{font-size:11px;color:var(--green)}
 @media(max-width:760px){.cash-stats{grid-template-columns:1fr}.cash-stats .stat{display:flex;align-items:center;justify-content:space-between}.cash-stats .stat small{margin:0}.cash-stats .stat strong{font-size:22px}.cash-actions{display:grid;grid-template-columns:1fr 1fr}.cash-actions .primary{grid-column:1/-1}}
+
+
+/* Gestão do inventário e equipa — Fase 1 */
+.management-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:18px 0 22px}
+.management-stats article{background:#fff;border:1px solid var(--border);border-radius:12px;padding:17px}
+.management-stats strong{display:block;margin-top:10px;font-size:24px}
+.management-filters{display:grid;grid-template-columns:minmax(0,1fr) 205px 180px;gap:12px;margin-bottom:16px}
+.catalog-list{border:1px solid var(--border);border-radius:13px;background:white;overflow:hidden}
+.catalog-entry{border-bottom:1px solid var(--border);padding:17px}.catalog-entry:last-child{border-bottom:0}
+.catalog-line{display:flex;align-items:center;gap:13px;min-width:0}
+.catalog-line .grow strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.catalog-line .grow small{margin-top:6px;overflow-wrap:anywhere}
+.catalog-line .right{flex-shrink:0}.catalog-line .right strong{font-size:13px}
+.catalog-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.management-tag{display:inline-block;padding:4px 8px;background:#e7ecef;border-radius:14px;font-size:10px;color:#536975;white-space:nowrap}
+.management-tag.caution{background:#fff2dc;color:#965b0d}
+.catalog-buttons{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 0 0 65px}
+.catalog-buttons button{min-height:36px;padding:8px 10px;font-size:12px}
+.catalog-buttons .text-button{margin-left:auto}
+.management-history{margin-top:20px}.management-team .catalog-buttons{padding:0;flex-shrink:0}
+@media(max-width:760px){.management-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.management-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+.management-filters input{grid-column:1/-1}
+.catalog-entry{padding:14px}.catalog-line{align-items:flex-start;gap:9px}.catalog-buttons{padding-left:0;gap:5px}
+.catalog-buttons .text-button{margin-left:0}.management-team .list-row{flex-wrap:wrap}.management-team .catalog-buttons{width:100%;padding-left:48px}}
+@media(max-width:380px){.management-filters{grid-template-columns:1fr}.management-filters input{grid-column:auto}}
