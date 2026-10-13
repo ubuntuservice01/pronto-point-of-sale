@@ -88,6 +88,23 @@ export function adjustProductBatch(state,tenantId,input,actorId){
  const event={id:input.id,tenantId,productId:p.id,productName:p.name,batchId:current.id,batchNumber:current.number,expiryDate:current.expiryDate,action:'batch_adjust',type:'batch_adjust',before:current.quantity,after:input.quantity,delta,unit:p.unit,actorId,reason:input.reason.trim(),createdAt:new Date().toISOString(),signature:sig};
  return {...state,stockBatches:nextBatches,products:state.products.map(x=>x.id===p.id&&x.tenantId===tenantId?{...x,stock:nextStock}:x),inventoryEvents:[event,...(state.inventoryEvents||[])],stockMovements:[event,...(state.stockMovements||[])]};
 }
+export function editBatchDetails(state,tenantId,input,actorId){
+ const product=(state.products||[]).find(p=>p.id===input?.productId&&p.tenantId===tenantId);
+ if(!product)throw Error('product_not_found');
+ if(typeof input.id!=='string'||!input.id||input.id.length>80||typeof input.batchId!=='string'||!input.batchId||typeof input.reason!=='string'||!input.reason.trim()||input.reason.length>200)throw Error('invalid_batch_movement');
+ const number=checkNumber(input.batchNumber),date=normalizeExpiryDate(input.expiryDate);
+ const signature=JSON.stringify([input.productId,input.batchId,number,date,input.expectedQuantity,input.expectedExpiryDate,input.expectedNumber,input.reason.trim()]);
+ const previous=(state.inventoryEvents||[]).find(e=>e.id===input.id);
+ if(previous){if(previous.tenantId===tenantId&&previous.actorId===actorId&&previous.action==='batch_edit'&&previous.signature===signature)return state;throw Error('operation_conflict');}
+ const current=trackedBatches(state,product).find(b=>b.id===input.batchId);
+ if(!current)throw Error('batch_not_found');
+ if(typeof input.expectedQuantity!=='number'||input.expectedQuantity!==current.quantity||input.expectedExpiryDate!==current.expiryDate||input.expectedNumber!==current.number)throw Error('stock_conflict');
+ if(current.number===number&&current.expiryDate===date)throw Error('no_change');
+ if(trackedBatches(state,product).some(b=>b.id!==current.id&&b.number.toLowerCase()===number.toLowerCase()))throw Error('batch_number_conflict');
+ const next=(state.stockBatches||[]).map(b=>b.id===current.id?{...b,number,expiryDate:date}:b);
+ const event={id:input.id,tenantId,productId:product.id,productName:product.name,batchId:current.id,batchNumber:number,expiryDate:date,action:'batch_edit',actorId,reason:input.reason.trim(),createdAt:new Date().toISOString(),before:{number:current.number,expiryDate:current.expiryDate},after:{number,expiryDate:date},signature};
+ return {...state,stockBatches:next,inventoryEvents:[event,...(state.inventoryEvents||[])]};
+}
 export function afterBatchSale(state,lines){
  const decrements=new Map();
  for(const line of lines)for(const allocation of line.batchAllocations||[]){
