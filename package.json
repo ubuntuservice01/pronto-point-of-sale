@@ -1,6 +1,6 @@
 {
   "name": "pronto-pos",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "build:dev": "node scripts/build.mjs",
     "preview": "node scripts/dev.mjs dist",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/camera-utils.js && node --check src/inventory.js && node --check src/inventory-ui.js && node --check src/team-ui.js && node --check src/quality.js && node --check src/app.js && node --check src/model.js && node --check src/commercial.js && node --check src/commercial-ui.js && node --check src/cash.js && node --check src/cash-ui.js && node --check src/admin-ui.js && node --check src/management-ui.js && node --check src/storage.js && node --check public/sw.js && node --check server/store.mjs && node --check server/http.mjs",
+    "check": "node --check src/camera-utils.js && node --check src/inventory.js && node --check src/inventory-ui.js && node --check src/team-ui.js && node --check src/quality.js && node --check src/app.js && node --check src/model.js && node --check src/commercial.js && node --check src/commercial-ui.js && node --check src/cash.js && node --check src/cash-ui.js && node --check src/auth.js && node --check src/licensing-ui.js && node --check src/admin-ui.js && node --check src/management-ui.js && node --check src/storage.js && node --check public/sw.js && node --check server/store.mjs && node --check server/http.mjs",
     "start": "node --env-file-if-exists=.env server/start.mjs"
   },
   "engines": {
