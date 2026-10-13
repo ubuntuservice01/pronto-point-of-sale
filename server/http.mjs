@@ -26,6 +26,11 @@ export function createApp(store,{root=process.cwd(),origin}={}){
  else if(path==='/api/businesses'&&req.method==='POST')send(res,201,store.createBusiness(user,input));
  else if(path==='/api/businesses/edit'&&req.method==='POST')send(res,200,store.businessEdit(user,input));
  else if(path==='/api/businesses/status'&&req.method==='POST')send(res,200,store.businessStatus(user,input));
+ else if(path==='/api/plans'&&req.method==='POST')send(res,201,store.planCreate(user,input));
+ else if(path==='/api/plans/status'&&req.method==='POST')send(res,200,store.planStatus(user,input));
+ else if(path==='/api/licenses/assign'&&req.method==='POST')send(res,200,store.licenseAssign(user,input));
+ else if(path==='/api/licenses/renew'&&req.method==='POST')send(res,200,store.licenseRenew(user,input));
+ else if(path==='/api/licenses/cancel'&&req.method==='POST')send(res,200,store.licenseCancel(user,input));
  else if(path==='/api/members'&&req.method==='POST')send(res,201,store.createMember(user,input));
  else if(path==='/api/members/edit'&&req.method==='POST')send(res,200,store.memberEdit(user,input));
  else if(path==='/api/members/status'&&req.method==='POST')send(res,200,store.memberStatus(user,input));
