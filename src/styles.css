@@ -169,3 +169,41 @@ dialog.scanner-dialog .scanner-viewfinder video{display:block;width:100%;height:
 .batch-today,.batch-soon{background:#fff2d5;color:#79500b}
 .batch-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}
 @media(max-width:600px){.batch-line{align-items:start}.batch-right{min-width:95px}.batch-actions{grid-template-columns:1fr}.catalog-entry .batch-summary{gap:5px}}
+
+/* Pronto POS 0.11 — Gestão de Dívidas / accounts receivable */
+.debt-stats{margin-bottom:20px}
+.debt-policy-panel,.debt-ledger{margin:18px 0;padding:20px}
+.debt-customers{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:14px}
+.debt-customer{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px;border:1px solid var(--border);border-radius:12px;background:#fff}
+.debt-customer strong,.debt-customer small{display:block;overflow-wrap:anywhere}
+.debt-customer strong{font-size:14px;margin-bottom:5px}
+.debt-customer small{font-size:11px;line-height:1.5;color:var(--muted)}
+.debt-customer button{flex-shrink:0}
+.debt-ledger .panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:15px}
+.debt-ledger #debt-status{min-width:165px;max-width:220px}
+.debt-row{padding:18px;border:1px solid var(--border);background:#fff;border-radius:14px;margin:12px 0}
+.debt-row-head{display:flex;align-items:start;justify-content:space-between;gap:12px}
+.debt-row-head strong,.debt-row-head small{display:block;overflow-wrap:anywhere}
+.debt-row-head strong{font-size:15px}
+.debt-row-head small{font-size:11px;color:var(--muted);margin-top:5px}
+.debt-badge{padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.debt-overdue{color:#a02527;background:#ffe6e6}
+.debt-open{color:#855900;background:#fff2d3}
+.debt-settled{color:#08704e;background:#dff8e9}
+.debt-cancelled{color:#4c6270;background:#e7edf2}
+.debt-amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+.debt-amounts>div{padding:11px;background:#f6faf9;border-radius:9px;min-width:0}
+.debt-amounts small,.debt-amounts strong{display:block;overflow-wrap:anywhere}
+.debt-amounts small{font-size:10px;color:var(--muted);margin-bottom:6px}
+.debt-amounts strong{font-size:15px}
+.debt-payment-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--border)}
+.debt-payment-line small{color:var(--muted);font-size:11px;overflow-wrap:anywhere}
+.debt-row details{margin:8px 0}
+.debt-row details>summary{cursor:pointer;font-size:12px;font-weight:700}
+.debt-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px}
+.debt-actions button,.debt-actions a{min-width:0;text-decoration:none;white-space:normal;justify-content:center}
+.debt-whatsapp{display:inline-flex;align-items:center}
+.debt-checkbox{display:flex;align-items:center;gap:10px;line-height:1.5}
+.debt-checkbox input{width:auto!important;flex:0 0 18px;height:18px}
+@media(max-width:760px){.debt-policy-panel,.debt-ledger{padding:14px}.debt-customers{grid-template-columns:1fr}.debt-row{padding:13px}.debt-amounts strong{font-size:13px}}
+@media(max-width:420px){.debt-row-head{flex-wrap:wrap}.debt-amounts{grid-template-columns:1fr}.debt-actions{flex-direction:column;align-items:stretch}.debt-actions button,.debt-actions a{width:100%}.debt-customer{flex-wrap:wrap}.debt-customer button{width:100%}}

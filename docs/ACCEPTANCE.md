@@ -240,3 +240,17 @@
 - [ ] Etiquetas por lote, gestão de recolhas e normalização de alto volume.
 
 - [x] Corrigir o número e a validade do lote sem alterar o stock, com auditoria e controlo de concorrência.
+
+
+## Gestão de Dívidas — Pronto POS 0.11
+- [x] Criar venda integralmente a crédito, com cliente e data limite obrigatórios.
+- [x] Limites de crédito autorizados apenas pelo proprietário/gerente, com histórico e bloqueio individual.
+- [x] Limites e dívidas vencidas impedem novas vendas a crédito.
+- [x] Registar recebimentos parciais e totais, com confirmação manual e idempotência.
+- [x] Integrar recebimentos no caixa sem reconhecer crédito como dinheiro recebido.
+- [x] Consultar saldos, vencimentos, histórico, clientes e indicadores de dívida.
+- [x] Preparar lembretes WhatsApp sem envio automático.
+- [x] Proteger negócios, utilizadores e pagamentos contra acesso indevido ou valores superiores ao saldo.
+- [x] Testes automatizados de permissões, checkout, caixa, devoluções e API.
+- [ ] Homologar fluxos em navegadores e telemóveis reais e testes de acessibilidade.
+- [ ] Cobrança automática, envio programado de avisos e regularização de vendas a crédito já pagas.

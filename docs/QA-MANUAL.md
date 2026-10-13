@@ -83,3 +83,18 @@ Em cada execução, registar data, perfil, dispositivo, browser, ID do cenário,
 | QA-44 | Registar compra com lote e validade | Compra aumenta stock total e saldo do lote | Pendente |
 
 | QA-45 | Corrigir validade ou número de lote já registado | Saldo permanece igual, histórico guarda antes/depois e lote vencido deixa de poder ser vendido | Pendente |
+
+
+## Gestão de Dívidas — cenários manuais
+| ID | Cenário | Critério | Resultado |
+|---|---|---|---|
+| QA-46 | Autorizar 500 MT de crédito a cliente com limite inicial zero | Proprietário/gerente consegue; operador de caixa não | Pendente |
+| QA-47 | Vender a crédito sem cliente e sem data de vencimento | O checkout recusa e apresenta mensagem em PT-MZ | Pendente |
+| QA-48 | Vender a crédito a cliente cujo saldo ultrapassaria o limite | A venda é recusada sem alterar stock nem caixa | Pendente |
+| QA-49 | Receber metade de uma dívida em dinheiro | Saldo reduz e valor aparece no caixa em dinheiro, sem criar nova venda | Pendente |
+| QA-50 | Registar pagamento pelo M-Pesa após confirmação externa | Registo e reconciliação electrónica; não há cobrança automática | Pendente |
+| QA-51 | Tentar pagar acima do saldo por dois caixas diferentes | Apenas operação válida é gravada; sem saldo negativo | Pendente |
+| QA-52 | Vender a cliente com dívidas vencidas | Nova venda a crédito é recusada até regularizar | Pendente |
+| QA-53 | Premir lembrete WhatsApp para cliente com número moçambicano | Abre mensagem pronta, sem envio automático | Pendente |
+| QA-54 | Devolução integral sem pagamentos e com pagamento parcial | Sem pagamentos anula dívida; com pagamento exige regularização | Pendente |
+| QA-55 | Fechar caixa com vendas a crédito e recebimentos de dívidas | Crédito não entra em dinheiro; recebimentos são reconciliados uma vez | Pendente |
