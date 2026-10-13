@@ -1,4 +1,4 @@
-import {productBatches,sellableQty,receiveBatch,adjustProductBatch} from './batches.js';
+import {productBatches,sellableQty,receiveBatch,adjustProductBatch,editBatchDetails} from './batches.js';
 import {expiryInfo,formatExpiryDate} from './expiry.js';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&quot;',"'":'&#39;'}[c]));
 const dayInfo=(date,en)=>{
@@ -23,7 +23,7 @@ export function batchRowsHTML(state,product,lang='pt'){
  }).join('')}</div>`;
 }
 export function batchActions({getState,getProducts,getTenantId,remote,submit,apply,render,modal,toast,lang}){
- const en=lang==='en',L=en?{title:'Lots and expiry',receive:'Receive a batch',adjust:'Correct a batch count',number:'Lot/batch number',expiry:'Expiry date (optional)',qty:'Quantity received',count:'Counted quantity',reason:'Reason/reference',save:'Save',failed:'Could not save lot. Check quantity, expiry date and number.',conflict:'Lot quantity or expiry was changed in another operation. Refresh and try again.',success:'Lot updated.',legacy:'Untracked previous stock',note:'For products already in stock, the untracked group has no invented batch number. FEFO chooses dated, valid batches before undated stock.',empty:'No stock groups.'}:{title:'Lotes e validades',receive:'Receber lote',adjust:'Corrigir contagem de lote',number:'Número do lote',expiry:'Data de validade (opcional)',qty:'Quantidade recebida',count:'Quantidade contada',reason:'Motivo / referência',save:'Guardar',failed:'Não foi possível guardar o lote. Verifique quantidade, validade e número.',conflict:'O lote ou a contagem foi alterado noutra operação. Actualize e tente novamente.',success:'Lote actualizado.',legacy:'Stock anterior sem lote',note:'O stock anterior mantém-se sem número de lote inventado. O FEFO escolhe primeiro lotes válidos com validade conhecida.',empty:'Não existem grupos de stock.'};
+ const en=lang==='en',L=en?{title:'Lots and expiry',receive:'Receive a batch',adjust:'Correct a batch count',number:'Lot/batch number',expiry:'Expiry date (optional)',qty:'Quantity received',count:'Counted quantity',reason:'Reason/reference',save:'Save',failed:'Could not save lot. Check quantity, expiry date and number.',conflict:'Lot quantity or expiry was changed in another operation. Refresh and try again.',success:'Lot updated.',legacy:'Untracked previous stock',edit:'Correct batch details',note:'For products already in stock, the untracked group has no invented batch number. FEFO chooses dated, valid batches before undated stock.',empty:'No stock groups.'}:{title:'Lotes e validades',receive:'Receber lote',adjust:'Corrigir contagem de lote',number:'Número do lote',expiry:'Data de validade (opcional)',qty:'Quantidade recebida',count:'Quantidade contada',reason:'Motivo / referência',save:'Guardar',failed:'Não foi possível guardar o lote. Verifique quantidade, validade e número.',conflict:'O lote ou a contagem foi alterado noutra operação. Actualize e tente novamente.',success:'Lote actualizado.',legacy:'Stock anterior sem lote',edit:'Corrigir dados do lote',note:'O stock anterior mantém-se sem número de lote inventado. O FEFO escolhe primeiro lotes válidos com validade conhecida.',empty:'Não existem grupos de stock.'};
  const get=id=>getProducts().find(p=>p.id===id);
  const commit=async(dialog,path,payload,fn,button)=>{
   button.disabled=true;
@@ -31,7 +31,7 @@ export function batchActions({getState,getProducts,getTenantId,remote,submit,app
    if(remote)await submit(path,{...payload,tenantId:getTenantId()});
    else await apply(state=>fn(state,getTenantId(),payload,'demo'));
    dialog.close();render();toast(L.success);
-  }catch(e){button.disabled=false;toast(['stock_conflict','batch_expiry_conflict','operation_conflict'].includes(e.message)?L.conflict:L.failed);}
+  }catch(e){button.disabled=false;toast(['stock_conflict','batch_expiry_conflict','operation_conflict','batch_number_conflict'].includes(e.message)?L.conflict:L.failed);}
  };
  function receive(id){
   const p=get(id);if(!p)return;
@@ -58,11 +58,30 @@ export function batchActions({getState,getProducts,getTenantId,remote,submit,app
    commit(d,'batches/adjust',payload,adjustProductBatch,e.target.querySelector('button'));
   };
  }
+ function editDetails(id){
+  const p=get(id);if(!p)return;
+  const choices=productBatches(getState(),p).filter(b=>b.id);
+  if(!choices.length){toast(L.empty);return;}
+  const opId=crypto.randomUUID();
+  const d=modal(`<h2>${L.edit}</h2><p>${esc(p.name)}</p><form><label>${L.title}<select name="batchId">${choices.map(b=>`<option value="${esc(b.id)}">${esc(b.number)} · ${esc(dayInfo(b.expiryDate,en))}</option>`).join('')}</select></label><label>${L.number}<input name="batchNumber" maxlength="80" value="${esc(choices[0].number)}" required></label><label>${L.expiry}<input name="expiryDate" type="date" value="${esc(choices[0].expiryDate||'')}"></label><label>${L.reason}<textarea name="reason" maxlength="200" rows="2" required></textarea></label><p class="info-note">${L.note}</p><button class="primary full">${L.save}</button></form>`);
+  d.querySelector('select').onchange=e=>{
+   const b=choices.find(x=>x.id===e.target.value);
+   if(b){d.querySelector('[name=batchNumber]').value=b.number;d.querySelector('[name=expiryDate]').value=b.expiryDate||'';}
+  };
+  d.querySelector('form').onsubmit=e=>{
+   e.preventDefault();const f=new FormData(e.target),original=choices.find(b=>b.id===f.get('batchId'));
+   if(!original)return toast(L.conflict);
+   const body={id:opId,productId:p.id,batchId:original.id,batchNumber:String(f.get('batchNumber')||'').trim(),expiryDate:String(f.get('expiryDate')||''),expectedQuantity:original.quantity,expectedExpiryDate:original.expiryDate,expectedNumber:original.number,reason:String(f.get('reason')||'').trim()};
+   if(!body.batchNumber||!body.reason)return toast(L.failed);
+   commit(d,'batches/edit',body,editBatchDetails,e.target.querySelector('button'));
+  };
+ }
  function details(id){
   const p=get(id);if(!p)return;
-  const d=modal(`<h2>${L.title} — ${esc(p.name)}</h2><p class="info-note">${L.note}</p>${batchRowsHTML(getState(),p,lang)}<div class="batch-actions"><button id="receive-from-detail" class="primary">${L.receive}</button><button id="adjust-from-detail" class="secondary">${L.adjust}</button></div>`);
+  const d=modal(`<h2>${L.title} — ${esc(p.name)}</h2><p class="info-note">${L.note}</p>${batchRowsHTML(getState(),p,lang)}<div class="batch-actions"><button id="receive-from-detail" class="primary">${L.receive}</button><button id="adjust-from-detail" class="secondary">${L.adjust}</button><button id="edit-from-detail" class="secondary">${L.edit}</button></div>`);
   d.querySelector('#receive-from-detail').onclick=()=>{d.close();receive(id);};
   d.querySelector('#adjust-from-detail').onclick=()=>{d.close();adjust(id);};
+  d.querySelector('#edit-from-detail').onclick=()=>{d.close();editDetails(id);};
  }
- return {receive,adjust,details};
+ return {receive,adjust,details,editDetails};
 }
