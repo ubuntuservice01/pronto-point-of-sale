@@ -2,7 +2,7 @@
 
 **O seu negócio na palma da mão.** POS geral mobile first da Ubuntu Service, Lda.
 
-## Estado actual — 0.4
+## Estado actual — 0.5
 
 Duas modalidades separadas:
 
@@ -51,7 +51,7 @@ Em modo autenticado, contas e sessões são reais: hash scrypt com salt, cookie 
 
 O build `dist/` contém só o cliente; hospedagem estática não executa o servidor. Para usar as contas reais, é necessário alojamento Node com disco persistente. Para produção: HTTPS reverse proxy, `NODE_ENV=production`, `APP_ORIGIN` exacta em HTTPS e acesso restrito ao ficheiro SQLite e aos backups. Não executar várias réplicas com bases SQLite independentes. O servidor de demonstração `npm run dev` não oferece a API; usar `npm start` para esta fase.
 
-17 testes passaram, incluindo integração HTTP, cookie, sessão, primeiro acesso, isolamento e venda transaccional. O teste visual continua pendente pela ausência de Chromium neste ambiente.
+Os testes originais cobriam HTTP, cookies, sessões e vendas. A versão 0.5 foi posteriormente validada com 47 testes no GitHub Actions. O teste visual continua pendente pela ausência de Chromium neste ambiente.
 
 
 ## Entrega 0.3 — Venda e caixa
@@ -75,3 +75,13 @@ O build `dist/` contém só o cliente; hospedagem estática não executa o servi
 - Permissões: clientes (proprietário, gerente, caixa); compras (proprietário, gerente, stock); despesas (proprietário, gerente, financeiro); relatórios (proprietário, gerente, financeiro). O financeiro pode ler compras para relatórios, mas não registá-las.
 - Backend existente Node/SQLite persiste os dados por negócio; o Supabase continua sem utilização nesta implementação. Não há integração com AT, facturação fiscal, vendas a crédito ou contas correntes.
 - Os testes Node e os testes reais de interface/dispositivos devem ser executados antes do lançamento comercial.
+
+
+## Entrega 0.5 — Qualidade, estabilidade e UX
+- Histórico de vendas com pesquisa, filtro por método de pagamento, devolução e datas UTC.
+- Carrinho resiliente a alterações de stock e produtos desactivados/eliminados: operações problemáticas são sinalizadas e o botão de venda não permite avançar até à correcção.
+- Verificações de quantidades, navegação por teclado, foco nos formulários, adaptação a ecrãs pequenos e aperfeiçoamentos de impressão.
+- O estado `Internet detectada` refere-se apenas à conectividade do dispositivo e **não** confirma que a API do servidor esteja operacional.
+- GitHub Actions verifica sintaxe, testes automatizados e build em cada push para `main`. Em 13/10/2026, **47/47 testes passaram** no commit `5ec0dde`. A execução posterior deve ser verificada no painel Actions.
+- Testes visuais em equipamentos reais e impressoras continuam pendentes. Este resultado não equivale a homologação comercial.
+- Consulte [roteiro de testes manuais](docs/QA-MANUAL.md) antes de colocar a aplicação em produção.

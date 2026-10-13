@@ -153,4 +153,4 @@
 - [x] Estado de internet do navegador deixa claro que não confirma disponibilidade do servidor.
 - [x] Ajustes de navegação, impressão, compatibilidade mobile e foco visível.
 - [x] Testes de domínio para qualidade e pipeline de GitHub Actions adicionados.
-- [ ] Execução final da CI em GitHub Actions e testes visuais reais em Android/iOS/Desktop.
+- [x] CI GitHub Actions — 47/47 testes, sintaxe e build aprovados (13/10/2026; ver Actions).\n- [ ] Testes visuais reais em Android/iOS/Desktop, scanner, recibos e caixa físico.
