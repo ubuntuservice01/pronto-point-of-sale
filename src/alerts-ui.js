@@ -1,3 +1,4 @@
+import {createShoppingList,updateShoppingList,shoppingListMessage} from './shopping.js';
 import {inventoryAlerts,updateAlertSettings} from './alerts.js';
 import {formatExpiryDate} from './expiry.js';
 const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
@@ -35,7 +36,12 @@ export function alertsPage({state,tenantId,lang,role}){
  }).join(''):`<p class="empty">${summary.total?L.none:L.good}</p>`}</div></section>
  <section class="panel alert-reorder"><div class="panel-title"><div><h2>🛒 ${L.recommendations}</h2><p class="form-hint">${L.estimated}</p></div><button class="primary" id="alert-shopping-list" type="button" ${summary.recommendations.length?'':'disabled'}>${L.prepare}</button></div>
  ${summary.recommendations.length?`<div class="alert-reorder-list">${summary.recommendations.map(a=>`<div class="alert-reorder-item"><div class="grow"><strong>${safe(a.productName)}</strong><small>${L.available}: ${a.available} ${safe(a.unit)} · ${L.minimum}: ${a.minimum} ${safe(a.unit)}</small><small>${a.basis==='sales_and_minimum'?L.bySales:L.byMinimum} · ${L.sales30}: ${a.sold30}</small></div><div class="alert-suggest"><small>${L.suggested}</small><strong>＋${a.quantity} ${safe(a.unit)}</strong><button class="text-button" type="button" data-alert-receive="${safe(a.productId)}">${L.receive}</button></div></div>`).join('')}</div>`:`<p class="empty">${L.noReplenish}</p>`}
- <p class="info-note">${L.noAutomatic}</p></section>`;
+
+ <p class="info-note">${L.noAutomatic}</p></section>
+ <section class="panel shopping-saved"><h2>${lang==='pt'?'Listas de compras guardadas':'Saved shopping lists'}</h2>
+ <p class="form-hint">${lang==='pt'?'As listas são calculadas automaticamente e depois confirmadas por um operador. Nenhuma encomenda é enviada automaticamente.':'Suggestions are generated automatically, then checked by staff. No orders are sent automatically.'}</p>
+ ${(state.shoppingLists||[]).filter(l=>l.tenantId===tenantId).slice(0,15).map(l=>`<div class="shopping-saved-row"><div><strong>${new Date(l.createdAt).toLocaleDateString(lang==='pt'?'pt-MZ':'en-GB')} · ${l.items.length} ${lang==='pt'?'artigos':'items'}</strong><small>${l.status==='draft'?(lang==='pt'?'Rascunho':'Draft'):l.status==='ordered'?(lang==='pt'?'Encomendada':'Ordered'):(lang==='pt'?'Concluída':'Closed')}</small></div><button type="button" class="secondary" data-shopping-open="${safe(l.id)}">${lang==='pt'?'Consultar / confirmar':'View / approve'}</button></div>`).join('')||`<p class="empty">${lang==='pt'?'Ainda não existem listas guardadas.':'No saved shopping lists yet.'}</p>`}
+ </section>`;
 }
 export function bindAlertActions({getState,getTenantId,getRole,lang,remote,submit,apply,reload,render,modal,toast,openStock}){
  const L=strings[lang]||strings.pt;
@@ -74,12 +80,38 @@ export function bindAlertActions({getState,getTenantId,getRole,lang,remote,submi
    }catch(error){button.disabled=false;if(error?.message==='revision_conflict'){d.close();try{await reload();}catch{}toast(L.conflict);}else toast(L.failed);}
   };
  };
+ document.querySelectorAll('[data-shopping-open]').forEach(button=>button.onclick=()=>{
+  const saved=(getState().shoppingLists||[]).find(l=>l.id===button.dataset.shoppingOpen&&l.tenantId===getTenantId());if(!saved)return;
+  const active=saved.status!=='closed',dialog=modal(`<h2>🛒 ${L.replenishment}</h2><p class="form-hint">${new Date(saved.createdAt).toLocaleString(lang==='pt'?'pt-MZ':'en-GB')}</p>
+   <form class="shopping-approval">
+    ${saved.items.map((i,index)=>`<label>${safe(i.name)} (${safe(i.unit)})<input type="number" name="qty-${index}" min="0" step="${['un','caixa','pacote','saco','rolo','par','conjunto'].includes(i.unit)?'1':'0.001'}" value="${i.quantity}" ${active?'':'readonly'}></label>`).join('')}
+    ${active?`<label>${lang==='pt'?'Estado da lista':'List status'}<select name="status"><option value="draft" ${saved.status==='draft'?'selected':''}>${lang==='pt'?'Rascunho':'Draft'}</option><option value="ordered" ${saved.status==='ordered'?'selected':''}>${lang==='pt'?'Encomendada':'Ordered'}</option><option value="closed">${lang==='pt'?'Concluída':'Closed'}</option></select></label><label>${L.reason}<textarea name="reason" maxlength="250" required></textarea></label><button class="primary full" type="submit">${L.save}</button>`:''}
+   </form><div class="alert-share-actions"><button type="button" class="secondary" id="saved-list-copy">${L.copy}</button><a class="primary" id="saved-list-share" target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encodeURIComponent(shoppingListMessage(saved,lang))}">${L.whatsapp} ↗</a></div>`);
+  dialog.querySelector('#saved-list-copy').onclick=async()=>{try{await navigator.clipboard.writeText(shoppingListMessage(saved,lang));toast(L.copied);}catch{toast(lang==='pt'?'Copie a lista manualmente.':'Copy the list manually.');}};
+  const form=dialog.querySelector('form');if(active)form.onsubmit=async e=>{
+   e.preventDefault();const data=new FormData(form),items=saved.items.map((i,n)=>({productId:i.productId,quantity:Number(data.get('qty-'+n))}));
+   const body={tenantId:getTenantId(),id:saved.id,expectedRevision:saved.revision,items,status:String(data.get('status')),reason:String(data.get('reason')||'').trim()};
+   if(!body.reason||items.some(i=>!Number.isFinite(i.quantity)||i.quantity<0))return toast(L.failed);
+   const submitButton=form.querySelector('button[type=submit]');submitButton.disabled=true;
+   try{if(remote)await submit('shopping/update',body);else await apply(state=>updateShoppingList(state,getTenantId(),body,{id:'demo',tenantId:getTenantId(),role:getRole()}));dialog.close();render();toast(L.saved);}
+   catch{submitButton.disabled=false;toast(L.failed);}
+  };
+ });
  const list=document.querySelector('#alert-shopping-list');
  if(list)list.onclick=()=>{
   const summary=inventoryAlerts(getState(),getTenantId());
   const shop=(getState().tenants||[]).find(t=>t.id===getTenantId())?.name||'Pronto POS';
   const content=[L.replenishment+' — '+shop,...summary.recommendations.map((p,i)=>`${i+1}. ${p.productName} — ${p.quantity} ${p.unit} (${L.available}: ${p.available})`),'',L.estimated].join('\n');
-  const d=modal(`<h2>🛒 ${L.replenishment}</h2><p class="info-note">${L.estimated}</p><textarea id="alert-list-text" readonly rows="12" class="alert-list-copy">${safe(content)}</textarea><div class="alert-share-actions"><button type="button" class="secondary" id="alert-copy">${L.copy}</button><a class="primary" id="alert-whatsapp" href="https://wa.me/?text=${encodeURIComponent(content)}" target="_blank" rel="noopener noreferrer">${L.whatsapp} ↗</a></div>`);
+  const d=modal(`<h2>🛒 ${L.replenishment}</h2><p class="info-note">${L.estimated}</p><textarea id="alert-list-text" readonly rows="12" class="alert-list-copy">${safe(content)}</textarea><div class="alert-share-actions">${['owner','manager','stock'].includes(getRole())?`<button type="button" class="primary" id="alert-save-shopping">${lang==='pt'?'Guardar lista automática':'Save automatic list'}</button>`:''}<button type="button" class="secondary" id="alert-copy">${L.copy}</button><a class="primary" id="alert-whatsapp" href="https://wa.me/?text=${encodeURIComponent(content)}" target="_blank" rel="noopener noreferrer">${L.whatsapp} ↗</a></div>`);
+  d.querySelector('#alert-save-shopping')?.addEventListener('click',async e=>{
+   const button=e.currentTarget;button.disabled=true;
+   const payload={id:crypto.randomUUID(),tenantId:getTenantId(),reason:lang==='pt'?'Reposição sugerida pelo stock e vendas':'Replenishment suggested from inventory and sales'};
+   try{
+    if(remote)await submit('shopping/create',payload);
+    else await apply(state=>createShoppingList(state,getTenantId(),payload,{id:'demo',tenantId:getTenantId(),role:getRole()}));
+    d.close();render();toast(L.saved);
+   }catch{button.disabled=false;toast(L.failed);}
+  });
   d.querySelector('#alert-copy').onclick=async()=>{
    const text=d.querySelector('#alert-list-text');
    try{await navigator.clipboard.writeText(text.value);toast(L.copied);}
