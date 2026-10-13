@@ -15,10 +15,12 @@ function validPassword(p){if(typeof p!=='string'||p.length<12||p.length>128)fail
 function text(v,max=100){if(typeof v!=='string'||!v.trim()||v.length>max)fail(400,'invalid');return v.trim();}
 function username(v){const s=text(v,80).toLowerCase();if(!/^[a-z0-9][a-z0-9._@-]{2,79}$/.test(s))fail(400,'username');return s;}
 const validInventoryId=v=>typeof v==='string'&&v.length>0&&v.length<=80;
-const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[]});
+const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[],memberEvents:[]});
 export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,now=()=>Date.now()}={}){
  if(path!==':memory:')mkdirSync(dirname(path),{recursive:true,mode:0o700});
  const db=new DatabaseSync(path);db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS businesses(id TEXT PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,owner TEXT NOT NULL); CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password_hash TEXT NOT NULL,business_id TEXT REFERENCES businesses(id),role TEXT NOT NULL,must_change INTEGER NOT NULL DEFAULT 1,active INTEGER NOT NULL DEFAULT 1); CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL,device TEXT NOT NULL); CREATE TABLE IF NOT EXISTS payloads(business_id TEXT PRIMARY KEY REFERENCES businesses(id),data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,user_id TEXT,business_id TEXT,action TEXT NOT NULL,created_at TEXT NOT NULL);`);
+ // Existing SQLite installations require an additive migration for optimistic edits.
+ if(!db.prepare('PRAGMA table_info(users)').all().some(col=>col.name==='revision'))db.exec('ALTER TABLE users ADD COLUMN revision INTEGER NOT NULL DEFAULT 0');
  const dummyHash=passwordHash(randomBytes(24).toString('hex'));
  if(bootstrapUser&&bootstrapPassword&&!db.prepare("SELECT id FROM users WHERE role='super'").get()){validPassword(bootstrapPassword);db.prepare('INSERT INTO users VALUES(?,?,?,?,?,?,0,1)').run(randomUUID(),username(bootstrapUser),'Ubuntu Service',passwordHash(bootstrapPassword),null,'super');}
  function audit(user,business,action){db.prepare('INSERT INTO audit VALUES(?,?,?,?,?)').run(randomUUID(),user?.id||null,business||null,action,new Date(now()).toISOString());}
@@ -28,7 +30,7 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  function ready(user){if(user.must_change)fail(403,'password_change_required');}
  function businessFor(user,id){ready(user);const business=id||user.business_id;if(!business)fail(400,'business_required');if(user.role!=='super'&&business!==user.business_id)fail(403,'forbidden');if(!db.prepare('SELECT id FROM businesses WHERE id=?').get(business))fail(404,'not_found');return business;}
  function authorize(user,action,id){const business=businessFor(user,id);if(user.role==='super'||!can(user.role,action))fail(403,'forbidden');return business;}
- function snapshot(user,id){ready(user);if(user.role==='super'&&!id)return {...empty(),tenants:db.prepare('SELECT * FROM businesses').all(),auth:publicUser(user)};const business=businessFor(user,id);const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);const data=JSON.parse(row.data);const members=['owner','super'].includes(user.role)?db.prepare('SELECT id,name,role,business_id AS tenantId FROM users WHERE business_id=?').all():[];const actorNames=new Map(db.prepare('SELECT id,name FROM users WHERE business_id=?').all(business).map(m=>[m.id,m.name]));return {...data,
+ function snapshot(user,id){ready(user);if(user.role==='super'&&!id)return {...empty(),tenants:db.prepare('SELECT * FROM businesses').all(),auth:publicUser(user)};const business=businessFor(user,id);const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);const data=JSON.parse(row.data);const members=['owner','super'].includes(user.role)?db.prepare('SELECT id,name,username,role,active,revision,business_id AS tenantId FROM users WHERE business_id=? ORDER BY name COLLATE NOCASE').all().map(m=>({...m,active:!!m.active})):[];const actorNames=new Map(db.prepare('SELECT id,name FROM users WHERE business_id=?').all(business).map(m=>[m.id,m.name]));return {...data,
   customers:can(user.role,'customers')?(data.customers||[]):[],
   purchases:can(user.role,'purchases')||can(user.role,'reports')?(data.purchases||[]):[],
   expenses:can(user.role,'expenses')||can(user.role,'reports')?(data.expenses||[]):[],
@@ -36,7 +38,9 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   inventoryEvents:can(user.role,'stock')||can(user.role,'reports')?(data.inventoryEvents||[]).map(e=>({...e,actorName:actorNames.get(e.actorId)||null})):[],
   stockMovements:can(user.role,'stock')||can(user.role,'reports')?(data.stockMovements||[]).map(e=>({...e,actorName:actorNames.get(e.actorId||e.userId)||null})):[],
   cashSessions:(can(user.role,'sell')||can(user.role,'reports')||user.role==='super'?(data.cashSessions||[]):[]).filter(s=>user.role!=='cashier'||s.userId===user.id),
-  refunds:(can(user.role,'history')||can(user.role,'reports')||user.role==='super'?(data.refunds||[]):[]).filter(r=>user.role!=='cashier'||r.userId===user.id),tenants:[db.prepare('SELECT * FROM businesses WHERE id=?').get(business)],members,sales:user.role==='cashier'?data.sales.filter(s=>s.userId===user.id).map(s=>({...s,lines:(s.lines||[]).map(({cost,...line})=>line)})):can(user.role,'history')||user.role==='super'?data.sales:[],auth:publicUser(user)};}
+  refunds:(can(user.role,'history')||can(user.role,'reports')||user.role==='super'?(data.refunds||[]):[]).filter(r=>user.role!=='cashier'||r.userId===user.id),tenants:[db.prepare('SELECT * FROM businesses WHERE id=?').get(business)],members,
+  memberEvents:can(user.role,'team')?(data.memberEvents||[]).map(e=>({...e,actorName:actorNames.get(e.actorId)||null})):[],
+  sales:user.role==='cashier'?data.sales.filter(s=>s.userId===user.id).map(s=>({...s,lines:(s.lines||[]).map(({cost,...line})=>line)})):can(user.role,'history')||user.role==='super'?data.sales:[],auth:publicUser(user)};}
  function save(business,fn){return transaction(()=>{const current=JSON.parse(db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business).data);const next=fn(current);db.prepare('UPDATE payloads SET data=? WHERE business_id=?').run(JSON.stringify(next),business);return next;});}
  function onboard(business,name,role){const login='pos-'+randomBytes(5).toString('hex');const password=randomBytes(15).toString('base64url');const id=randomUUID();db.prepare('INSERT INTO users VALUES(?,?,?,?,?,?,1,1)').run(id,login,text(name),passwordHash(password),business,role);return {username:login,temporaryPassword:password,name,role};}
  return {secure,close:()=>db.close(), publicUser,
@@ -48,7 +52,62 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  revoke(user,id){ready(user);db.prepare('DELETE FROM sessions WHERE token_hash=? AND user_id=?').run(text(id,64),user.id);audit(user,user.business_id,'session_revoked');},
  snapshot,
  createBusiness(user,input){ready(user);if(user.role!=='super')fail(403,'forbidden');return transaction(()=>{const id=randomUUID();const name=text(input.name),type=text(input.type,60),owner=text(input.owner);db.prepare('INSERT INTO businesses VALUES(?,?,?,?)').run(id,name,type,owner);const data={...empty(),tenants:[{id,name,type,owner}]};db.prepare('INSERT INTO payloads VALUES(?,?)').run(id,JSON.stringify(data));const onboarding=onboard(id,owner,'owner');audit(user,id,'business_created');return {...snapshot(user),onboarding};});},
- createMember(user,input){const business=authorize(user,'team');if(!roles.includes(input.role)||input.role==='owner')fail(400,'role');return transaction(()=>{const onboarding=onboard(business,input.name,input.role);audit(user,business,'member_created');return {...snapshot(user),onboarding};});},
+ createMember(user,input){
+  const business=authorize(user,'team');
+  if(!roles.includes(input.role)||input.role==='owner')fail(400,'role');
+  return transaction(()=>{
+   const onboarding=onboard(business,input.name,input.role);
+   const person=db.prepare('SELECT id,name,role FROM users WHERE username=?').get(onboarding.username);
+   const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);
+   const data=JSON.parse(row.data);
+   data.memberEvents=[{id:randomUUID(),tenantId:business,memberId:person.id,memberName:person.name,actorId:user.id,action:'created',createdAt:new Date(now()).toISOString(),after:{role:person.role,active:true}},...(data.memberEvents||[])];
+   db.prepare('UPDATE payloads SET data=? WHERE business_id=?').run(JSON.stringify(data),business);
+   audit(user,business,'member_created:'+person.id);
+   return {...snapshot(user),onboarding};
+  });
+ },
+ memberEdit(user,input){
+  const business=authorize(user,'team');
+  const id=typeof input?.memberId==='string'?input.memberId:'';
+  if(!id||id.length>80)fail(400,'member_id');
+  const name=text(input.name,100),role=input.role;
+  if(!roles.includes(role)||role==='owner')fail(400,'role');
+  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0)fail(400,'revision');
+  return transaction(()=>{
+   const target=db.prepare('SELECT id,name,role,active,revision FROM users WHERE id=? AND business_id=?').get(id,business);
+   if(!target)fail(404,'not_found');
+   if(target.role==='owner'||target.id===user.id)fail(403,'forbidden');
+   if(target.revision!==input.expectedRevision)fail(409,'revision_conflict');
+   if(target.name===name&&target.role===role)fail(400,'no_change');
+   db.prepare('UPDATE users SET name=?,role=?,revision=revision+1 WHERE id=? AND business_id=?').run(name,role,id,business);
+   db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);
+   const data=JSON.parse(db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business).data);
+   data.memberEvents=[{id:randomUUID(),tenantId:business,memberId:id,memberName:name,actorId:user.id,action:'edited',createdAt:new Date(now()).toISOString(),before:{name:target.name,role:target.role},after:{name,role}},...(data.memberEvents||[])];
+   db.prepare('UPDATE payloads SET data=? WHERE business_id=?').run(JSON.stringify(data),business);
+   audit(user,business,'member_updated:'+id);
+   return snapshot(user);
+  });
+ },
+ memberStatus(user,input){
+  const business=authorize(user,'team');
+  const id=typeof input?.memberId==='string'?input.memberId:'';
+  if(!id||id.length>80||typeof input.active!=='boolean')fail(400,'member_id');
+  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0)fail(400,'revision');
+  return transaction(()=>{
+   const target=db.prepare('SELECT id,name,role,active,revision FROM users WHERE id=? AND business_id=?').get(id,business);
+   if(!target)fail(404,'not_found');
+   if(target.role==='owner'||target.id===user.id)fail(403,'forbidden');
+   if(target.revision!==input.expectedRevision)fail(409,'revision_conflict');
+   if(!!target.active===input.active)fail(400,'no_change');
+   db.prepare('UPDATE users SET active=?,revision=revision+1 WHERE id=? AND business_id=?').run(input.active?1:0,id,business);
+   db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);
+   const data=JSON.parse(db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business).data);
+   data.memberEvents=[{id:randomUUID(),tenantId:business,memberId:id,memberName:target.name,actorId:user.id,action:'status',createdAt:new Date(now()).toISOString(),before:{active:!!target.active},after:{active:input.active}},...(data.memberEvents||[])];
+   db.prepare('UPDATE payloads SET data=? WHERE business_id=?').run(JSON.stringify(data),business);
+   audit(user,business,(input.active?'member_reactivated:':'member_deactivated:')+id);
+   return snapshot(user);
+  });
+ },
  product(user,input){
   const business=authorize(user,'stock',input.tenantId);
   try{

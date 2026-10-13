@@ -25,6 +25,8 @@ export function createApp(store,{root=process.cwd(),origin}={}){
  else if(path==='/api/state'&&req.method==='GET')send(res,200,store.snapshot(user,url.searchParams.get('tenantId')));
  else if(path==='/api/businesses'&&req.method==='POST')send(res,201,store.createBusiness(user,input));
  else if(path==='/api/members'&&req.method==='POST')send(res,201,store.createMember(user,input));
+ else if(path==='/api/members/edit'&&req.method==='POST')send(res,200,store.memberEdit(user,input));
+ else if(path==='/api/members/status'&&req.method==='POST')send(res,200,store.memberStatus(user,input));
  else if(path==='/api/products'&&req.method==='POST')send(res,201,store.product(user,input));
  else if(path==='/api/products/edit'&&req.method==='POST')send(res,200,store.productEdit(user,input));
  else if(path==='/api/products/status'&&req.method==='POST')send(res,200,store.productStatus(user,input));
