@@ -36,7 +36,7 @@ test('team listing protects owners and exposes staff management', () => {
  assert.match(html,/team-status/);
 });
 
-test('team authentic mode explains restrictions without pretending to update accounts', () => {
+test('team authenticated mode offers actions without a false pending warning', () => {
  const html = peoplePage({items:[staff],lang:'en',roleLabel:r=>r,remote:true});
- assert.match(html,/requires server support/);
+ assert.match(html,/data-member-toggle="m-1"/);assert.doesNotMatch(html,/requires server support/);
 });
