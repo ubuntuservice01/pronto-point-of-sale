@@ -2,7 +2,7 @@
 
 **O seu negócio na palma da mão.** POS geral mobile first da Ubuntu Service, Lda.
 
-## Estado actual — 0.8
+## Estado actual — 0.9
 
 Duas modalidades separadas:
 
@@ -116,3 +116,16 @@ Os testes originais cobriam HTTP, cookies, sessões e vendas. A versão 0.5 foi 
 - Migração aditiva de negócios antigos para campos de contacto, `active` e `revision`. O Super Admin ainda pode inspecionar uma empresa suspensa em modo leitura.
 - Os planos comerciais, preços de assinatura, cobranças e gestão de mensalidades **não** estão incluídos nesta entrega; não são simulados como se estivessem activos.
 - Antes do lançamento comercial, validar os fluxos de suspensão e reactivação em dispositivos reais e a política de comunicação aos comerciantes.
+
+
+## Entrega 0.9 — Planos, subscrições e licenciamento
+- **Super Admin:** cria planos com nome, preço em cêntimos de metical e duração em dias corridos, e pode desactivar/reactivar um plano para novas atribuições. Pode criar planos gratuitos com 0 MZN para períodos de avaliação.
+- **Licenças por negócio:** atribuição inicial, renovação por 1 a 12 períodos, cancelamento, data de início e validade calculadas pelo relógio do **servidor**. Planos e licenças são isolados no SQLite; um plano desactivado continua válido para comerciantes a quem já foi atribuído.
+- **Acesso efectivo:** licenças expiradas ou canceladas impedem novas sessões e novas operações autenticadas; o Super Admin mantém acesso para gerir/renovar. Os dados, vendas, caixas, produtos e utilizadores não são eliminados.
+- **Compatibilidade:** comerciantes existentes **sem licença atribuída** continuam com acesso legado. **Não existe suspensão retroactiva ou atribuição automática de planos**. A suspensão administrativa do negócio permanece independente da validade da licença.
+- **Operações manuais:** as referências de pagamento são apenas texto de registo administrativo. **Não há cobrança, confirmação bancária, facturação fiscal, integração M-Pesa/e-Mola nem renovação automática.** O preço configurado não representa um pagamento realizado.
+- **Auditoria/idempotência:** autor, motivo, referência opcional, valores antigos/novos e ID de operação são guardados em `license_events`. A renovação com o mesmo ID não duplica a validade; uma repetição com número de períodos diferente é recusada. Concorrência protegida por revisão.
+- **Frontend:** painel de planos no Super Admin, estado e histórico na ficha do negócio, atribuição, renovação/cancelamento com confirmação, e informação da validade nas definições do comerciante.
+- **API:** `POST /api/plans`, `/api/plans/status`, `/api/licenses/assign`, `/api/licenses/renew` e `/api/licenses/cancel`. Apenas o Super Admin pode chamar estas rotas.
+- Os períodos são medidos em **dias de 24 horas**, não em meses de calendário. Todos os horários de licença são armazenados em UTC.
+- Continuam pendentes testes visuais no navegador e dispositivos reais, políticas de notificação prévia à expiração, contratos, comprovativos e integração financeira.
