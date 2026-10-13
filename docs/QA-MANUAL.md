@@ -54,3 +54,18 @@ Em cada execução, registar data, perfil, dispositivo, browser, ID do cenário,
 | QA-25 | Utilizador de outro negócio tenta alterar ou suspender empresa | A API devolve 403/404 e não altera registos | Pendente |
 | QA-26 | Dois administradores editam simultaneamente | O segundo pedido desactualizado obtém conflito 409 e actualiza o ecrã | Pendente |
 | QA-27 | Filtrar negócios activos/suspensos no telemóvel | Filtros e botões não ficam ocultos nem sobrepostos | Pendente |
+
+
+## Novos cenários de licenciamento — Fase 0.9
+| ID | Cenário | Critério de aprovação | Resultado |
+|---|---|---|---|
+| QA-28 | Criar plano gratuito de avaliação e plano pago | Ambos guardam preço e dias definidos pelo administrador | Pendente |
+| QA-29 | Atribuir plano a comerciante sem licença | A licença é activada e apresentada na ficha do comerciante | Pendente |
+| QA-30 | Expirar licença durante uma sessão aberta | API impede imediatamente novas operações; aviso de licença permite contactar Ubuntu | Pendente |
+| QA-31 | Renovar licença activa, expirada e cancelada | Validade é estendida correctamente e acesso restaurado | Pendente |
+| QA-32 | Repetir renovação depois de perda de rede | Não duplica os dias comprados | Pendente |
+| QA-33 | Desactivar plano com licenças existentes | Impede novas atribuições, sem cortar as licenças já concedidas | Pendente |
+| QA-34 | Negócio legado sem plano | Não é bloqueado sem decisão explícita da Ubuntu | Pendente |
+| QA-35 | Tentar renovar com perfil de proprietário/caixa | API recusa sem alterar licença | Pendente |
+| QA-36 | Dois Super Admins renovam simultaneamente | Pedido desactualizado recebe conflito e informa o administrador | Pendente |
+| QA-37 | Suspensão administrativa e licença activa coexistem | Reactivação administrativa não permite acesso se licença estiver expirada | Pendente |
