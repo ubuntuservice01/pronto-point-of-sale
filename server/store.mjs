@@ -274,10 +274,10 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   const business=authorize(user,'stock',input.tenantId);
   try{
    save(business,current=>{
-    const next=addProduct(current,business,{name:text(input.name),category:text(input.category,60),code:typeof input.code==='string'?input.code.trim().slice(0,80):'',unit:input.unit,price:input.price,stock:input.stock,min:input.min,emoji:'📦'});
+    const next=addProduct(current,business,{name:text(input.name),category:text(input.category,60),code:typeof input.code==='string'?input.code.trim().slice(0,80):'',unit:input.unit,price:input.price,stock:input.stock,min:input.min,expiryDate:input.expiryDate,emoji:'📦'});
     const product=next.products.find(p=>!current.products.some(x=>x.id===p.id));
     if(!product)fail(500,'product_not_created');
-    return {...next,inventoryEvents:[{id:randomUUID(),tenantId:business,productId:product.id,productName:product.name,action:'created',actorId:user.id,createdAt:new Date().toISOString(),reason:'Criação de produto',after:{name:product.name,category:product.category,price:product.price,stock:product.stock}},...(current.inventoryEvents||[])]};
+    return {...next,inventoryEvents:[{id:randomUUID(),tenantId:business,productId:product.id,productName:product.name,action:'created',actorId:user.id,createdAt:new Date().toISOString(),reason:'Criação de produto',after:{name:product.name,category:product.category,price:product.price,stock:product.stock,expiryDate:product.expiryDate}},...(current.inventoryEvents||[])]};
    });
   }catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}
   audit(user,business,'product_created');return snapshot(user);
