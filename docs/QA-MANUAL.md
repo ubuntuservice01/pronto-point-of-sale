@@ -42,3 +42,15 @@ Em cada execução, registar data, perfil, dispositivo, browser, ID do cenário,
 2. Concluir cenários QA-01 a QA-20 e documentar quaisquer excepções aceites.
 3. Confirmar backups, HTTPS, retenção, recuperação operacional e política de permissões.
 4. Validar exigências legais e fiscais aplicáveis antes de vender o serviço como sistema de facturação.
+
+
+## Novos cenários Super Admin — Fase 0.8
+| ID | Cenário | Critério | Resultado |
+|---|---|---|---|
+| QA-21 | Super Admin edita nome e contactos de um negócio | Dados são guardados após reload, sem alterar o login do proprietário | Pendente |
+| QA-22 | Super Admin suspende negócio com duas sessões do proprietário e um operador | Todos deixam de operar e não conseguem voltar a entrar até à reactivação | Pendente |
+| QA-23 | Suspensão com negócio com stock e vendas | Inventário e histórico permanecem intactos | Pendente |
+| QA-24 | Reactivação de negócio suspenso | Contas podem iniciar novas sessões com palavras-passe existentes | Pendente |
+| QA-25 | Utilizador de outro negócio tenta alterar ou suspender empresa | A API devolve 403/404 e não altera registos | Pendente |
+| QA-26 | Dois administradores editam simultaneamente | O segundo pedido desactualizado obtém conflito 409 e actualiza o ecrã | Pendente |
+| QA-27 | Filtrar negócios activos/suspensos no telemóvel | Filtros e botões não ficam ocultos nem sobrepostos | Pendente |
