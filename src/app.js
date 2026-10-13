@@ -17,7 +17,7 @@ const t=key=>{if(isRemote){const overrides=lang==='pt'?{demo:'Modo autenticado',
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=cents=>new Intl.NumberFormat(lang==='pt'?'pt-MZ':'en-MZ',{minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100)+' MT';
 const icons={cash:'▱',home:'⌂',sell:'＋',stock:'▦',history:'↗',team:'♙',admin:'◈',settings:'⚙'};
-let businessSearch='',businessType='',navigationBusy=false,inspectingBusiness=false,saleInFlight=false,pendingSaleId='',pendingSaleFingerprint='';
+let businessSearch='',businessType='',businessStatusFilter='',navigationBusy=false,inspectingBusiness=false,saleInFlight=false,pendingSaleId='',pendingSaleFingerprint='';
 let saleFilters={search:'',method:'all',status:'all',from:'',to:''};
 let selectedCustomerId='',discountText='0',mixed={cash:'',mpesa:'',emola:'',transfer:''},holds=[];
 let cameraGeneration=0,scannerTorchOn=false;
@@ -233,12 +233,75 @@ try{await authenticate();state=await open();if(isRemote){role=state.auth.role;te
 function remoteSettings(){return `<div class="page-heading"><div><h1 tabindex="-1">${t('settings')}</h1><p>${t('account')}</p></div></div><section class="panel settings-panel"><h2>${esc(state.auth.name)}</h2><p>${roleLabel(role)} · ${esc(state.auth.username)}</p><label>${t('language')}<select id="lang"><option value="pt" ${lang==='pt'?'selected':''}>Português de Moçambique</option><option value="en" ${lang==='en'?'selected':''}>English</option></select></label><p class="info-note">${t('syncNote')}</p><button id="sessions" class="secondary full">${lang==='pt'?'Dispositivos e sessões':'Devices and sessions'}</button><button id="logout" class="primary full">${lang==='pt'?'Terminar sessão':'Sign out'}</button></section>`;}
 async function sessionsModal(){try{const items=await api('sessions');const d=modal(`<h2>${lang==='pt'?'Sessões activas':'Active sessions'}</h2>${items.map(s=>`<div class="list-row"><div class="grow"><strong>${esc(s.device)}</strong><small>${new Date(s.expires).toLocaleString()}</small></div>${s.current?`<small>${lang==='pt'?'Actual':'Current'}</small>`:`<button class="secondary" data-revoke="${esc(s.id)}">${lang==='pt'?'Terminar':'End'}</button>`}</div>`).join('')}`);d.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{await api('sessions/revoke',{id:b.dataset.revoke});d.close();await sessionsModal();});}catch{toast(t('saveError'));}}
 
-function admin(){return adminPage({businesses:state.tenants,lang,search:businessSearch,type:businessType,remote:isRemote});}
-function bindBusinessActions(root=document){root.querySelectorAll('[data-business-details]').forEach(button=>button.onclick=()=>showBusiness(button.dataset.businessDetails));root.querySelectorAll('[data-tenant]').forEach(button=>button.onclick=()=>{stopCamera();document.querySelector('#modal')?.close();switchTenant(button.dataset.tenant);});const reset=root.querySelector('#reset-business-filters');if(reset)reset.onclick=()=>{businessSearch='';businessType='';render();};}
-function bindAdmin(){const search=document.querySelector('#business-search');const select=document.querySelector('#business-type');const refresh=()=>{document.querySelector('#admin-results').innerHTML=businessResults({businesses:state.tenants,lang,search:businessSearch,type:businessType,remote:isRemote});bindBusinessActions(document.querySelector('#admin-results'));};if(search)search.oninput=()=>{businessSearch=search.value;refresh();};if(select)select.onchange=()=>{businessType=select.value;refresh();};bindBusinessActions();}
+function admin(){return adminPage({businesses:state.tenants,lang,search:businessSearch,type:businessType,status:businessStatusFilter,remote:isRemote});}
+function bindBusinessActions(root=document){root.querySelectorAll('[data-business-details]').forEach(button=>button.onclick=()=>showBusiness(button.dataset.businessDetails));root.querySelectorAll('[data-tenant]').forEach(button=>button.onclick=()=>{stopCamera();document.querySelector('#modal')?.close();switchTenant(button.dataset.tenant);});const reset=root.querySelector('#reset-business-filters');if(reset)reset.onclick=()=>{businessSearch='';businessType='';businessStatusFilter='';render();};}
+function bindAdmin(){const search=document.querySelector('#business-search');const select=document.querySelector('#business-type');const status=document.querySelector('#business-status-filter');const refresh=()=>{document.querySelector('#admin-results').innerHTML=businessResults({businesses:state.tenants,lang,search:businessSearch,type:businessType,status:businessStatusFilter,remote:isRemote});bindBusinessActions(document.querySelector('#admin-results'));};if(search)search.oninput=()=>{businessSearch=search.value;refresh();};if(select)select.onchange=()=>{businessType=select.value;refresh();};if(status)status.onchange=()=>{businessStatusFilter=status.value;refresh();};bindBusinessActions();}
 function moreMenu(){const d=modal(`<h2>${lang==='pt'?'O seu negócio':'Your business'}</h2><nav class="more-menu">${nav()}</nav>`);d.querySelectorAll('[data-page]').forEach(button=>button.onclick=()=>{d.close();navigate(button.dataset.page);});}
-function showBusiness(id){const business=state.tenants.find(b=>b.id===id);if(!business)return;const d=modal(businessDetail({business,lang,remote:isRemote}));bindBusinessActions(d);const edit=d.querySelector('#edit-business');if(edit)edit.onclick=()=>businessEdit(business);}
-function businessEdit(business){if(isRemote)return;const l=adminText(lang);const d=modal(`<h2>${l.edit}</h2><p class="info-note">${l.localText}</p><form id="edit-business-form"><label>${t('name')}<input name="name" value="${esc(business.name)}" maxlength="100" required></label><label>${l.owner}<input name="owner" value="${esc(business.owner)}" maxlength="100" required></label><label>${l.type}<input name="type" value="${esc(business.type)}" maxlength="60" required></label><label>${l.contact}<input name="phone" type="tel" autocomplete="tel" value="${esc(business.phone||'')}" maxlength="40"></label><label>${l.email}<input name="email" type="email" autocomplete="email" value="${esc(business.email||'')}" maxlength="100"></label><label>${l.address}<input name="address" value="${esc(business.address||'')}" maxlength="160"></label><label>${l.status}<select name="demoStatus"><option value="active">${l.active}</option><option value="paused" ${business.demoStatus==='paused'?'selected':''}>${l.paused}</option></select></label><button class="primary full">${l.save}</button></form>`);d.querySelector('form').onsubmit=async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(event.target));for(const key of ['name','owner','type'])if(!data[key].trim())return toast(t('invalid'));const button=event.target.querySelector('button');button.disabled=true;try{state=await update(current=>({...current,tenants:current.tenants.map(b=>b.id===business.id?{...b,...data}:b)}));businessType='';d.close();render();toast(lang==='pt'?'Dados actualizados nesta demonstração.':'Details updated in this demo.');}catch{button.disabled=false;toast(t('saveError'));}};}
+function showBusiness(id){
+ const business=state.tenants.find(b=>b.id===id);if(!business)return;
+ const d=modal(businessDetail({business,lang,remote:isRemote,events:state.businessEvents||[]}));
+ bindBusinessActions(d);
+ d.querySelector('#edit-business')?.addEventListener('click',()=>{d.close();businessEdit(id);});
+ d.querySelector('#status-business')?.addEventListener('click',()=>{d.close();businessStatus(id);});
+}
+function businessAdminError(error){
+ const en=lang==='en';
+ if(error?.message==='revision_conflict')return en?'Another administrator changed this business. The latest details will be loaded.':'Outro administrador alterou este negócio. Os dados actualizados serão carregados.';
+ if(error?.message==='no_change')return en?'No changes to save.':'Não existem alterações para guardar.';
+ if(error?.message==='invalid_email')return en?'Invalid email address.':'Endereço de email inválido.';
+ if(error?.message==='offline_remote')return en?'An internet connection is required.':'Esta operação exige ligação à internet.';
+ return t('saveError');
+}
+async function refreshBusinessAdmin(){if(isRemote){state=await read();}render();}
+function businessEdit(id){
+ const business=state.tenants.find(b=>b.id===id);if(!business)return;
+ const l=adminText(lang),remote=isRemote;
+ const d=modal(`<h2>${l.edit}</h2><p class="info-note">${l.editHint}${remote?'':' '+l.localText}</p>
+ <form id="edit-business-form"><label>${t('name')}<input name="name" value="${esc(business.name)}" maxlength="100" required></label>
+ <label>${l.owner}<input name="owner" value="${esc(business.owner)}" maxlength="100" required></label>
+ <label>${l.type}<input name="type" value="${esc(business.type)}" maxlength="60" required></label>
+ <label>${l.contact}<input name="phone" type="tel" autocomplete="tel" value="${esc(business.phone||'')}" maxlength="40"></label>
+ <label>${l.email}<input name="email" type="email" autocomplete="email" value="${esc(business.email||'')}" maxlength="120"></label>
+ <label>${l.address}<input name="address" value="${esc(business.address||'')}" maxlength="160"></label>
+ ${remote?`<label>${l.reason}<textarea name="reason" maxlength="250" rows="2" required></textarea></label>`:''}
+ <button class="primary full">${l.save}</button></form>`);
+ d.querySelector('form').onsubmit=async event=>{
+  event.preventDefault();const f=new FormData(event.target),fields=Object.fromEntries(['name','owner','type','phone','email','address'].map(key=>[key,String(f.get(key)||'').trim()]));
+  if(['name','owner','type'].some(k=>!fields[k]))return toast(t('invalid'));
+  const reason=String(f.get('reason')||'').trim();if(remote&&!reason)return toast(t('invalid'));
+  const button=event.target.querySelector('button');button.disabled=true;
+  try{
+   if(remote)state=await remoteAction('businesses/edit',{businessId:id,expectedRevision:business.revision||0,...fields,reason});
+   else state=await update(current=>({...current,tenants:current.tenants.map(b=>b.id===id?{...b,...fields}:b)}));
+   d.close();businessType='';render();
+   toast(lang==='pt'?'Dados do negócio actualizados.':'Business details updated.');
+  }catch(error){
+   button.disabled=false;d.querySelector('#edit-business-error')?.remove();
+   toast(businessAdminError(error));
+   if(error.message==='revision_conflict'){d.close();try{await refreshBusinessAdmin();}catch{}}
+  }
+ };
+}
+function businessStatus(id){
+ const business=state.tenants.find(b=>b.id===id);if(!business)return;
+ const l=adminText(lang),suspended=isRemote?business.active===0:business.demoStatus==='paused',nextActive=suspended;
+ const d=modal(`<h2>${suspended?l.resume:l.pause}</h2><p><strong>${esc(business.name)}</strong></p>
+ <p class="info-note">${suspended?l.confirmResume:l.confirmPause}</p>
+ <form id="business-status-form"><label>${l.reason}<textarea name="reason" maxlength="250" rows="3" required></textarea></label>
+ <button class="primary full">${suspended?l.resume:l.pause}</button></form>`);
+ d.querySelector('form').onsubmit=async e=>{
+  e.preventDefault();const reason=String(new FormData(e.target).get('reason')||'').trim();if(!reason)return toast(t('invalid'));
+  const button=e.target.querySelector('button');button.disabled=true;
+  try{
+   if(isRemote)state=await remoteAction('businesses/status',{businessId:id,expectedRevision:business.revision||0,active:nextActive,reason});
+   else state=await update(old=>({...old,tenants:old.tenants.map(b=>b.id===id?{...b,demoStatus:nextActive?'active':'paused'}:b)}));
+   d.close();render();toast(nextActive?(lang==='pt'?'Negócio reactivado.':'Business reactivated.'):(lang==='pt'?'Negócio suspenso. Sessões terminadas.':'Business suspended. Sessions terminated.'));
+  }catch(error){
+   button.disabled=false;toast(businessAdminError(error));
+   if(error.message==='revision_conflict'){d.close();try{await refreshBusinessAdmin();}catch{}}
+  }
+ };
+}
 function ubuntuOverview(){const l=adminText(lang);return `<div class="page-heading"><div><p class="eyebrow">UBUNTU SERVICE</p><h1 tabindex="-1">${lang==='pt'?'Uma visão clara da plataforma.':'A clear view of your platform.'}</h1><p>${l.subtitle}</p></div></div><section class="admin-summary"><article><small>${l.businesses}</small><strong>${state.tenants.length}</strong></article><article><small>${l.types}</small><strong>${new Set(state.tenants.map(b=>b.type)).size}</strong></article><article><small>${lang==='pt'?'Perfil de acesso':'Access role'}</small><strong class="small-value">Super Admin</strong></article></section><section class="panel"><h2>${l.businesses}</h2><p>${l.accessText}</p><button class="primary" data-page="admin">${t('businesses')} →</button></section>`;}
 window.addEventListener('popstate',()=>{if(state)navigate(location.hash.slice(1)||'home',false);});
 
