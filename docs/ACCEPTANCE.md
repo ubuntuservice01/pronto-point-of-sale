@@ -156,3 +156,14 @@
 - [x] Testes de domínio para qualidade e pipeline de GitHub Actions adicionados.
 - [x] CI GitHub Actions — 47/47 testes, sintaxe e build aprovados (13/10/2026; ver Actions).
 - [ ] Testes visuais reais em Android/iOS/Desktop, scanner, recibos e caixa físico.
+
+
+## Scanner horizontal — correcção (13/10/2026)
+- [x] Vista de leitura em proporção 16:9, vídeo preenchido sem faixas laterais e moldura horizontal.
+- [x] Preferência por câmara traseira com resolução 1280x720 quando o dispositivo permitir.
+- [x] Leitura da região visível do vídeo, filtragem de duplicações, mensagens de êxito/erro.
+- [x] Opções de ecrã inteiro, trocar câmara, luz quando suportada, reinício e código manual.
+- [x] Libertação da câmara quando fecha o diálogo, esconde a página ou redesenha a aplicação.
+- [x] Testes de utilidades do scanner e verificação por CI.
+- [ ] Confirmar câmara traseira, orientação, foco e leitura com etiquetas reais em Android e iOS.
+- [ ] Testar orientação bloqueada e permissões em modo prévia do Lovable (iframe).
