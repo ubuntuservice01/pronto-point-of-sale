@@ -1,8 +1,28 @@
-import {api,isRemote} from './auth.js';
+import {api,isRemote,setActiveBranch} from './auth.js';
 import {seed} from './model.js';
 let db, remoteState, selectedTenant;
-export async function selectTenant(id){selectedTenant=id;remoteState=await api(`state?tenantId=${encodeURIComponent(id)}`);return remoteState;}
-export async function open(){if(isRemote){remoteState=await api("state");return remoteState;}db=await new Promise((resolve,reject)=>{const request=indexedDB.open('pronto-pos-demo',1);request.onupgradeneeded=()=>request.result.createObjectStore('data');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});const existing=await read();if(!existing)await update(()=>seed());return read();}
+export async function selectTenant(id){setActiveBranch(null);sessionStorage.removeItem('pronto-branch');selectedTenant=id;remoteState=await api(`state?tenantId=${encodeURIComponent(id)}`);return remoteState;}
+export async function selectBranch(id){
+ if(!isRemote)throw Error('branch_requires_server');
+ const previous=selectedTenant;
+ setActiveBranch(id);
+ try{
+  const next=await api(`state?tenantId=${encodeURIComponent(id)}`);
+  if(!next.branchGroup?.branches.some(b=>b.id===id&&b.active))throw Error('branch_forbidden');
+  selectedTenant=id;remoteState=next;sessionStorage.setItem('pronto-branch',id);return next;
+ }catch(error){setActiveBranch(previous);throw error;}
+}
+export async function open(){if(isRemote){
+  const saved=sessionStorage.getItem('pronto-branch');
+  if(saved){
+   try{
+    setActiveBranch(saved);remoteState=await api(`state?tenantId=${encodeURIComponent(saved)}`);
+    if(remoteState.branchGroup?.branches.some(b=>b.id===saved&&b.active)){selectedTenant=saved;return remoteState;}
+   }catch{}
+   setActiveBranch(null);sessionStorage.removeItem('pronto-branch');selectedTenant=null;
+  }
+  remoteState=await api('state');return remoteState;
+ }db=await new Promise((resolve,reject)=>{const request=indexedDB.open('pronto-pos-demo',1);request.onupgradeneeded=()=>request.result.createObjectStore('data');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});const existing=await read();if(!existing)await update(()=>seed());return read();}
 export async function remoteAction(path,body){if(!isRemote)throw Error('not_remote');if(!navigator.onLine)throw Error('offline_remote');remoteState=await api(path,body);return remoteState;}
 export function read(){if(isRemote)return api(selectedTenant?`state?tenantId=${encodeURIComponent(selectedTenant)}`:"state").then(s=>{remoteState=s;return s;});return new Promise((resolve,reject)=>{const tx=db.transaction('data','readonly');const request=tx.objectStore('data').get('state');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
 export function update(mutator){if(isRemote)return remoteUpdate(mutator);return new Promise((resolve,reject)=>{const tx=db.transaction('data','readwrite');const store=tx.objectStore('data');let next;const request=store.get('state');request.onsuccess=()=>{try{next=mutator(request.result);store.put(next,'state');}catch(error){reject(error);tx.abort();}};tx.oncomplete=()=>{window.dispatchEvent(new Event('pos-updated'));resolve(next);};tx.onerror=()=>reject(tx.error);});}
