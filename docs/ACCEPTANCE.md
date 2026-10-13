@@ -217,3 +217,12 @@
 - [x] Testes automatizados de expiração, renovação, migração, permissões e segurança HTTP.
 - [ ] Testes reais em browsers e dispositivos físicos, incluindo expiração durante uma venda.
 - [ ] Integrações reais de cobrança, notificações, facturação fiscal e validação legal de contratos.
+
+
+## Data de validade — 0.9.1
+- [x] Formulário de cadastro com data de validade opcional.
+- [x] Persistência e validação de datas reais no modo autenticado Node/SQLite e demonstração.
+- [x] Possibilidade de editar ou retirar a data de validade com auditoria.
+- [x] Avisos de vencimento com base na data local de Moçambique.
+- [x] Testes automáticos de criação, edição, calendário, API e interface.
+- [ ] Controlo de validade por lote, FEFO e bloqueio automático de vendas de produtos vencidos (não incluídos neste pedido).
