@@ -4,7 +4,27 @@ let activeBranchId=null;
 export function setActiveBranch(id){activeBranchId=typeof id==='string'&&id?id:null;}
 export async function api(path,body){const headers=body===undefined?{}:{'Content-Type':'application/json'};if(activeBranchId)headers['X-Pronto-Branch']=activeBranchId;
  const response=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',credentials:'same-origin',headers,body:body===undefined?undefined:JSON.stringify(body)});let data;try{data=await response.json();}catch{throw Error('server_unavailable');}if(!response.ok)throw Error(data.error||'server_error');return data;}
-export async function authenticate(){if(!isRemote)return;let user;try{user=await api('me');}catch{user=await login();}if(user.mustChange)await changePassword();}
+import {hasOfflineVault,unlockOffline,offlineSnapshot} from './offline.js';
+export async function authenticate(){
+ if(!isRemote)return;
+ let user;
+ try{user=await api('me');}
+ catch(error){
+  const disconnected=!navigator.onLine||['Failed to fetch','fetch failed','server_unavailable','NetworkError when attempting to fetch resource.'].includes(error.message);
+  if(disconnected&&await hasOfflineVault()){
+   const en=language();
+   document.querySelector('#app').innerHTML=`<section class="login-shell"><div class="panel login-panel"><h1>${en?'Offline access':'Acesso offline'}</h1><p>${en?'Enter the offline passphrase configured on this device. Provisional sales must be synchronized later.':'Introduza a palavra-passe offline configurada neste dispositivo. As vendas provisórias terão de ser sincronizadas depois.'}</p><form id="offline-unlock"><label>${en?'Offline passphrase':'Palavra-passe offline'}<input name="passphrase" type="password" minlength="12" autocomplete="off" required></label><p id="offline-unlock-error" role="alert"></p><button class="primary full">${en?'Unlock':'Desbloquear'}</button></form></div></section>`;
+   user=await new Promise(resolve=>{
+    document.querySelector('#offline-unlock').onsubmit=async event=>{
+     event.preventDefault();const form=event.target,button=form.querySelector('button');button.disabled=true;
+     try{const snapshot=await unlockOffline(String(new FormData(form).get('passphrase')));resolve(snapshot.auth);}
+     catch(e){form.querySelector('#offline-unlock-error').textContent=en?'Incorrect passphrase or expired offline access.':'Palavra-passe incorrecta ou acesso offline expirado.';button.disabled=false;}
+    };
+   });
+  }else user=await login();
+ }
+ if(user.mustChange)await changePassword();
+}
 function language(){return localStorage.getItem('pronto-language')==='en';}
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function login(){const en=language();document.querySelector('#app').innerHTML=`<section class="login-shell"><div class="login-brand"><img src="/icon.svg" alt=""><h1>Pronto POS</h1><p>${en?'Your business in the palm of your hand':'O seu negócio na palma da mão'}</p></div><div class="panel login-panel"><h2>${en?'Welcome back':'Bem-vindo de volta'}</h2><p>${en?'Sign in with the credentials provided by Ubuntu or your business owner.':'Entre com as credenciais fornecidas pela Ubuntu ou pelo proprietário do negócio.'}</p><form id="login-form"><label>${en?'Username':'Utilizador'}<input name="username" autocomplete="username" required maxlength="80"></label><label>${en?'Password':'Palavra-passe'}<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label><p id="login-error" role="alert"></p><button class="primary full">${en?'Sign in':'Entrar'}</button></form><a class="demo-link" href="/?demo=1">${en?'Explore the local demo':'Explorar a demonstração local'}</a></div><footer>Ubuntu Service, Lda.</footer></section>`;return new Promise(resolve=>{document.querySelector('#login-form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;const f=new FormData(e.target);try{const user=await api('login',{username:f.get('username'),password:f.get('password'),deviceId:localStorage.getItem('pronto-device')||'browser'});e.target.reset();resolve(user);}catch(error){const messages={license_expired:en?'Your subscription expired. Contact Ubuntu Service to renew.':'A licença do negócio expirou. Contacte a Ubuntu Service para renovar.',license_cancelled:en?'Your business licence is cancelled. Contact Ubuntu Service.':'A licença do negócio foi cancelada. Contacte a Ubuntu Service.',rate_limit:en?'Too many attempts. Try again later.':'Muitas tentativas. Tente novamente mais tarde.'};document.querySelector('#login-error').textContent=messages[error.message]||(en?'Unable to sign in. Check your credentials and server connection.':'Não foi possível entrar. Confira as credenciais e a ligação ao servidor.');b.disabled=false;}};});}
