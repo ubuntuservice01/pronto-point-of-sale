@@ -61,6 +61,8 @@ test('License expiration is enforced by server clock for active cookies and new 
   data=store.licenseRenew(f.admin,{businessId:shop.id,expectedRevision:0,periods:2,operationId:'uuid-test-renew-123456',reason:'Renovação autorizada',reference:'RECIBO-EXTERNO'});
   assert.equal(data.tenants.find(b=>b.id===shop.id).license.status,'active');
   assert.equal(data.licenseEvents.find(e=>e.action==='renewed').reference,'RECIBO-EXTERNO');
+  assert.equal(store.licenseRenew(f.admin,{businessId:shop.id,expectedRevision:0,periods:2,operationId:'uuid-test-renew-123456',reason:'Renovação autorizada',reference:'RECIBO-EXTERNO'}).licenseEvents.filter(e=>e.action==='renewed').length,1);
+  assert.throws(()=>store.licenseRenew(f.admin,{businessId:shop.id,expectedRevision:0,periods:1,operationId:'uuid-test-renew-123456',reason:'Renovação autorizada',reference:'RECIBO-EXTERNO'}),e=>e.status===409&&e.message==='operation_conflict');
   assert.equal(store.login(shop.username,'MerchantPassword2026Strong!','return').user.role,'owner');
   assert.equal(store.snapshot(f.admin,shop.id).products.length,1);
   f.advance(59);assert.equal(store.login(shop.username,'MerchantPassword2026Strong!','next').user.role,'owner');
