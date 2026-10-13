@@ -129,3 +129,11 @@ Os testes originais cobriam HTTP, cookies, sessões e vendas. A versão 0.5 foi 
 - **API:** `POST /api/plans`, `/api/plans/status`, `/api/licenses/assign`, `/api/licenses/renew` e `/api/licenses/cancel`. Apenas o Super Admin pode chamar estas rotas.
 - Os períodos são medidos em **dias de 24 horas**, não em meses de calendário. Todos os horários de licença são armazenados em UTC.
 - Continuam pendentes testes visuais no navegador e dispositivos reais, políticas de notificação prévia à expiração, contratos, comprovativos e integração financeira.
+
+
+## Data de validade dos produtos — 0.9.1
+- **Novo produto:** campo `Data de validade (opcional)` (`YYYY-MM-DD`), acessível pelo selector de datas no telemóvel ou computador. Pode ficar vazio para ferragens e outros artigos sem validade.
+- **Editar produto:** permite consultar, corrigir ou limpar a data. A actualização segue o mesmo controlo de permissões e revisão do inventário.
+- **Produtos e stock:** apresenta a data e identifica automaticamente produtos `Vencido`, `Vence hoje` e `A vencer` (até 30 dias), considerando a data local em Moçambique (Africa/Maputo).
+- As datas são verificadas pelo domínio e pelo servidor antes de gravar em SQLite; a demonstração usa IndexedDB. Produtos existentes sem este campo continuam válidos.
+- **Limite actual:** existe apenas **uma data por produto**, não por lote ou entrada de mercadoria; os avisos **não bloqueiam automaticamente vendas**. Para controlo de diferentes lotes e datas e restrições à venda, será necessário desenvolver o módulo de lotes/FEFO.
