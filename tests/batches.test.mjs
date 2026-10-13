@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {seed,createSale} from '../src/model.js';
-import {receiveBatch,productBatches,allocateFEFO,sellableQty,adjustProductBatch,legacyQty} from '../src/batches.js';
+import {receiveBatch,productBatches,allocateFEFO,sellableQty,adjustProductBatch,editBatchDetails,legacyQty} from '../src/batches.js';
 import {recordPurchase} from '../src/commercial.js';
 import {recordInventoryMovement} from '../src/inventory.js';
 import {openCash,attachCashSale,refundSale} from '../src/cash.js';
@@ -130,4 +130,21 @@ test('Batch frontend escapes supplied identifiers and indicates expired amounts'
  assert.doesNotMatch(html,/<script>/);
  assert.match(html,/Venda bloqueada/);
  assert.match(productBatchSummary(s,s.products[0],'pt'),/Vencido/);
+});
+
+test('Batch details can be corrected with audit; concurrent or colliding corrections are rejected',()=>{
+ let s=blank();
+ s=receiveBatch(s,'t1',incoming('initial-a','LOT-OLD','2099-01-01',4),'owner');
+ s=receiveBatch(s,'t1',incoming('initial-b','LOT-TWO','2099-06-01',1),'owner');
+ const first=s.stockBatches.find(b=>b.number==='LOT-OLD');
+ const input={id:'edit-batch-op',productId:'p1',batchId:first.id,batchNumber:'LOT-CORRECT',expiryDate:'2099-03-01',expectedQuantity:4,expectedExpiryDate:first.expiryDate,expectedNumber:first.number,reason:'Correcção da etiqueta'};
+ const edited=editBatchDetails(s,'t1',input,'owner');
+ assert.equal(edited.stockBatches.find(b=>b.id===first.id).expiryDate,'2099-03-01');
+ assert.equal(edited.stockBatches.find(b=>b.id===first.id).number,'LOT-CORRECT');
+ assert.equal(edited.products[0].stock,5);
+ assert.equal(edited.inventoryEvents[0].actorId,'owner');
+ assert.strictEqual(editBatchDetails(edited,'t1',input,'owner'),edited);
+ assert.throws(()=>editBatchDetails(s,'t1',{...input,id:'duplicate',batchNumber:'LOT-TWO'},'owner'),/batch_number_conflict/);
+ assert.throws(()=>editBatchDetails(edited,'t1',{...input,id:'stale',batchNumber:'LATEST'},'owner'),/stock_conflict/);
+ assert.throws(()=>editBatchDetails(edited,'t1',{...input,id:'bad',expectedQuantity:4,expectedExpiryDate:'2099-03-01',expectedNumber:'LOT-CORRECT',expiryDate:'2026-02-31'},'owner'),/expiry_date/);
 });
