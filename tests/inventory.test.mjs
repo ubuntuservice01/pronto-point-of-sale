@@ -4,6 +4,8 @@ import {seed,createSale} from '../src/model.js';
 import {editInventoryProduct,setInventoryStatus,recordInventoryMovement} from '../src/inventory.js';
 import {inventoryHistoryHTML} from '../src/inventory-ui.js';
 import {createStore} from '../server/store.mjs';
+import {openCash,attachCashSale,refundSale} from '../src/cash.js';
+import {recordPurchase} from '../src/commercial.js';
 import {createApp} from '../server/http.mjs';
 
 const product=()=>({id:'x',tenantId:'t1',name:'Arroz',category:'Alimentação',code:'10001',price:8500,unit:'kg',stock:10,min:2});
@@ -119,4 +121,33 @@ test('History escapes untrusted inventory descriptions and includes the operator
  assert.match(html,/&lt;script&gt;/);
  assert.doesNotMatch(html,/<script>/);
  assert.doesNotMatch(html,/<img src/);
+});
+
+test('Stock history records sale, purchase and full refund with server-authorised actor',()=>{
+ const ctx={tenantId:'t1',userId:'owner-id',role:'owner',deviceId:'phone'};
+ let s=openCash(seed(),ctx,10000);
+ const opening=s.products.find(p=>p.id==='p1').stock;
+ s=createSale(s,{...ctx,id:'sale-report',cart:[{productId:'p1',quantity:2}],method:'cash',received:17000});
+ s=attachCashSale(s,ctx,'sale-report');
+ const sold=s.inventoryEvents.find(e=>e.referenceId==='sale-report'&&e.action==='sale');
+ assert.ok(sold);assert.equal(sold.actorId,ctx.userId);assert.equal(sold.delta,-2);assert.equal(sold.before,opening);assert.equal(sold.after,opening-2);
+ s=recordPurchase(s,'t1',{id:'purchase-report',productId:'p1',quantity:5,unitCost:5500,supplier:'Armazém Central',reference:'F001'},ctx.userId);
+ const bought=s.inventoryEvents.find(e=>e.referenceId==='purchase-report');
+ assert.equal(bought.action,'purchase');assert.equal(bought.delta,5);assert.match(bought.reason,/Armazém Central/);
+ s=refundSale(s,ctx,{id:'refund-report',saleId:'sale-report',reason:'Devolução do cliente'});
+ const returned=s.inventoryEvents.find(e=>e.action==='refund'&&e.referenceId==='sale-report');
+ assert.equal(returned.delta,2);
+ assert.equal(s.products.find(p=>p.id==='p1').stock,opening+5);
+ assert.equal(s.inventoryEvents.length,s.stockMovements.length);
+});
+
+test('Cross-tenant inventory history is filtered in the interface and escapes user-supplied notes',()=>{
+ const state={inventoryEvents:[
+ {id:'a',tenantId:'t1',productName:'Rice',action:'adjust',reason:'Recontagem <b>',actorId:'u1',before:5,after:6,delta:1,unit:'un',createdAt:'2026-10-13T10:00:00Z'},
+ {id:'b',tenantId:'t2',productName:'Other store secret',action:'sale',reason:'Sale',actorId:'u2',before:3,after:2,delta:-1,createdAt:'2026-10-13T10:00:00Z'}
+ ],members:[{id:'u1',name:'Operador Teste'}]};
+ const html=inventoryHistoryHTML(state,'t1','pt',value=>value+' MT');
+ assert.match(html,/Operador Teste/);assert.match(html,/&lt;b&gt;/);
+ assert.doesNotMatch(html,/Other store secret/);
+ assert.doesNotMatch(html,/<b>/);
 });
