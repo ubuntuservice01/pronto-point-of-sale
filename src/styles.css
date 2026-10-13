@@ -599,3 +599,17 @@ dialog::backdrop{background:#122c3c86}
 @media(max-width:920px){.merchant-insights-bottom{grid-template-columns:1fr}}
 @media(max-width:760px){.merchant-insights-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.merchant-insight{min-height:114px;padding:16px 12px}.merchant-insight>small{font-size:12px;margin-right:23px}.merchant-insight>strong{font-size:19px}.merchant-insight-symbol{right:10px;top:12px;width:25px;height:25px;font-size:15px}.merchant-chart-bars{gap:7px}.merchant-insights-bottom .panel{padding:18px 14px}}
 @media(max-width:360px){.merchant-insights-grid{grid-template-columns:1fr}.merchant-insight{min-height:94px}}
+
+
+/* Point 7 — actionable inventory notifications, scoped to the current shop. */
+.nav-item>span{position:relative}
+.nav-alert-badge{position:absolute;top:-9px;right:-14px;display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border:2px solid white;border-radius:99px;background:#b56a12;color:white;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:10px;font-weight:850;line-height:1;letter-spacing:0;white-space:nowrap;box-shadow:0 2px 7px #0002}
+.nav-alert-badge-critical{background:#c43d3d}
+.mobile-nav .nav-alert-badge{top:-7px;right:-15px;z-index:1}
+.sidebar .nav-alert-badge{top:-8px;right:-15px}
+.alerts-priority-banner{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:13px 17px;border:1px solid #c9e6d7;border-left:4px solid #087f68;border-radius:13px;background:#eef8f2;color:#195a43;font-size:13px;line-height:1.5}
+.alerts-priority-banner>span{font-size:19px;flex-shrink:0}
+.alerts-priority-banner strong{font-weight:720}
+.alerts-priority-banner.priority-warning{background:#fff8ea;border-color:#f4d3a1;border-left-color:#c37d13;color:#82500b}
+.alerts-priority-banner.priority-critical{background:#fff1f0;border-color:#f2bdb7;border-left-color:#c43d3d;color:#a42c2c}
+@media(max-width:760px){.alerts-priority-banner{padding:12px 13px;font-size:13px}.mobile-nav .nav-alert-badge{min-width:20px;height:20px;font-size:10px}}
