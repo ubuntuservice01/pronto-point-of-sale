@@ -57,3 +57,17 @@
 - Perfil do cabeçalho abre definições; ícones SVG, acesso por teclado e foco no título.
 - Servidor e base de dados não foram alterados nesta entrega.
 - Build, testes existentes e verificações de pesquisa/escape passaram. Inspecção visual em navegador/dispositivo ainda pendente.
+
+## Front-end — comerciante e venda rápida
+
+- Atalhos do painel para venda, produtos e histórico, conforme o perfil.
+- Barra mobile fixa com total e acesso ao carrinho.
+- Atalhos de dinheiro: valor exacto e montantes acima do total.
+- Orientação sobre pagamento e valor em falta, antes de enviar a venda.
+- Confirmação de limpeza do carrinho, sem alterar stock.
+- Rascunho recuperável no mesmo separador, por negócio/perfil, apenas na demonstração local.
+- Indicador de gravação e bloqueio de cliques enquanto a operação está em curso.
+- Identificador de operação conservado nas tentativas com o mesmo carrinho/pagamento; não é uma outbox offline.
+- Leitura com código + Enter só emite beep se o produto for adicionado.
+- Quantidades de peças/embalagens devem ser inteiras; quantidades fraccionadas limitadas a três casas decimais na interface.
+- Servidor sem alterações. Testes de domínio/HTTP e build passaram; inspecção visual e testes de interacção em dispositivo continuam pendentes.

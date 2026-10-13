@@ -1,4 +1,4 @@
-const CACHE='pronto-pos-v3';
+const CACHE='pronto-pos-v4';
 const FILES=['/','/index.html','/src/app.js','/src/admin-ui.js','/src/icons.js','/src/auth.js','/src/model.js','/src/storage.js','/src/styles.css','/icon.svg','/manifest.webmanifest'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('pronto-pos-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
