@@ -2,7 +2,7 @@
 
 **O seu negócio na palma da mão.** POS geral mobile first da Ubuntu Service, Lda.
 
-## Estado actual — 0.5
+## Estado actual — 0.6
 
 Duas modalidades separadas:
 
@@ -85,3 +85,14 @@ Os testes originais cobriam HTTP, cookies, sessões e vendas. A versão 0.5 foi 
 - GitHub Actions verifica sintaxe, testes automatizados e build em cada push para `main`. Em 13/10/2026, **47/47 testes passaram** no commit `5ec0dde`. A execução posterior deve ser verificada no painel Actions.
 - Testes visuais em equipamentos reais e impressoras continuam pendentes. Este resultado não equivale a homologação comercial.
 - Consulte [roteiro de testes manuais](docs/QA-MANUAL.md) antes de colocar a aplicação em produção.
+
+
+## Entrega 0.6 — Produtos e inventário no servidor
+- **Edição real de produtos:** nome, categoria, código de barras, preço e stock mínimo. Unidade e saldo não são alterados neste formulário, preservando movimentos e vendas anteriores.
+- **Activar/desactivar produtos:** produtos desactivados ficam fora do POS, mas continuam no inventário e no histórico. A reactivação preserva o mesmo produto.
+- **Inventário transaccional:** entradas e correcções de contagem exigem motivo. As quantidades são validadas no servidor, inclusive unidades indivisíveis e casas decimais.
+- **Auditoria:** os novos registos de criação, edição, estado, entradas, ajustes, vendas, compras e devoluções guardam operador, data, produto, quantidade anterior/actual (quando aplicável), motivo e referência. O frontend mostra os 20 registos mais recentes.
+- **Concorrência:** alterações de dados e estado exigem `expectedRevision`; ajustes de contagem exigem `expectedStock`. Em caso de conflito, a interface informa e recarrega dados; entradas acumulativas continuam transaccionais. UUID por operação evita duplicação após tentativas repetidas.
+- **Permissões:** só proprietário, gerente e responsável de stock podem alterar inventário. Operadores de caixa não recebem nem eventos de inventário nem custos no snapshot.
+- **Limitação:** histórico anterior a esta versão **não é reconstruído**. Os eventos continuam dentro do payload por negócio em SQLite e deverão ser normalizados/paginados antes de escalar para comércio de grande volume.
+- A gestão de contas de colaboradores, planos de negócio e outros itens da auditoria mantém-se pendente, assim como homologação de dispositivos reais.

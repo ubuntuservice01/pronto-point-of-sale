@@ -99,7 +99,8 @@
 - [x] Equipa com pesquisa, filtros, edição de perfil e activação/desactivação na demonstração.
 - [x] Perfis proprietário protegidos; produtos inactivos indisponíveis na nova venda e scanner.
 - [x] No servidor real, criação e recepção existentes mantidas; operações sem endpoint são explicitamente bloqueadas.
-- [ ] Implementar endpoints autorizados para edição/inactivação, ajustes e histórico de movimentos e gestão de contas.
+- [x] Endpoints autorizados para edição, activação/inactivação de produtos e ajustes com auditoria no servidor.
+- [ ] Endpoints de edição/inactivação de colaboradores e revogação de acessos reais.
 - [ ] Testar interface e scanner em browser/Android/iOS e executar testes automatizados.
 
 ## Fase 2 — Caixa autenticado, descontos e pagamentos mistos
@@ -167,3 +168,16 @@
 - [x] Testes de utilidades do scanner e verificação por CI.
 - [ ] Confirmar câmara traseira, orientação, foco e leitura com etiquetas reais em Android e iOS.
 - [ ] Testar orientação bloqueada e permissões em modo prévia do Lovable (iframe).
+
+
+## Produtos e Inventário — Fase 0.6
+- [x] Edição de dados, preço, código e stock mínimo no servidor, com controlo de revisão.
+- [x] Estado activo/inactivo real, sem apagar produtos nem histórico de vendas.
+- [x] Receber stock e ajustar contagem com motivo e identificação do utilizador.
+- [x] Movimentos de vendas, compras e devoluções registados a partir desta versão.
+- [x] Pedidos autenticados isolados por negócio, stock contado protegido contra alterações concorrentes.
+- [x] Protecção contra operações repetidas por ID e códigos de barras repetidos no mesmo negócio.
+- [x] Histórico dos 20 registos mais recentes com operador; consultas anteriores à versão não são reconstituídas.
+- [x] Testes de regras de inventário, isolamento e permissões acrescentados à suite Node.
+- [ ] Homologação visual no Lovable/Android e teste de concorrência de dois operadores reais.
+- [ ] Paginação, filtros e exportação de todo o histórico para operações de grande volume.

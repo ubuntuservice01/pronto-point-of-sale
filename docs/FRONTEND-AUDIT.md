@@ -15,8 +15,8 @@
 |---|---|---|---|
 | Navegação e dashboard | Menus por perfil e navegação móvel; painéis e contadores | Rever visualmente a visibilidade de todos os módulos em cada perfil e a navegação no botão Mais | Alta |
 | Scanner | Câmara, código manual, scanner automático condicionado ao BarcodeDetector; pré-visualização 16:9 nova | Teste físico de foco, auto leitura e orientação; alternativa de leitura para navegadores sem BarcodeDetector (ex.: biblioteca ZXing) | Alta |
-| Produtos | Criar produto no servidor; listar e pesquisar | **Editar**, **activar/desactivar** e **ajustar inventário** em modo autenticado abrem aviso de integração pendente | Crítica |
-| Stock | Compra/entrada de mercadoria; recepção simples por API; stock actualizado | Histórico completo de movimentações no servidor, ajustes com motivo e auditoria por operador | Crítica |
+| Produtos | Cadastro, pesquisa, edição, activação e desactivação **reais** no modo autenticado, com motivo e histórico | Falta edição de fotografias/variantes e validação visual em aparelhos reais | Média |
+| Stock | Entradas, ajustes físicos, compras, vendas e devoluções com movimentos auditáveis por operador, data e motivo | Histórico anterior à versão 0.6 não recuperável automaticamente; lista actual só mostra os 20 mais recentes; exportação e paginação por implementar | Alta |
 | Equipa | Criar operadores e credenciais no servidor | **Editar perfil e dados** e **desactivar/reactivar** utilizadores reais; revogar sessões ao bloquear conta | Crítica |
 | Vendas | Carrinho, pagamentos mistos, desconto autorizado, troco, venda transaccional no servidor | Suspender/retomar venda não persiste após recarregar; testar fluxo de leitura + venda real | Alta |
 | Caixa | Abrir, entrar, retirar, conciliar e fechar no servidor | Conferir impressão de fecho em dispositivos reais, trilho de auditoria e diferenças operacionais | Alta |
@@ -33,10 +33,13 @@
 | QA | CI de sintaxe, testes Node e build | Validação em telemóveis reais Android/iPhone, tablet, scanner físico, impressora térmica e vários operadores simultâneos | **Obrigatória** |
 
 ## Ordem recomendada de conclusão
-1. **Bloqueadores de operação real:** edição/inactivação de produtos; ajustes de stock/auditoria; gestão/revogação de colaboradores.
+1. **Bloqueadores de operação real remanescentes:** gestão/revogação de colaboradores no servidor, suspensão administrativa de comerciantes e validações reais de scanner, caixa e impressão.
 2. **Fluxo de balcão completo:** piloto Android com scanner horizontal; testar caixa, venda mista, troco, suspensão e retorno; rever comprovativos e impressão.
 3. **Operação comercial:** gestão de comerciantes/planos, fornecedores e despesas com anulação auditável.
 4. **Pagamentos/fiscalidade e hardening:** conectores financeiros reais, documentos fiscais/legalidade, backups, recuperação, sincronização e testes em dispositivos.
 
 ### Validação
 A CI anterior ao documento passou com **51/51 testes** e build, mas o scanner ainda não foi experimentado num Android/iPhone físico a partir deste ambiente. Qualquer falha revelada pelo teste no Lovable deve gerar um caso reprodutível, antes de considerarmos essa parte concluída.
+
+## Actualização — Inventário autenticado (13/10/2026)
+Produtos e stock deixaram de ser acções apenas demonstrativas. As rotas `POST /api/products/edit`, `/api/products/status` e `/api/stock/movements` autorizam as operações no servidor. Há controlo de concorrência por revisão/contagem, idempotência por ID de operação e histórico de vendas, compras e devoluções posterior à implementação. A interface mostra operador e motivo dos 20 registos mais recentes. O sistema ainda não foi homologado com equipamentos reais e não substitui documentos fiscais.
