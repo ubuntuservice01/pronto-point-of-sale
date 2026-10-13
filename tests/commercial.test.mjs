@@ -87,8 +87,30 @@ test('Server grants role-specific access and maintains separation between busine
   assert.equal(store.snapshot(cashier).customers.length,1);
   assert.equal(store.snapshot(cashier).purchases.length,0);
   assert.equal(store.snapshot(cashier).expenses.length,0);
+  assert.equal(store.snapshot(cashier).cashSessions.length,0);
+  assert.equal('cost' in store.snapshot(cashier).products[0],false);
   assert.throws(()=>store.purchaseCreate(cashier,{id:'bad',productId:created.id,supplier:'X',quantity:1,unitCost:200}),/forbidden/);
   assert.throws(()=>store.expenseCreate(cashier,{id:'bad',category:'Rent',note:'X',amount:100}),/forbidden/);
   assert.equal(can('finance','reports'),true);
+ }finally{store.close();}
+});
+
+test('Stock accounts cannot read financial shifts or refunds in a snapshot',()=>{
+ const store=createStore(':memory:',{bootstrapUser:'rootadmin',bootstrapPassword:'LongBootstrap2026!',secure:false});
+ try{
+  const root=store.session(store.login('rootadmin','LongBootstrap2026!','desktop').token);
+  const opened=store.createBusiness(root,{name:'Shop',type:'Retail',owner:'Own'});
+  const l=store.login(opened.onboarding.username,opened.onboarding.temporaryPassword,'owner-phone');
+  store.changePassword(store.session(l.token),opened.onboarding.temporaryPassword,'ChangedPassword2026!',l.token);
+  const owner=store.session(l.token);
+  store.cashOpen(owner,{opening:1000});
+  const member=store.createMember(owner,{name:'Stock',role:'stock'}).onboarding;
+  const sl=store.login(member.username,member.temporaryPassword,'stock-phone');
+  store.changePassword(store.session(sl.token),member.temporaryPassword,'ChangedPassword2026!',sl.token);
+  const stock=store.snapshot(store.session(sl.token));
+  assert.equal(stock.cashSessions.length,0);
+  assert.equal(stock.refunds.length,0);
+  assert.equal(stock.expenses.length,0);
+  assert.equal(can('stock','purchases'),true);
  }finally{store.close();}
 });

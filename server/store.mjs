@@ -30,7 +30,9 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   customers:can(user.role,'customers')?(data.customers||[]):[],
   purchases:can(user.role,'purchases')||can(user.role,'reports')?(data.purchases||[]):[],
   expenses:can(user.role,'expenses')||can(user.role,'reports')?(data.expenses||[]):[],
-  cashSessions:(data.cashSessions||[]).filter(s=>user.role!=='cashier'||s.userId===user.id),refunds:(data.refunds||[]).filter(r=>user.role!=='cashier'||r.userId===user.id),tenants:[db.prepare('SELECT * FROM businesses WHERE id=?').get(business)],members,sales:user.role==='cashier'?data.sales.filter(s=>s.userId===user.id):can(user.role,'history')||user.role==='super'?data.sales:[],auth:publicUser(user)};}
+  products:user.role==='cashier'?(data.products||[]).map(({cost,...product})=>product):(data.products||[]),
+  cashSessions:(can(user.role,'sell')||can(user.role,'reports')||user.role==='super'?(data.cashSessions||[]):[]).filter(s=>user.role!=='cashier'||s.userId===user.id),
+  refunds:(can(user.role,'history')||can(user.role,'reports')||user.role==='super'?(data.refunds||[]):[]).filter(r=>user.role!=='cashier'||r.userId===user.id),tenants:[db.prepare('SELECT * FROM businesses WHERE id=?').get(business)],members,sales:user.role==='cashier'?data.sales.filter(s=>s.userId===user.id).map(s=>({...s,lines:(s.lines||[]).map(({cost,...line})=>line)})):can(user.role,'history')||user.role==='super'?data.sales:[],auth:publicUser(user)};}
  function save(business,fn){return transaction(()=>{const current=JSON.parse(db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business).data);const next=fn(current);db.prepare('UPDATE payloads SET data=? WHERE business_id=?').run(JSON.stringify(next),business);return next;});}
  function onboard(business,name,role){const login='pos-'+randomBytes(5).toString('hex');const password=randomBytes(15).toString('base64url');const id=randomUUID();db.prepare('INSERT INTO users VALUES(?,?,?,?,?,?,1,1)').run(id,login,text(name),passwordHash(password),business,role);return {username:login,temporaryPassword:password,name,role};}
  return {secure,close:()=>db.close(), publicUser,
