@@ -2,7 +2,7 @@
 
 **O seu negócio na palma da mão.** POS geral mobile first da Ubuntu Service, Lda.
 
-## Estado actual — 0.6
+## Estado actual — 0.7
 
 Duas modalidades separadas:
 
@@ -96,3 +96,13 @@ Os testes originais cobriam HTTP, cookies, sessões e vendas. A versão 0.5 foi 
 - **Permissões:** só proprietário, gerente e responsável de stock podem alterar inventário. Operadores de caixa não recebem nem eventos de inventário nem custos no snapshot.
 - **Limitação:** histórico anterior a esta versão **não é reconstruído**. Os eventos continuam dentro do payload por negócio em SQLite e deverão ser normalizados/paginados antes de escalar para comércio de grande volume.
 - A gestão de contas de colaboradores, planos de negócio e outros itens da auditoria mantém-se pendente, assim como homologação de dispositivos reais.
+
+## Entrega 0.7 — Gestão de colaboradores
+- Proprietário pode editar nome e perfil de colaboradores, desactivar e reactivar contas no modo autenticado.
+- Alteração de perfil ou estado termina todas as sessões desse colaborador, obrigando a um novo login.
+- Desactivação bloqueia novos logins; reactivação mantém a palavra-passe existente.
+- Contas de proprietário estão protegidas, sem promoção para proprietário ou super administrador.
+- Histórico das alterações com responsável e data; as operações anteriores à actualização não são reconstruídas.
+- Actualização automática da estrutura SQLite para suportar controlo de revisão e conflitos de edição.
+- Validação: 67 testes automatizados aprovados, incluindo segurança, rotas e migração.
+- Ainda faltam testes manuais de multi-dispositivo e recuperação administrativa de acessos.
