@@ -25,7 +25,7 @@
 | Fornecedores/compras | Compras com nome de fornecedor e custo, reposição de stock | Cadastro único de fornecedores, pagamentos pendentes, ordens de compra e devoluções a fornecedores | Média |
 | Despesas | Criar e consultar despesas | Editar/anular lançamento com auditoria e anexar comprovativos | Média |
 | Relatórios | Filtros por data, CSV, impressão, margem parcial, produtos mais vendidos | Lucro líquido real, custos médios, impostos e relatórios fiscais; testes reais de exportação | Alta para uso comercial |
-| Super Admin | Criar comerciantes, ver detalhes e abrir visão de negócio | Editar/suspender comerciantes e planos no servidor; personalização comercial | Alta |
+| Super Admin | Criar, editar, filtrar por estado e suspender/reactivar comerciantes no servidor, com revogação de sessões e histórico | Planos, subscrições, cobranças e recuperação administrativa de acesso ainda por implementar | Alta |
 | Perfil/Definições | Idioma, logout e gestão de sessões | Alterar dados do negócio/perfil, mudar senha após login e recuperação de credenciais | Média |
 | Pagamentos | Métodos dinheiro, M-Pesa, e-Mola, transferência com confirmação manual | Cobrança/verificação automática e reconciliação real de M-Pesa/e-Mola/transferências | Alta |
 | Recibos/Impressão | Comprovativo **não fiscal** e função de impressão do navegador | Tamanhos 58/80 mm, QR, impressão Bluetooth/ESC-POS, numeração e facturação fiscal certificada onde aplicável | Alta |
@@ -46,3 +46,7 @@ Produtos e stock deixaram de ser acções apenas demonstrativas. As rotas `POST 
 
 ## Actualização — Contas e permissões (13/10/2026)
 A gestão de colaboradores reais já permite editar nome e perfil, desactivar/reactivar contas e terminar as sessões existentes. O servidor impede a alteração de contas de proprietário e restringe as operações ao negócio do proprietário autenticado. É registado um histórico de alterações por operador. A homologação em dispositivos físicos continua pendente.
+
+
+## Actualização — Super Admin e comerciantes (13/10/2026)
+A administração de comerciantes está ligada ao Node/SQLite: edição de nome comercial, proprietário de referência e contactos, suspensão/reactivação de contas, revogação de sessões, histórico e filtro por estado. A suspensão impede novos logins e preserva dados comerciais. Planos pagos, cobranças e gestão de subscrições continuam pendentes, tal como os testes visuais de campo.
