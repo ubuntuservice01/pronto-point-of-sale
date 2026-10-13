@@ -105,3 +105,20 @@ dialog.scanner-dialog .scanner-viewfinder video{display:block;width:100%;height:
 .scanner-viewfinder:fullscreen video{object-fit:cover}
 @media(max-width:760px){dialog.scanner-dialog{width:calc(100vw - 20px);max-height:calc(100dvh - 28px);padding:17px}.scanner-guide{inset:27% 12%}.scanner-intro{font-size:11px}.scanner-toolbar button{font-size:11px;min-width:110px}}
 @media(max-width:380px){dialog.scanner-dialog{padding:14px}.scanner-toolbar button{min-width:100px;padding:9px}}
+
+/* Super Admin — Business status and audit (v0.8) */
+.business-toolbar{grid-template-columns:minmax(0,1fr) minmax(150px,210px) minmax(150px,200px)}
+.business-status{display:inline-flex;justify-content:flex-start}
+.business-detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.business-detail-actions button{min-width:0;overflow-wrap:anywhere}
+.danger-outline{border:1px solid #b34038!important;color:#b34038!important}
+.danger-outline:hover{background:#fff0ed}
+.business-audit{padding:14px 0;border-top:1px solid var(--border);margin-top:12px}
+.business-audit h3{font-size:14px;margin:0 0 12px}
+.business-event{border-left:3px solid #a5cfc7;padding:4px 12px;margin:10px 0 16px}
+.business-event strong{font-size:12px;display:block}
+.business-event small{font-size:11px;display:block;margin:5px 0;overflow-wrap:anywhere}
+.business-event p{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:1050px){.business-toolbar{grid-template-columns:minmax(0,1fr) minmax(130px,180px)}.business-toolbar #business-status-filter{grid-column:1/-1}}
+@media(max-width:760px){.business-toolbar{grid-template-columns:1fr 1fr}.business-toolbar .search-box{grid-column:1/-1}.business-toolbar #business-status-filter{grid-column:auto}.business-detail-actions{grid-template-columns:1fr 1fr}}
+@media(max-width:390px){.business-toolbar{grid-template-columns:1fr}.business-toolbar .search-box{grid-column:auto}.business-detail-actions{grid-template-columns:1fr}}
