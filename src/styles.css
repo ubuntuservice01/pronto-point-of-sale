@@ -153,3 +153,19 @@ dialog.scanner-dialog .scanner-viewfinder video{display:block;width:100%;height:
 .management-tag.expiry-expired,.management-tag.expiry-today{background:#ffebea;color:#922c27;border:1px solid #f5b0a8}
 .management-tag.expiry-soon{background:#fff3d8;color:#79510b;border:1px solid #efd49a}
 .management-tag.expiry-valid{background:#e7f6ee;color:#166246;border:1px solid #b5e5cc}
+
+/* Product lots: keep expiry and stock status visible on all screens. */
+.batch-summary{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--muted);font-size:11px;line-height:1.45;margin-top:8px}
+.batch-summary span{border:1px solid #d9e8e5;border-radius:7px;padding:4px 7px;background:#f6faf9}
+.batch-summary .batch-expired{border-color:#f3bbb6;background:#fff0ed;color:#9a3126;font-weight:700}
+.batch-list{display:grid;gap:9px;margin:14px 0;max-height:min(48dvh,430px);overflow-y:auto}
+.batch-line{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid #e0eae7;background:white;padding:12px;border-radius:10px}
+.batch-line strong,.batch-line small{display:block;overflow-wrap:anywhere}
+.batch-line strong{font-size:13px}.batch-line small{font-size:11px;color:var(--muted);margin-top:6px}
+.batch-line-expired{background:#fff7f5;border-color:#f2b7b1}
+.batch-right{text-align:right;flex-shrink:0}
+.batch-chip{display:inline-block;margin-top:6px;padding:4px 8px;border-radius:6px;background:#edf4f3;color:#276759;font-size:10px;font-weight:650}
+.batch-expired{background:#ffebea;color:#94332a}
+.batch-today,.batch-soon{background:#fff2d5;color:#79500b}
+.batch-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}
+@media(max-width:600px){.batch-line{align-items:start}.batch-right{min-width:95px}.batch-actions{grid-template-columns:1fr}.catalog-entry .batch-summary{gap:5px}}

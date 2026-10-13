@@ -226,3 +226,15 @@
 - [x] Avisos de vencimento com base na data local de Moçambique.
 - [x] Testes automáticos de criação, edição, calendário, API e interface.
 - [ ] Controlo de validade por lote, FEFO e bloqueio automático de vendas de produtos vencidos (não incluídos neste pedido).
+
+
+## Lotes e múltiplas validades — Fase 0.10
+- [x] Registar vários lotes do mesmo produto com número, quantidade e validade específica.
+- [x] Apresentar listagem e quantidades por lote, incluindo stock anterior sem inventar lote.
+- [x] Entrada de lote e correcção por contagem com motivo, utilizador e idempotência.
+- [x] Compra de mercadoria associada ao lote, com validação da validade.
+- [x] Venda FEFO e impedimento automático de vender unidades vencidas.
+- [x] Guardar lotes consumidos por venda e repor os mesmos lotes nas devoluções integrais.
+- [x] Servidor com isolamento de comerciante e permissões para movimentos.
+- [ ] Testar leitura de códigos reais e venda de lotes no Android/desktop.
+- [ ] Etiquetas por lote, gestão de recolhas e normalização de alto volume.

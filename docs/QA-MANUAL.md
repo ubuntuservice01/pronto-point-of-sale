@@ -69,3 +69,15 @@ Em cada execução, registar data, perfil, dispositivo, browser, ID do cenário,
 | QA-35 | Tentar renovar com perfil de proprietário/caixa | API recusa sem alterar licença | Pendente |
 | QA-36 | Dois Super Admins renovam simultaneamente | Pedido desactualizado recebe conflito e informa o administrador | Pendente |
 | QA-37 | Suspensão administrativa e licença activa coexistem | Reactivação administrativa não permite acesso se licença estiver expirada | Pendente |
+
+
+## Cenários de lotes — Fase 0.10
+| ID | Cenário | Critério | Resultado |
+|---|---|---|---|
+| QA-38 | Receber dois lotes do mesmo produto, com validades diferentes | Ambos aparecem em Lotes com quantidades e datas correctas | Pendente |
+| QA-39 | Vender produto com dois lotes válidos | Quantidade é descontada primeiro do lote que vence mais cedo (FEFO) | Pendente |
+| QA-40 | Vender quando só existe lote vencido | Venda é bloqueada, sem afectar o stock | Pendente |
+| QA-41 | Corrigir lote depois de venda simultânea | Conflito detectado e saldo não fica negativo | Pendente |
+| QA-42 | Devolver integralmente venda de vários lotes | Stock regressa aos lotes usados originalmente | Pendente |
+| QA-43 | Testar artigo anterior à versão de lotes | Saldo aparece como stock legado sem número inventado | Pendente |
+| QA-44 | Registar compra com lote e validade | Compra aumenta stock total e saldo do lote | Pendente |
