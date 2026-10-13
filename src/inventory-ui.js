@@ -5,10 +5,13 @@ export function inventoryHistoryHTML(state,tenantId,lang,money){
  const legacy=(state.stockMovements||[]).filter(e=>e.tenantId===tenantId&&!ids.has(e.id));
  const history=[...events,...legacy].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,20);
  if(!history.length)return `<p class="empty">${en?'No recorded changes yet. Operations before this update may not have history.':'Ainda não existem alterações registadas. Operações anteriores a esta actualização podem não ter histórico.'}</p>`;
- const actions={created:en?'Created':'Criado',edit:en?'Edited':'Editado',status:en?'Status':'Estado',receive:en?'Stock received':'Stock recebido',adjust:en?'Stock count':'Contagem',sale:en?'Sale':'Venda',purchase:en?'Purchase':'Compra',refund:en?'Return':'Devolução'};
+ const actions={created:en?'Created':'Criado',edit:en?'Edited':'Editado',status:en?'Status':'Estado',receive:en?'Stock received':'Stock recebido',adjust:en?'Stock count':'Contagem',batch_edit:en?'Batch updated':'Lote corrigido',batch_receive:en?'Batch received':'Lote recebido',batch_adjust:en?'Batch counted':'Lote contado',sale:en?'Sale':'Venda',purchase:en?'Purchase':'Compra',refund:en?'Return':'Devolução'};
  const actor=e=>e.actorName||(state.members||[]).find(m=>m.id===(e.actorId||e.userId))?.name||e.actorId||e.userId||'—';
  const difference=e=>{
   if(e.action==='status')return e.after?.active?(en?'Activated':'Activado'):(en?'Deactivated':'Desactivado');
+  if(e.action==='batch_edit'){
+   return (en?'Lot':'Lote')+': '+String(e.before?.number||'—')+' → '+String(e.after?.number||'—')+' · '+(en?'Expiry':'Validade')+': '+String(e.before?.expiryDate||'—')+' → '+String(e.after?.expiryDate||'—');
+  }
   if(e.action==='edit'){
    const fields={name:en?'Name':'Nome',category:en?'Category':'Categoria',code:en?'Barcode':'Código',price:en?'Price':'Preço',min:en?'Minimum':'Mínimo',expiryDate:en?'Expiry date':'Validade'};
    return Object.keys(e.after||{}).filter(k=>e.before?.[k]!==e.after?.[k]).map(k=>`${fields[k]||k}: ${k==='price'?money(e.before[k]):String(e.before?.[k]??'—')} → ${k==='price'?money(e.after[k]):String(e.after?.[k]??'—')}`).join(' · ');

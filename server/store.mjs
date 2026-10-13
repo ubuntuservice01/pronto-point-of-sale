@@ -6,7 +6,7 @@ import { addProduct, createSale, can, roles } from '../src/model.js';
 import {activeCash,openCash,moveCash,closeCash,attachCashSale,refundSale} from '../src/cash.js';
 import {saveCustomer,recordPurchase,recordExpense} from '../src/commercial.js';
 import {editInventoryProduct,setInventoryStatus,recordInventoryMovement} from '../src/inventory.js';
-import {receiveBatch,adjustProductBatch} from '../src/batches.js';
+import {receiveBatch,adjustProductBatch,editBatchDetails} from '../src/batches.js';
 export class HttpError extends Error {constructor(status, message){super(message);this.status=status;}}
 const fail=(status,message)=>{throw new HttpError(status,message);};
 const digest=value=>createHash('sha256').update(value).digest('hex');
@@ -314,6 +314,12 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   try{save(business,current=>receiveBatch(current,business,input,user.id));}
   catch(e){if(e instanceof HttpError)throw e;fail(['batch_expiry_conflict','operation_conflict'].includes(e.message)?409:400,e.message);}
   audit(user,business,'batch_received');return snapshot(user);
+ },
+ batchEdit(user,input){
+  const business=authorize(user,'stock',input.tenantId);
+  try{save(business,current=>editBatchDetails(current,business,input,user.id));}
+  catch(e){if(e instanceof HttpError)throw e;fail(['stock_conflict','operation_conflict','batch_number_conflict'].includes(e.message)?409:400,e.message);}
+  audit(user,business,'batch_edited');return snapshot(user);
  },
  batchAdjust(user,input){
   const business=authorize(user,'stock',input.tenantId);
