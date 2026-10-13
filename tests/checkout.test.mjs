@@ -82,3 +82,9 @@ test('Cash closing validates its reconciliation object at API boundary',()=>{
   assert.throws(()=>store.cashClose(owner,{}),/cash_amount/);
  }finally{store.close();}
 });
+
+test('Cashier cannot apply an unauthorised discount',()=>{
+ const s=seed();
+ assert.equal(createSale(s,{tenantId:'t1',role:'cashier',cart:[{productId:'p1',quantity:1}],method:'cash',received:8500,deviceId:'phone',userId:'u2',id:'cashier-ok'}).sales[0].total,8500);
+ assert.throws(()=>createSale(s,{tenantId:'t1',role:'cashier',cart:[{productId:'p1',quantity:1}],method:'cash',received:8500,discount:500,deviceId:'phone',userId:'u2',id:'cashier-discount'}),/permission/);
+});

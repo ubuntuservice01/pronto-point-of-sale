@@ -1,6 +1,6 @@
 export const units=['un','m','m²','kg','g','l','ml','caixa','pacote','saco','rolo','par','conjunto'];
 export const roles=['owner','manager','cashier','stock','finance'];
-export const permissions={owner:['sell','stock','team','history','refund'],manager:['sell','stock','history','refund'],cashier:['sell','history'],stock:['stock'],finance:['history']};
+export const permissions={owner:['sell','stock','team','history','refund','discount'],manager:['sell','stock','history','refund','discount'],cashier:['sell','history'],stock:['stock'],finance:['history']};
 export const can=(role,action)=>(permissions[role]||[]).includes(action);
 export function seed(){return {version:1,tenants:[{id:'t1',name:'Mercearia Boa Compra',type:'Mercearia',owner:'Gabriel'},{id:'t2',name:'Ferragem Horizonte',type:'Ferragem',owner:'Ana'}],products:[
 {id:'p1',tenantId:'t1',name:'Arroz',category:'Alimentação',unit:'kg',price:8500,stock:48,min:10,code:'10001',emoji:'🍚'},
@@ -27,6 +27,7 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
  });
  const subtotal=lines.reduce((sum,line)=>sum+line.total,0);
  if(!Number.isSafeInteger(discount)||discount<0||discount>=subtotal)throw Error('discount');
+ if(discount>0&&!can(role,'discount'))throw Error('permission');
  const total=subtotal-discount;
  const methods=['cash','mpesa','emola','transfer'];
  let normalized;

@@ -69,3 +69,5 @@ A venda autenticada exige caixa aberto no mesmo negócio, utilizador e dispositi
 O servidor recalcula subtotal, desconto fixo, alocação exacta de pagamento por meio e troco do montante recebido em dinheiro. Os movimentos de devolução são autorizações administrativas de devolução integral; apenas proprietário/gerente podem registar, um motivo e confirmação explícita de reembolso manual são obrigatórios. Não existe integração financeira para executar devoluções automáticas, emissão de notas de crédito fiscais ou suporte a devoluções parciais. Reembolso registado é uma declaração do operador; não é prova bancária.
 
 O carrinho suspenso é temporário na aba; não equivale a uma encomenda persistida, reserva de stock ou venda sincronizada. A operação autenticada continua a exigir internet e o software ainda requer validação de campo.
+
+Na Fase 2, descontos monetários são permitidos apenas aos perfis proprietário e gerente; o servidor valida esta autorização, mesmo que um cliente envie valores manipulados.
