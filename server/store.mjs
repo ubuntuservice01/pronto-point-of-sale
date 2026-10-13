@@ -31,6 +31,7 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  if(path!==':memory:')mkdirSync(dirname(path),{recursive:true,mode:0o700});
  const db=new DatabaseSync(path);db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS businesses(id TEXT PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,owner TEXT NOT NULL); CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password_hash TEXT NOT NULL,business_id TEXT REFERENCES businesses(id),role TEXT NOT NULL,must_change INTEGER NOT NULL DEFAULT 1,active INTEGER NOT NULL DEFAULT 1); CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL,device TEXT NOT NULL); CREATE TABLE IF NOT EXISTS payloads(business_id TEXT PRIMARY KEY REFERENCES businesses(id),data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,user_id TEXT,business_id TEXT,action TEXT NOT NULL,created_at TEXT NOT NULL);`);
  // Additive schema migrations preserve businesses and logins from earlier releases.
+ if(!db.prepare('PRAGMA table_info(businesses)').all().some(col=>col.name==='parent_id'))db.exec('ALTER TABLE businesses ADD COLUMN parent_id TEXT REFERENCES businesses(id)');
  if(!db.prepare('PRAGMA table_info(users)').all().some(col=>col.name==='revision'))db.exec('ALTER TABLE users ADD COLUMN revision INTEGER NOT NULL DEFAULT 0');
  for(const [name,definition] of [['phone',"TEXT NOT NULL DEFAULT ''"],['email',"TEXT NOT NULL DEFAULT ''"],['address',"TEXT NOT NULL DEFAULT ''"],['active','INTEGER NOT NULL DEFAULT 1'],['revision','INTEGER NOT NULL DEFAULT 0']]){
   if(!db.prepare('PRAGMA table_info(businesses)').all().some(col=>col.name===name))db.exec('ALTER TABLE businesses ADD COLUMN '+name+' '+definition);
@@ -86,10 +87,52 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   cashSessions:(can(user.role,'sell')||can(user.role,'reports')||user.role==='super'?(data.cashSessions||[]):[]).filter(s=>user.role!=='cashier'||s.userId===user.id),
   refunds:(can(user.role,'history')||can(user.role,'reports')||user.role==='super'?(data.refunds||[]):[]).filter(r=>user.role!=='cashier'||r.userId===user.id),tenants:[{...db.prepare('SELECT * FROM businesses WHERE id=?').get(business),license:licenseFor(business)}],members,
   memberEvents:can(user.role,'team')?(data.memberEvents||[]).map(e=>({...e,actorName:actorNames.get(e.actorId)||null})):[],
-  sales:user.role==='cashier'?data.sales.filter(s=>s.userId===user.id).map(s=>({...s,lines:(s.lines||[]).map(({cost,...line})=>line)})):can(user.role,'history')||user.role==='super'?data.sales:[],auth:publicUser(user)};}
+  sales:user.role==='cashier'?data.sales.filter(s=>s.userId===user.id).map(s=>({...s,lines:(s.lines||[]).map(({cost,...line})=>line)})):can(user.role,'history')||user.role==='super'?data.sales:[],branchGroup:branchGroup(user),auth:publicUser(user)};}
  function save(business,fn){return transaction(()=>{const current=JSON.parse(db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business).data);const next=fn(current);db.prepare('UPDATE payloads SET data=? WHERE business_id=?').run(JSON.stringify(next),business);return next;});}
+ function branchRoot(user){
+  if(user.role!=='owner'||!user.business_id)return null;
+  const home=db.prepare('SELECT id,parent_id FROM businesses WHERE id=?').get(user.business_id);
+  if(!home)return null;
+  return home.parent_id||home.id;
+ }
+ function groupBranches(root){
+  return db.prepare('SELECT id,name,type,owner,phone,address,active,parent_id AS parentId FROM businesses WHERE id=? OR parent_id=? ORDER BY CASE WHEN id=? THEN 0 ELSE 1 END, name COLLATE NOCASE').all(root,root,root).map(b=>({...b,active:!!b.active}));
+ }
+ function branchOverview(business){
+  const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business.id);
+  const data=row?JSON.parse(row.data):empty();
+  const sales=(data.sales||[]).filter(s=>s.tenantId===business.id);
+  const refunds=(data.refunds||[]).filter(ref=>ref.tenantId===business.id);
+  const products=(data.products||[]).filter(p=>p.tenantId===business.id);
+  const refundedIds=new Set(refunds.map(ref=>ref.saleId));
+  const cashSessions=(data.cashSessions||[]).filter(c=>c.tenantId===business.id&&c.status==='open');
+  const members=db.prepare("SELECT COUNT(*) AS count FROM users WHERE business_id=? AND active=1").get(business.id).count;
+  return {...business,transactions:sales.filter(s=>!refundedIds.has(s.id)).length,netSales:sales.reduce((n,s)=>n+s.total,0)-refunds.reduce((n,ref)=>n+ref.total,0),productCount:products.length,stockUnits:Math.round(products.reduce((n,p)=>n+(p.stock||0),0)*1000)/1000,lowStockCount:products.filter(p=>p.active!==false&&p.stock<=p.min).length,openCashRegisters:cashSessions.length,activeTeamMembers:members};
+ }
+ function branchGroup(user){
+  const root=branchRoot(user);
+  if(!root)return null;
+  const branches=groupBranches(root);
+  // A branch's own staff must never receive sibling-store aggregates.
+  return {rootId:root,branches:branches.map(branchOverview)};
+ }
+ function branchContext(user,branchId){
+  if(branchId===undefined||branchId===null||branchId==='')return user;
+  if(typeof branchId!=='string'||branchId.length>80)fail(400,'branch_id');
+  // A non-owner or a user from an unrelated business cannot select another branch.
+  if(user.role!=='owner')fail(403,'branch_forbidden');
+  const root=branchRoot(user);
+  if(!root||user.business_id!==root)fail(403,'branch_forbidden');
+  const selected=db.prepare('SELECT id,active FROM businesses WHERE id=? AND (id=? OR parent_id=?)').get(branchId,root,root);
+  if(!selected)fail(403,'branch_forbidden');
+  if(!selected.active)fail(403,'branch_suspended');
+  if(selected.id===user.business_id)return user;
+  // Preserve the authenticated identity; scope only the merchant business context.
+  // This is validated on EVERY request, not inferred from the client snapshot.
+  return {...user,business_id:selected.id,branch_root_id:root};
+ }
  function onboard(business,name,role){const login='pos-'+randomBytes(5).toString('hex');const password=randomBytes(15).toString('base64url');const id=randomUUID();db.prepare('INSERT INTO users(id,username,name,password_hash,business_id,role,must_change,active) VALUES(?,?,?,?,?,?,1,1)').run(id,login,text(name),passwordHash(password),business,role);return {username:login,temporaryPassword:password,name,role};}
- return {secure,close:()=>db.close(), publicUser,
+ return {secure,close:()=>db.close(), publicUser, branchContext,
  login(login,password,device){const u=db.prepare('SELECT users.*,businesses.active AS business_active FROM users LEFT JOIN businesses ON businesses.id=users.business_id WHERE users.username=?').get(String(login||'').toLowerCase());const match=typeof password==='string'&&password.length<=128&&verify(password,u?.password_hash||dummyHash);if(!u||!u.active||!match||(u.business_id&&u.business_active!==1))fail(401,'invalid_credentials');if(u.business_id)licenseGate(u.business_id);const token=randomBytes(32).toString('base64url');db.prepare('DELETE FROM sessions WHERE expires<=?').run(now());db.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(digest(token),u.id,now()+8*60*60*1000,String(device||'browser').slice(0,80));audit(u,u.business_id,'login');return {token,user:publicUser(u)};},
  session,
  logout(token){db.prepare('DELETE FROM sessions WHERE token_hash=?').run(digest(token||''));},
@@ -169,6 +212,42 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
    db.prepare('UPDATE subscriptions SET cancelled=1,revision=revision+1 WHERE business_id=?').run(id);
    db.prepare('DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE business_id=?)').run(id);
    licenseEvent(id,user,'cancelled',previous.plan_id,previous.expires_ms,previous.expires_ms,reason);
+   return snapshot(user);
+  });
+ },
+ branchCreate(user,input){
+  ready(user);
+  if(user.role!=='owner')fail(403,'forbidden');
+  const root=branchRoot(user);
+  if(!root||root!==user.business_id)fail(403,'forbidden');
+  const name=text(input?.name,100),address=typeof input?.address==='string'?input.address.trim():'',phone=typeof input?.phone==='string'?input.phone.trim():'';
+  if(address.length>160||phone.length>40)fail(400,'invalid_branch');
+  return transaction(()=>{
+   const origin=db.prepare('SELECT * FROM businesses WHERE id=? AND parent_id IS NULL AND active=1').get(root);
+   if(!origin)fail(403,'forbidden');
+   if(groupBranches(root).length>=21)fail(400,'branch_limit');
+   if(groupBranches(root).some(b=>b.name.toLocaleLowerCase()===name.toLocaleLowerCase()))fail(409,'branch_name_exists');
+   const id=randomUUID();
+   db.prepare('INSERT INTO businesses(id,name,type,owner,phone,email,address,active,revision,parent_id) VALUES(?,?,?,?,?,?,?,1,0,?)').run(id,name,origin.type,origin.owner,phone,origin.email||'',address,root);
+   db.prepare('INSERT INTO payloads(business_id,data) VALUES(?,?)').run(id,JSON.stringify({...empty(),tenants:[{id,name,type:origin.type,owner:origin.owner}]}));
+   audit(user,id,'branch_created');
+   // Return the ROOT shop snapshot, now including the newly created branch.
+   return snapshot(user);
+  });
+ },
+ branchStatus(user,input){
+  ready(user);
+  if(user.role!=='owner'||typeof input?.branchId!=='string'||!input.branchId||typeof input.active!=='boolean'||typeof input.reason!=='string'||!input.reason.trim()||input.reason.length>250)fail(403,'forbidden');
+  const root=branchRoot(user);
+  if(!root||root!==user.business_id||input.branchId===root)fail(403,'forbidden');
+  return transaction(()=>{
+   const target=db.prepare('SELECT id,active,revision FROM businesses WHERE id=? AND parent_id=?').get(input.branchId,root);
+   if(!target)fail(404,'not_found');
+   if(!Number.isSafeInteger(input.expectedRevision)||target.revision!==input.expectedRevision)fail(409,'revision_conflict');
+   if(!!target.active===input.active)fail(400,'no_change');
+   db.prepare('UPDATE businesses SET active=?,revision=revision+1 WHERE id=?').run(input.active?1:0,target.id);
+   db.prepare('DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE business_id=?)').run(target.id);
+   audit(user,target.id,input.active?'branch_reactivated':'branch_suspended');
    return snapshot(user);
   });
  },
