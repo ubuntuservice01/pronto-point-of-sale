@@ -9,7 +9,7 @@ const strings={
   title:'Stock and Expiry Alerts',subtitle:'Spot risks, prevent losses and plan replenishment.',all:'All',expired:'Expired',today:'Expires today',urgent:'Urgent expiry',soon:'Expiring soon',low:'Low stock',out:'No sellable stock',none:'No alerts match this filter.',good:'All clear! No current alerts.',expiry:'Expiry',days:'days',daysLeft:'Days left',overdue:'Expired',batch:'Batch',legacy:'Previous untracked stock',quantity:'Quantity',available:'Sellable stock',physical:'Physical stock',minimum:'Stock minimum',units:'units',seeLots:'View batches',receive:'Receive batch',settings:'Configure alerts',settingsInfo:'Thresholds are configured per business. Alerts use current data and do not send automatic messages.',expiryDays:'Warn how many days before expiry',urgentDays:'Mark urgent within how many days',reorderDays:'Replenishment target coverage (days)',reason:'Reason for changing settings',save:'Save settings',saved:'Alert settings saved.',failed:'Could not save. Check values or refresh.',conflict:'Settings were changed in another session. Refresh and try again.',recommendations:'Replenishment suggestions',replenishment:'Suggested shopping list',estimated:'Estimate from the last 30 days of sales and minimum stock. Verify quantities before purchasing.',bySales:'Basis: recent sales and minimum stock',byMinimum:'Basis: minimum stock (no recent sales)',suggested:'Suggested quantity',target:'Target stock',sales30:'Sold in past 30 days',prepare:'Prepare shopping list',copy:'Copy list',copied:'List copied.',whatsapp:'Share on WhatsApp',noReplenish:'No replenishment quantities currently suggested.',search:'Search product or batch number',filter:'Filter alerts',expSoon:'Expiring',noExpiry:'Expiry not defined',timezone:'Dates are calculated in Mozambique time.',noAutomatic:'Suggestions do not place orders, discount products or send automatic notifications.',todayLabel:'Today',configNotAllowed:'Only owners or managers can configure thresholds.'
  }
 };
-let filter={kind:'all',search:''};
+let filter={kind:'all',search:''},filterTenant=null;
 const count=(summary,kind)=>kind==='expiry'?summary.counts.expired+summary.counts.today+summary.counts.urgent+summary.counts.soon:kind==='critical'?summary.counts.expired+summary.counts.today+summary.counts.out:summary.counts[kind]||0;
 export function alertsHomeHTML({state,tenantId,lang}){
  const L=strings[lang]||strings.pt,summary=inventoryAlerts(state,tenantId);
@@ -17,7 +17,8 @@ export function alertsHomeHTML({state,tenantId,lang}){
  return `<section class="panel alerts-home"><div class="alerts-home-text"><span class="eyebrow">PRONTO POS · ${lang==='en'?'INVENTORY':'INVENTÁRIO'}</span><h2>🔔 ${safe(L.title)}</h2><p>${high?`${high} ${lang==='en'?'priority issues to review':'situações prioritárias por verificar'}`:L.good}</p><div class="alerts-home-counts"><span class="${high?'alert-count-critical':''}">${high} ${lang==='en'?'critical':'críticos'}</span><span>${expiry} ${lang==='en'?'expiry notices':'avisos de validade'}</span><span>${low} ${lang==='en'?'stock notices':'avisos de stock'}</span></div></div><button class="primary" type="button" data-page="alerts">${lang==='en'?'View alerts':'Consultar alertas'} →</button></section>`;
 }
 export function alertsPage({state,tenantId,lang,role}){
- const L=strings[lang]||strings.pt,summary=inventoryAlerts(state,tenantId),config=summary.settings;
+ if(filterTenant!==tenantId){filter={kind:'all',search:''};filterTenant=tenantId;}
+ const L=strings[lang]||strings.pt,summary=inventoryAlerts(state,tenantId);
  const searches=filter.search.trim().toLocaleLowerCase();
  const options=[['all',L.all],['critical',lang==='en'?'Critical':'Críticos'],['expired',L.expired],['today',L.today],['urgent',L.urgent],['soon',L.soon],['out',L.out],['low',L.low]];
  const chosen=summary.alerts.filter(a=>(filter.kind==='all'||(filter.kind==='critical'?['expired','today','out'].includes(a.type):a.type===filter.kind))&&(!searches||[a.productName,a.batchNumber||'',a.expiryDate||''].join(' ').toLocaleLowerCase().includes(searches)));
@@ -41,7 +42,6 @@ export function bindAlertActions({getState,getTenantId,getRole,lang,remote,submi
  const filters={search:document.querySelector('#alerts-search'),kind:document.querySelector('#alerts-kind')};
  if(filters.search)filters.search.oninput=()=>{
   filter.search=filters.search.value;
-  const old=filters.search.selectionStart;
   // Keep the cursor and focus intact while refreshing search results.
   const html=alertsPage({state:getState(),tenantId:getTenantId(),lang,role:getRole()});
   const fragment=document.createElement('template');fragment.innerHTML=html;
