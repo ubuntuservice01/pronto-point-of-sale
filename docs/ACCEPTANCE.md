@@ -143,14 +143,16 @@
 ## Consolidação da versão 0.4
 - [x] `npm run check` inclui o domínio e a interface de gestão comercial.
 - [x] Testes automáticos de clientes, compras, despesas, relatórios, protecção de CSV, permissões e isolamento incluídos em `tests/commercial.test.mjs`.
-- [ ] Execução integrada da suite Node no ambiente de execução e testes funcionais em navegador/dispositivos reais.
+- [x] Execução integrada da suite Node no GitHub Actions: 47 testes aprovados.
+- [ ] Testes funcionais em navegador/dispositivos reais.
 
 
-## Fase 4 — Qualidade e UX (em implementação)
+## Fase 4 — Qualidade e UX (entrega técnica; homologação manual pendente)
 - [x] Histórico filtrável por texto, pagamento, estado da devolução e datas UTC; filtros sem recarga integral.
 - [x] Carrinho protege contra artigos inexistentes, inactivos, duplicados ou quantidades invalidadas por alterações de stock.
 - [x] Abertura de formulários com foco inicial, estados de erro legíveis e campos acessíveis ao teclado.
 - [x] Estado de internet do navegador deixa claro que não confirma disponibilidade do servidor.
 - [x] Ajustes de navegação, impressão, compatibilidade mobile e foco visível.
 - [x] Testes de domínio para qualidade e pipeline de GitHub Actions adicionados.
-- [x] CI GitHub Actions — 47/47 testes, sintaxe e build aprovados (13/10/2026; ver Actions).\n- [ ] Testes visuais reais em Android/iOS/Desktop, scanner, recibos e caixa físico.
+- [x] CI GitHub Actions — 47/47 testes, sintaxe e build aprovados (13/10/2026; ver Actions).
+- [ ] Testes visuais reais em Android/iOS/Desktop, scanner, recibos e caixa físico.
