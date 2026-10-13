@@ -20,10 +20,6 @@ export function updateAlertSettings(state,input,actor){
  const next={expiryDays,urgentDays,reorderDays,revision:old.revision+1};
  return {...state,alertSettings:next,alertEvents:[{id:crypto.randomUUID(),tenantId:actor.tenantId,actorId:actor.id,action:'settings',before:old,after:next,reason:reason.trim(),createdAt:new Date().toISOString()},...(state.alertEvents||[])]};
 }
-function localDay(date){
- const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).filter(p=>p.type!=='literal').map(p=>[p.type,Number(p.value)]));
- return Date.UTC(parts.year,parts.month-1,parts.day);
-}
 // Returns only quantities, never prices or customer information. Safe for inventory employees.
 export function aggregateDemand(state,tenantId,at=new Date(),lookbackDays=30){
  const start=at.getTime()-lookbackDays*epochDay;
@@ -68,10 +64,10 @@ export function inventoryAlerts(state,tenantId,{at=new Date()}={}){
    if(days>config.expiryDays)continue;
    const type=days<0?'expired':days===0?'today':days<=config.urgentDays?'urgent':'soon';
    const legacy=!b.id;
-   alerts.push({id:'date:'+p.id+':'+(b.id||'legacy'),type,severity:typeSeverity[type],productId:p.id,productName:p.name,unit:p.unit,productActive:p.active!==false,batchId:b.id||null,batchNumber:legacy?'':b.number||'',legacy,expiryDate:b.expiryDate,days,quantity:b.quantity,available:sellableQty(state,p),minimum:p.min??0});
+   alerts.push({id:'date:'+p.id+':'+(b.id||'legacy'),type,severity:typeSeverity[type],productId:p.id,productName:p.name,unit:p.unit,productActive:p.active!==false,batchId:b.id||null,batchNumber:legacy?'':b.number||'',legacy,expiryDate:b.expiryDate,days,quantity:b.quantity,available:sellableQty(state,p,at),minimum:p.min??0});
   }
   if(p.active===false)continue;
-  const available=sellableQty(state,p);
+  const available=sellableQty(state,p,at);
   const sold=demand.byProduct?.[p.id]||0;
   const suggested=suggestedReorder(p,available,sold,config);
   if(available===0||available<=p.min){
