@@ -3,7 +3,7 @@ import {allocateFEFO,afterBatchSale} from './batches.js';
 import {normalizeExpiryDate} from './expiry.js';
 export const units=['un','m','m²','kg','g','l','ml','caixa','pacote','saco','rolo','par','conjunto'];
 export const roles=['owner','manager','cashier','stock','finance'];
-export const permissions={owner:['sell','stock','team','history','refund','discount','customers','purchases','expenses','reports','debts','debts'],manager:['sell','stock','history','refund','discount','customers','purchases','expenses','reports'],cashier:['sell','history','customers','debts'],stock:['stock','purchases'],finance:['history','expenses','reports','debts']};
+export const permissions={owner:['sell','stock','team','history','refund','discount','customers','purchases','expenses','reports','debts','alerts'],manager:['sell','stock','history','refund','discount','customers','purchases','expenses','reports','alerts'],cashier:['sell','history','customers','debts'],stock:['stock','purchases','alerts'],finance:['history','expenses','reports','debts']};
 export const can=(role,action)=>(permissions[role]||[]).includes(action);
 export function seed(){return {version:1,tenants:[{id:'t1',name:'Mercearia Boa Compra',type:'Mercearia',owner:'Gabriel'},{id:'t2',name:'Ferragem Horizonte',type:'Ferragem',owner:'Ana'}],products:[
 {id:'p1',tenantId:'t1',name:'Arroz',category:'Alimentação',unit:'kg',price:8500,stock:48,min:10,code:'10001',emoji:'🍚'},
