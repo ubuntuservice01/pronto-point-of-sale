@@ -147,3 +147,9 @@ dialog.scanner-dialog .scanner-viewfinder video{display:block;width:100%;height:
 .license-plan-card button{white-space:normal;min-width:0}
 @media(max-width:760px){.licensing-panel{padding:17px}.license-plans{grid-template-columns:1fr}.license-plan-card{align-items:flex-start}.license-detail{padding:14px}.licensing-panel .panel-title>.primary{width:100%}}
 @media(max-width:390px){.license-plan-card{flex-direction:column;align-items:stretch}.license-detail .business-detail-actions{flex-direction:column}}
+
+/* Optional expiry date on product forms and inventory warnings. */
+.form-hint{font-size:12px;line-height:1.5;color:var(--muted);margin:4px 0 12px}
+.management-tag.expiry-expired,.management-tag.expiry-today{background:#ffebea;color:#922c27;border:1px solid #f5b0a8}
+.management-tag.expiry-soon{background:#fff3d8;color:#79510b;border:1px solid #efd49a}
+.management-tag.expiry-valid{background:#e7f6ee;color:#166246;border:1px solid #b5e5cc}
