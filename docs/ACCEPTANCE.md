@@ -110,3 +110,13 @@
 - [ ] Integrar toda a interface da Fase 2 e validar funcionamento em navegadores e equipamentos reais.
 - [ ] Integrações externas para confirmar pagamentos e reembolsos M-Pesa/e-Mola (não automáticas).
 - [ ] Devoluções parciais e notas de crédito fiscais (fora deste fluxo).
+
+
+## Fase 2 — Interface de venda e caixa
+- [x] Caixa autenticado: abertura, movimentos e fecho pelo servidor.
+- [x] Descontos monetários, meios de pagamento repartidos e troco no POS.
+- [x] Venda suspensa/retomada na aba actual; não persiste no servidor ou após fechar a aba.
+- [x] Devolução integral, motivo e confirmação manual de reembolso; não emite nota de crédito fiscal.
+- [x] Comprovativos com desconto e discriminação de meios.
+- [ ] Execução da bateria de testes em Node e inspecção visual em dispositivos.
+- [ ] Devoluções parciais e reembolsos M-Pesa/e-Mola automáticos.

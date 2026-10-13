@@ -37,3 +37,11 @@
 .catalog-entry{padding:14px}.catalog-line{align-items:flex-start;gap:9px}.catalog-buttons{padding-left:0;gap:5px}
 .catalog-buttons .text-button{margin-left:0}.management-team .list-row{flex-wrap:wrap}.management-team .catalog-buttons{width:100%;padding-left:48px}}
 @media(max-width:380px){.management-filters{grid-template-columns:1fr}.management-filters input{grid-column:auto}}
+
+/* Phase 2: checkout and refund UX */
+.cart-tools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.cart-tools button{min-height:36px;font-size:11px;padding:7px}
+.split-payments{margin:12px 0}.split-payments p{font-size:11px}.split-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.split-grid label{margin:8px 0}.refund-history{margin-top:15px}
+.confirm-refund{display:flex;align-items:start;gap:10px;line-height:1.5}.confirm-refund input{width:19px;height:19px;min-height:0;flex-shrink:0;margin:0}
+.receipt-payments{border-top:1px solid var(--border);padding:10px 0;margin-top:14px}
+.receipt-payments div{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:12px}
