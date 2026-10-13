@@ -37,6 +37,7 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  CREATE TABLE IF NOT EXISTS subscriptions(business_id TEXT PRIMARY KEY REFERENCES businesses(id),plan_id TEXT NOT NULL REFERENCES subscription_plans(id),started_ms INTEGER NOT NULL,expires_ms INTEGER NOT NULL,revision INTEGER NOT NULL DEFAULT 0,cancelled INTEGER NOT NULL DEFAULT 0);
  CREATE TABLE IF NOT EXISTS license_events(id TEXT PRIMARY KEY,business_id TEXT NOT NULL REFERENCES businesses(id),actor_id TEXT NOT NULL REFERENCES users(id),action TEXT NOT NULL,plan_id TEXT,previous_expiry_ms INTEGER,new_expiry_ms INTEGER,reason TEXT NOT NULL,reference TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL);
  CREATE INDEX IF NOT EXISTS idx_license_events_biz ON license_events(business_id,created_at DESC);`);
+ if(!db.prepare('PRAGMA table_info(license_events)').all().some(c=>c.name==='periods'))db.exec('ALTER TABLE license_events ADD COLUMN periods INTEGER NOT NULL DEFAULT 0');
  
  const DAY=86400000;
  function licenseFor(id){
@@ -52,8 +53,8 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   if(!db.prepare('SELECT id FROM businesses WHERE id=?').get(id))fail(404,'not_found');
   return id;
  }
- function licenseEvent(id,actor,action,planId,prior,next,reason,reference='',eventId=randomUUID()){
-  db.prepare('INSERT INTO license_events VALUES(?,?,?,?,?,?,?,?,?,?)').run(eventId,id,actor.id,action,planId,prior,next,reason,reference,new Date(now()).toISOString());
+ function licenseEvent(id,actor,action,planId,prior,next,reason,reference='',eventId=randomUUID(),periods=0){
+  db.prepare('INSERT INTO license_events(id,business_id,actor_id,action,plan_id,previous_expiry_ms,new_expiry_ms,reason,reference,created_at,periods) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(eventId,id,actor.id,action,planId,prior,next,reason,reference,new Date(now()).toISOString(),periods);
   audit(actor,id,'license_'+action);
  }
  const dummyHash=passwordHash(randomBytes(24).toString('hex'));
@@ -65,7 +66,7 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  function ready(user){if(user.must_change)fail(403,'password_change_required');}
  function businessFor(user,id){ready(user);const business=id||user.business_id;if(!business)fail(400,'business_required');if(user.role!=='super'&&business!==user.business_id)fail(403,'forbidden');const found=db.prepare('SELECT id,active FROM businesses WHERE id=?').get(business);if(!found)fail(404,'not_found');if(user.role!=='super'&&!found.active)fail(403,'business_suspended');if(user.role!=='super')licenseGate(business);return business;}
  function authorize(user,action,id){const business=businessFor(user,id);if(user.role==='super'||!can(user.role,action))fail(403,'forbidden');return business;}
- function snapshot(user,id){ready(user);if(user.role==='super'&&!id)return {...empty(),tenants:db.prepare('SELECT * FROM businesses ORDER BY name COLLATE NOCASE').all().map(b=>({...b,license:licenseFor(b.id)})),plans:db.prepare('SELECT id,name,price_cents AS priceCents,duration_days AS durationDays,active,created_at AS createdAt FROM subscription_plans ORDER BY created_at DESC').all().map(p=>({...p,active:!!p.active})),licenseEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.plan_id AS planId,e.previous_expiry_ms AS previousExpiryMs,e.new_expiry_ms AS newExpiryMs,e.reason,e.reference,e.created_at AS createdAt FROM license_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC LIMIT 250').all(),businessEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.before_data AS beforeData,e.after_data AS afterData,e.reason,e.created_at AS createdAt FROM business_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC,e.rowid DESC LIMIT 250').all().map(e=>({...e,before:JSON.parse(e.beforeData),after:JSON.parse(e.afterData),beforeData:undefined,afterData:undefined})),auth:publicUser(user)};const business=businessFor(user,id);const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);const data=JSON.parse(row.data);const members=['owner','super'].includes(user.role)?db.prepare('SELECT id,name,username,role,active,revision,business_id AS tenantId FROM users WHERE business_id=? ORDER BY name COLLATE NOCASE').all(business).map(m=>({...m,active:!!m.active})):[];const actorNames=new Map(db.prepare('SELECT id,name FROM users WHERE business_id=?').all(business).map(m=>[m.id,m.name]));return {...data,
+ function snapshot(user,id){ready(user);if(user.role==='super'&&!id)return {...empty(),tenants:db.prepare('SELECT * FROM businesses ORDER BY name COLLATE NOCASE').all().map(b=>({...b,license:licenseFor(b.id)})),plans:db.prepare('SELECT id,name,price_cents AS priceCents,duration_days AS durationDays,active,created_at AS createdAt FROM subscription_plans ORDER BY created_at DESC').all().map(p=>({...p,active:!!p.active})),licenseEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.plan_id AS planId,e.previous_expiry_ms AS previousExpiryMs,e.new_expiry_ms AS newExpiryMs,e.reason,e.reference,e.periods,e.created_at AS createdAt FROM license_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC LIMIT 250').all(),businessEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.before_data AS beforeData,e.after_data AS afterData,e.reason,e.created_at AS createdAt FROM business_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC,e.rowid DESC LIMIT 250').all().map(e=>({...e,before:JSON.parse(e.beforeData),after:JSON.parse(e.afterData),beforeData:undefined,afterData:undefined})),auth:publicUser(user)};const business=businessFor(user,id);const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);const data=JSON.parse(row.data);const members=['owner','super'].includes(user.role)?db.prepare('SELECT id,name,username,role,active,revision,business_id AS tenantId FROM users WHERE business_id=? ORDER BY name COLLATE NOCASE').all(business).map(m=>({...m,active:!!m.active})):[];const actorNames=new Map(db.prepare('SELECT id,name FROM users WHERE business_id=?').all(business).map(m=>[m.id,m.name]));return {...data,
   customers:can(user.role,'customers')?(data.customers||[]):[],
   purchases:can(user.role,'purchases')||can(user.role,'reports')?(data.purchases||[]):[],
   expenses:can(user.role,'expenses')||can(user.role,'reports')?(data.expenses||[]):[],
@@ -135,14 +136,14 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   if(typeof input.operationId!=='string'||input.operationId.length<10||input.operationId.length>80)fail(400,'operation_id');
   return transaction(()=>{
    const duplicate=db.prepare('SELECT * FROM license_events WHERE id=?').get(input.operationId);
-   if(duplicate){if(duplicate.business_id===id&&duplicate.action==='renewed'&&duplicate.reason===reason&&duplicate.reference===ref)return snapshot(user);fail(409,'operation_conflict');}
+   if(duplicate){if(duplicate.business_id===id&&duplicate.action==='renewed'&&duplicate.reason===reason&&duplicate.reference===ref&&duplicate.periods===periods)return snapshot(user);fail(409,'operation_conflict');}
    const previous=db.prepare('SELECT s.*,p.duration_days FROM subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.business_id=?').get(id);
    if(!previous)fail(404,'license_not_found');
    if(previous.revision!==input.expectedRevision)fail(409,'revision_conflict');
    const base=previous.cancelled?now():Math.max(now(),previous.expires_ms),end=base+previous.duration_days*periods*DAY;
    if(!Number.isSafeInteger(end)||end>Date.UTC(9999,0,1))fail(400,'license_input');
    db.prepare('UPDATE subscriptions SET expires_ms=?,cancelled=0,revision=revision+1 WHERE business_id=?').run(end,id);
-   licenseEvent(id,user,'renewed',previous.plan_id,previous.expires_ms,end,reason,ref,input.operationId);
+   licenseEvent(id,user,'renewed',previous.plan_id,previous.expires_ms,end,reason,ref,input.operationId,periods);
    return snapshot(user);
   });
  },
