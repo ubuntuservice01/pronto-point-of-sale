@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {parseArguments,createPreviewServer} from '../scripts/dev.mjs';
+import {createApp} from '../server/http.mjs';
+import {createStore} from '../server/store.mjs';
+test('Lovable port/host flags are parsed without becoming a directory',()=>{const options=parseArguments(['--host','0.0.0.0','--port','8080','--strictPort'],{});assert.equal(options.root,process.cwd());assert.equal(options.port,8080);assert.equal(options.host,'0.0.0.0');assert.equal(parseArguments(['dist','--port=8081'],{}).root,process.cwd()+'/dist');});
+test('Preview serves demo HTML and every boot module with the right MIME type',async()=>{const app=createPreviewServer(process.cwd());await new Promise(r=>app.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${app.address().port}`;try{const html=await (await fetch(base)).text();assert.match(html,/name="pronto-mode" content="demo"/);assert.match(html,/src="\/src\/boot.js"/);for(const path of ['boot','app','auth','storage','model','admin-ui','icons']){const response=await fetch(`${base}/src/${path}.js`);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/javascript/);}assert.equal((await fetch(base+'/src/styles.css')).status,200);}finally{await new Promise(r=>app.close(r));}});
+test('Authenticated server injects server mode while preview stays independent of login',async()=>{const store=createStore(':memory:',{secure:false});const app=createApp(store);await new Promise(r=>app.listen(0,'127.0.0.1',r));try{const html=await (await fetch(`http://127.0.0.1:${app.address().port}`)).text();assert.match(html,/name="pronto-mode" content="server"/);}finally{await new Promise(r=>app.close(r));store.close();}});

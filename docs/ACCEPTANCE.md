@@ -71,3 +71,12 @@
 - Leitura com código + Enter só emite beep se o produto for adicionado.
 - Quantidades de peças/embalagens devem ser inteiras; quantidades fraccionadas limitadas a três casas decimais na interface.
 - Servidor sem alterações. Testes de domínio/HTTP e build passaram; inspecção visual e testes de interacção em dispositivo continuam pendentes.
+
+## Correcção da prévia em branco
+
+- O servidor de prévia aceita --port/--host/--strictPort sem interpretar essas opções como pasta.
+- A prévia e o build estático abrem a demonstração do front-end por defeito.
+- O servidor autenticado assinala explicitamente modo server no HTML; a API e os dados não foram alterados.
+- O arranque mostra uma mensagem recuperável se os módulos falharem, em vez de uma página em branco.
+- Testes HTTP verificam index, módulos, MIME types e a diferença entre prévia e servidor: 20 testes passaram.
+- Prévia real do Lovable ainda precisa de actualização e validação visual.

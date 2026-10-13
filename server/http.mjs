@@ -32,6 +32,6 @@ export function createApp(store,{root=process.cwd(),origin}={}){
  }
  if(!['GET','HEAD'].includes(req.method))throw new HttpError(405,'method');
  const pathname=decodeURIComponent(url.pathname);if(pathname!=='/'&&!/^\/(src\/[\w.-]+\.(js|css)|icon\.svg|manifest\.webmanifest|sw\.js|index\.html)$/.test(pathname))throw new HttpError(404,'not_found');
- const file=resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+sep))throw new HttpError(403,'forbidden');let data;try{data=await readFile(file);}catch{data=await readFile(resolve(root,'public','.'+pathname));}res.writeHead(200,{'Content-Type':mime[extname(file)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:data);
+ const file=resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+sep))throw new HttpError(403,'forbidden');let data;try{data=await readFile(file);}catch{data=await readFile(resolve(root,'public','.'+pathname));}if(extname(file)==='.html')data=Buffer.from(data.toString().replace('name="pronto-mode" content="demo"','name="pronto-mode" content="server"'));res.writeHead(200,{'Content-Type':mime[extname(file)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:data);
  }catch(e){if(!(e instanceof HttpError)&&e.code!=='ENOENT')console.error('Pronto POS request failed:',e.name);send(res,e.status||(e.code==='ENOENT'?404:500),{error:e.status?e.message:e.code==='ENOENT'?'not_found':'server_error'});}});
 }

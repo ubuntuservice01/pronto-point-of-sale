@@ -1,4 +1,5 @@
-export const isRemote=new URLSearchParams(location.search).get('demo')!=='1';
+const params=new URLSearchParams(location.search);
+export const isRemote=params.get('demo')!=='1'&&(params.get('mode')==='server'||document.querySelector('meta[name="pronto-mode"]')?.content==='server');
 export async function api(path,body){const response=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',credentials:'same-origin',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});let data;try{data=await response.json();}catch{throw Error('server_unavailable');}if(!response.ok)throw Error(data.error||'server_error');return data;}
 export async function authenticate(){if(!isRemote)return;let user;try{user=await api('me');}catch{user=await login();}if(user.mustChange)await changePassword();}
 function language(){return localStorage.getItem('pronto-language')==='en';}
