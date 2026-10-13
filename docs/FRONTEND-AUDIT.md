@@ -25,7 +25,7 @@
 | Fornecedores/compras | Compras com nome de fornecedor e custo, reposição de stock | Cadastro único de fornecedores, pagamentos pendentes, ordens de compra e devoluções a fornecedores | Média |
 | Despesas | Criar e consultar despesas | Editar/anular lançamento com auditoria e anexar comprovativos | Média |
 | Relatórios | Filtros por data, CSV, impressão, margem parcial, produtos mais vendidos | Lucro líquido real, custos médios, impostos e relatórios fiscais; testes reais de exportação | Alta para uso comercial |
-| Super Admin | Criar, editar, filtrar por estado e suspender/reactivar comerciantes no servidor, com revogação de sessões e histórico | Planos, subscrições, cobranças e recuperação administrativa de acesso ainda por implementar | Alta |
+| Super Admin | Criar, editar, filtrar por estado e suspender/reactivar comerciantes no servidor, com revogação de sessões e histórico | Planos, atribuição e renovação manual implementados; faltam cobranças integradas, notificações e recuperação administrativa de acesso | Alta |
 | Perfil/Definições | Idioma, logout e gestão de sessões | Alterar dados do negócio/perfil, mudar senha após login e recuperação de credenciais | Média |
 | Pagamentos | Métodos dinheiro, M-Pesa, e-Mola, transferência com confirmação manual | Cobrança/verificação automática e reconciliação real de M-Pesa/e-Mola/transferências | Alta |
 | Recibos/Impressão | Comprovativo **não fiscal** e função de impressão do navegador | Tamanhos 58/80 mm, QR, impressão Bluetooth/ESC-POS, numeração e facturação fiscal certificada onde aplicável | Alta |
@@ -50,3 +50,6 @@ A gestão de colaboradores reais já permite editar nome e perfil, desactivar/re
 
 ## Actualização — Super Admin e comerciantes (13/10/2026)
 A administração de comerciantes está ligada ao Node/SQLite: edição de nome comercial, proprietário de referência e contactos, suspensão/reactivação de contas, revogação de sessões, histórico e filtro por estado. A suspensão impede novos logins e preserva dados comerciais. Planos pagos, cobranças e gestão de subscrições continuam pendentes, tal como os testes visuais de campo.
+
+## Actualização — Licenciamento (13/10/2026)
+Planos de duração/preço configurável, licenças por comerciante, renovação e cancelamento manual estão ligados ao servidor. A expiração é verificada nas sessões e no login pelo relógio do servidor; os comerciantes legados sem licença atribuída não ficam bloqueados. Os planos não executam cobrança, verificação financeira ou notificações. O painel apresenta preços configuráveis e validade, sem alegar pagamentos efectuados.
