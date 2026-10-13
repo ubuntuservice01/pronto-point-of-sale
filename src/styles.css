@@ -558,3 +558,16 @@ dialog::backdrop{background:#122c3c86}
  .cashier-payment{font-size:14px;min-height:54px}
  .cashier-mode .cart{padding-bottom:34px}
 }
+
+
+/* Phase 5: presentation-only adaptations to merchant business type. */
+.business-preset-note{display:flex;align-items:center;gap:13px;padding:13px 16px;margin:0 0 18px;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-card)}
+.business-preset-note .business-preset-icon{display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;border-radius:12px;background:var(--green-wash);font-size:25px}
+.business-preset-note strong{display:block;color:var(--ink);font-size:14px;font-weight:750}
+.business-preset-note small{font-size:12px;margin-top:3px;line-height:1.45}
+.category-suggestions{margin:-5px 0 13px}
+.category-suggestions>small{font-size:12px;margin-bottom:9px}
+.category-suggestions>div{display:flex;flex-wrap:wrap;gap:8px}
+.category-suggestion{min-height:39px;max-width:100%;font-size:12px;font-weight:650;border:1px solid #bfdbcf;border-radius:25px;background:#f4faf7;color:var(--green-dark);padding:7px 12px}
+.category-suggestion:hover{background:var(--green-wash);border-color:#8ac6b0}
+@media(max-width:760px){.business-preset-note{padding:12px;gap:10px}.category-suggestion{min-height:44px;font-size:13px}}
