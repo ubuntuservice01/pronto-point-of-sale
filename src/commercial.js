@@ -57,14 +57,24 @@ export function commercialReport(state,tenantId,{from='',to=''}={}){
  const creditSales=sales.filter(s=>s.method==='credit').reduce((n,s)=>n+s.total,0);
  const debtCollections=(state.debtPayments||[]).filter(p=>p.tenantId===tenantId&&inDates(p.createdAt,from,to)).reduce((n,p)=>n+p.amount,0);
  const refundedIds=new Set((state.refunds||[]).filter(r=>r.tenantId===tenantId).map(r=>r.saleId));
- let marginRevenue=0,cogs=0,costedSales=0;
- for(const sale of sales){
-   if(refundedIds.has(sale.id))continue;
-   if(!sale.lines?.length||!sale.lines.every(line=>Number.isSafeInteger(line.cost)&&line.cost>=0))continue;
-   const amount=sale.lines.reduce((n,line)=>n+Math.round(line.cost*line.quantity),0);
-   if(!Number.isSafeInteger(amount))continue;
-   cogs+=amount;marginRevenue+=sale.total;costedSales++;
+ const lineCost=line=>Number.isSafeInteger(line.costAmount)&&line.costAmount>=0?line.costAmount:(Number.isSafeInteger(line.cost)&&line.cost>=0?Math.round(line.cost*line.quantity):null);
+ const saleCost=sale=>sale?.lines?.length&&sale.lines.every(line=>lineCost(line)!==null)?sale.lines.reduce((n,line)=>n+lineCost(line),0):null;
+ let cogs=0,costedSales=0,unknownSales=0,unknownRefunds=0,returnCost=0;
+ for(const sale of sales){const cost=saleCost(sale);if(cost===null)unknownSales++;else{cogs+=cost;costedSales++;}}
+ for(const refund of refunds){
+  const original=(state.sales||[]).find(s=>s.tenantId===tenantId&&s.id===refund.saleId);
+  const cost=saleCost(original);if(cost===null)unknownRefunds++;else returnCost+=cost;
  }
+ const completeCostData=unknownSales===0&&unknownRefunds===0;
+ const knownGrossProfit=net-cogs+returnCost;
+ const netOperatingResult=completeCostData?knownGrossProfit-expensesTotal:null;
+ const marginRevenue=sales.filter(s=>saleCost(s)!==null).reduce((sum,s)=>sum+s.total,0);
+ const allocationsFor=s=>Array.isArray(s.payments)&&s.payments.length?s.payments:(s.method==='credit'?[]:[{method:s.method,amount:s.total}]);
+ const moneyByMethod=Object.fromEntries(['cash','mpesa','emola','transfer'].map(method=>[method,
+  sales.reduce((n,s)=>n+allocationsFor(s).filter(p=>p.method===method).reduce((v,p)=>v+p.amount,0),0)
+   -refunds.reduce((n,ref)=>n+(ref.payments||[]).filter(p=>p.method===method).reduce((v,p)=>v+p.amount,0),0)
+   +(state.debtPayments||[]).filter(p=>p.tenantId===tenantId&&inDates(p.createdAt,from,to)&&p.method===method).reduce((n,p)=>n+p.amount,0)
+ ]));
  const grouped=new Map(),daily=new Map();
  for(const sale of sales){
    const date=String(sale.createdAt).slice(0,10);
@@ -79,7 +89,7 @@ export function commercialReport(state,tenantId,{from='',to=''}={}){
    const sale=(state.sales||[]).find(s=>s.id===refund.saleId&&s.tenantId===tenantId);
    for(const line of sale?.lines||[]){const entry=grouped.get(line.productId);if(entry){entry.quantity-=line.quantity;entry.revenue-=line.total;}}
  }
- return {gross,refundTotal,net,creditSales,debtCollections,purchasesTotal,expensesTotal,transactions:sales.length,refundsCount:refunds.length,marginRevenue,cogs,costedSales,estimatedGrossMargin:marginRevenue-cogs,marginCoverage:sales.length?costedSales/sales.length:0,products:[...grouped.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,8),daily:[...daily].sort(([a],[b])=>a.localeCompare(b)).map(([date,total])=>({date,total})),sales,refunds,purchases,expenses};
+ return {gross,refundTotal,net,creditSales,debtCollections,purchasesTotal,expensesTotal,transactions:sales.length,refundsCount:refunds.length,marginRevenue,cogs,costedSales,returnCost,knownGrossProfit,netOperatingResult,completeCostData,unknownSales,unknownRefunds,moneyByMethod,estimatedGrossMargin:marginRevenue-cogs,marginCoverage:sales.length?costedSales/sales.length:0,products:[...grouped.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,8),daily:[...daily].sort(([a],[b])=>a.localeCompare(b)).map(([date,total])=>({date,total})),sales,refunds,purchases,expenses};
 }
 export function csvCell(value){
  const str=String(value??'');
