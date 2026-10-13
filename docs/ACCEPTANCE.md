@@ -45,3 +45,15 @@
 - [x] Venda idempotente e conflito de operação detectado.
 - [ ] Validação visual do novo acesso, credenciais temporárias, criação de negócios e de operadores.
 - [ ] Implantação em servidor Node/SQLite persistente, backup e recuperação.
+
+## Front-end — painel Ubuntu e navegação
+
+- Pesquisa por nome de negócio, proprietário e tipo de comércio.
+- Filtro por tipo, estado vazio e limpeza dos filtros.
+- Detalhes de negócio e abertura do painel; acesso Ubuntu mantém o perfil, sem simular login do proprietário.
+- Contactos e estado editáveis exclusivamente na demonstração local; não suspendem contas reais.
+- Menu mobile com quatro acessos e menu Mais; Ubuntu acessível também no telemóvel.
+- Navegação por hash e botão Voltar do navegador; indicador de carregamento.
+- Perfil do cabeçalho abre definições; ícones SVG, acesso por teclado e foco no título.
+- Servidor e base de dados não foram alterados nesta entrega.
+- Build, testes existentes e verificações de pesquisa/escape passaram. Inspecção visual em navegador/dispositivo ainda pendente.
