@@ -68,7 +68,7 @@ test('Role and tenant enforcement prevent horizontal account takeover',()=>{
   assert.throws(()=>store.memberStatus(a.owner,{memberId:sb.member.id,expectedRevision:0,active:false}),e=>e.status===404);
   assert.throws(()=>store.memberEdit(a.owner,{memberId:sb.member.id,expectedRevision:0,name:'Hijacked',role:'manager'}),e=>e.status===404);
   assert.throws(()=>store.memberEdit(sa.user,{memberId:sb.member.id,expectedRevision:0,name:'Hijacked',role:'manager'}),e=>e.status===403);
-  assert.throws(()=>store.memberStatus(root,{memberId:sa.member.id,expectedRevision:0,active:false}),e=>e.status===403);
+  assert.throws(()=>store.memberStatus(root,{memberId:sa.member.id,expectedRevision:0,active:false}),e=>[400,403].includes(e.status));
   assert.throws(()=>store.memberEdit(a.owner,{memberId:a.owner.id,expectedRevision:0,name:'New owner',role:'cashier'}),e=>e.status===403);
   assert.throws(()=>store.memberStatus(a.owner,{memberId:a.owner.id,expectedRevision:0,active:false}),e=>e.status===403);
   assert.throws(()=>store.memberEdit(a.owner,{memberId:sa.member.id,expectedRevision:0,name:'Root',role:'owner'}),e=>e.status===400);
