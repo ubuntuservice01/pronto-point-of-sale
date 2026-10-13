@@ -101,3 +101,12 @@
 - [x] No servidor real, criação e recepção existentes mantidas; operações sem endpoint são explicitamente bloqueadas.
 - [ ] Implementar endpoints autorizados para edição/inactivação, ajustes e histórico de movimentos e gestão de contas.
 - [ ] Testar interface e scanner em browser/Android/iOS e executar testes automatizados.
+
+## Fase 2 — Caixa autenticado, descontos e pagamentos mistos
+- [x] Operações de caixa no servidor por utilizador/dispositivo/negócio e vendas associadas obrigatoriamente a turno aberto.
+- [x] Cálculo autorizado no servidor de descontos fixos, pagamentos repartidos e troco.
+- [x] Devolução integral com autorização owner/manager, motivo, restauro de stock, prevenção de repetição e registo por turno.
+- [x] Conciliar entradas, saídas, pagamentos mistos e devoluções por método no caixa.
+- [ ] Integrar toda a interface da Fase 2 e validar funcionamento em navegadores e equipamentos reais.
+- [ ] Integrações externas para confirmar pagamentos e reembolsos M-Pesa/e-Mola (não automáticas).
+- [ ] Devoluções parciais e notas de crédito fiscais (fora deste fluxo).

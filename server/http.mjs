@@ -27,6 +27,10 @@ export function createApp(store,{root=process.cwd(),origin}={}){
  else if(path==='/api/members'&&req.method==='POST')send(res,201,store.createMember(user,input));
  else if(path==='/api/products'&&req.method==='POST')send(res,201,store.product(user,input));
  else if(path==='/api/stock'&&req.method==='POST')send(res,200,store.restock(user,input));
+ else if(path==='/api/cash/open'&&req.method==='POST')send(res,200,store.cashOpen(user,input));
+ else if(path==='/api/cash/move'&&req.method==='POST')send(res,200,store.cashMove(user,input));
+ else if(path==='/api/cash/close'&&req.method==='POST')send(res,200,store.cashClose(user,input));
+ else if(path==='/api/refunds'&&req.method==='POST')send(res,201,store.refund(user,input));
  else if(path==='/api/sales'&&req.method==='POST')send(res,201,store.sale(user,input));
  else throw new HttpError(404,'not_found');return;
  }
