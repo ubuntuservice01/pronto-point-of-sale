@@ -5,7 +5,7 @@ const RECORD='active';
 const MAX_AGE=8*60*60*1000;
 const ITERATIONS=240000;
 let vault=null,key=null,writing=Promise.resolve();
-const encode=bytes=>btoa(String.fromCharCode(...bytes));
+const encode=bytes=>{let raw='';for(let i=0;i<bytes.length;i+=16384)raw+=String.fromCharCode(...bytes.subarray(i,i+16384));return btoa(raw);};
 const decode=str=>Uint8Array.from(atob(str),c=>c.charCodeAt(0));
 const b64=buffer=>encode(new Uint8Array(buffer));
 const db=()=>new Promise((resolve,reject)=>{
@@ -116,7 +116,8 @@ export async function pendingSync(send){
  if(!navigator.onLine)return {status:'offline',confirmed:0,pending:vault.pending.length};
  let confirmed=0;
  return write(async()=>{
-  for(const item of vault.pending){
+  while(vault.pending.length){
+   const item=vault.pending[0];
    if(item.status==='conflict')break;
    let snapshot;
    try{snapshot=await send(item.body);}
