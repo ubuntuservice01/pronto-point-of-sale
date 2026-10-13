@@ -6,6 +6,7 @@ import { addProduct, createSale, can, roles } from '../src/model.js';
 import {activeCash,openCash,moveCash,closeCash,attachCashSale,refundSale} from '../src/cash.js';
 import {saveCustomer,recordPurchase,recordExpense} from '../src/commercial.js';
 import {editInventoryProduct,setInventoryStatus,recordInventoryMovement} from '../src/inventory.js';
+import {receiveBatch,adjustProductBatch} from '../src/batches.js';
 export class HttpError extends Error {constructor(status, message){super(message);this.status=status;}}
 const fail=(status,message)=>{throw new HttpError(status,message);};
 const digest=value=>createHash('sha256').update(value).digest('hex');
@@ -23,7 +24,7 @@ function businessFields(input){
 }
 function businessReason(input){return text(input?.reason,250);}
 const validInventoryId=v=>typeof v==='string'&&v.length>0&&v.length<=80;
-const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[],memberEvents:[]});
+const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[],stockBatches:[],memberEvents:[]});
 export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,now=()=>Date.now()}={}){
  if(path!==':memory:')mkdirSync(dirname(path),{recursive:true,mode:0o700});
  const db=new DatabaseSync(path);db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS businesses(id TEXT PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,owner TEXT NOT NULL); CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password_hash TEXT NOT NULL,business_id TEXT REFERENCES businesses(id),role TEXT NOT NULL,must_change INTEGER NOT NULL DEFAULT 1,active INTEGER NOT NULL DEFAULT 1); CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL,device TEXT NOT NULL); CREATE TABLE IF NOT EXISTS payloads(business_id TEXT PRIMARY KEY REFERENCES businesses(id),data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,user_id TEXT,business_id TEXT,action TEXT NOT NULL,created_at TEXT NOT NULL);`);
@@ -72,6 +73,7 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   expenses:can(user.role,'expenses')||can(user.role,'reports')?(data.expenses||[]):[],
   products:user.role==='cashier'?(data.products||[]).map(({cost,...product})=>product):(data.products||[]),
   inventoryEvents:can(user.role,'stock')||can(user.role,'reports')?(data.inventoryEvents||[]).map(e=>({...e,actorName:actorNames.get(e.actorId)||null})):[],
+  stockBatches:(data.stockBatches||[]).filter(b=>b.tenantId===business),
   stockMovements:can(user.role,'stock')||can(user.role,'reports')?(data.stockMovements||[]).map(e=>({...e,actorName:actorNames.get(e.actorId||e.userId)||null})):[],
   cashSessions:(can(user.role,'sell')||can(user.role,'reports')||user.role==='super'?(data.cashSessions||[]):[]).filter(s=>user.role!=='cashier'||s.userId===user.id),
   refunds:(can(user.role,'history')||can(user.role,'reports')||user.role==='super'?(data.refunds||[]):[]).filter(r=>user.role!=='cashier'||r.userId===user.id),tenants:[{...db.prepare('SELECT * FROM businesses WHERE id=?').get(business),license:licenseFor(business)}],members,
@@ -306,6 +308,18 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   try{save(business,current=>recordInventoryMovement(current,business,{id:validInventoryId(input.id)?input.id:randomUUID(),productId:input.productId,kind:'receive',quantity:qty,reason:input.reason||'Entrada de stock (legado)'},user.id));}
   catch(e){if(e instanceof HttpError)throw e;fail(['stock_conflict','operation_conflict'].includes(e.message)?409:400,e.message);}
   audit(user,business,'stock_received');return snapshot(user);
+ },
+ batchReceive(user,input){
+  const business=authorize(user,'stock',input.tenantId);
+  try{save(business,current=>receiveBatch(current,business,input,user.id));}
+  catch(e){if(e instanceof HttpError)throw e;fail(['batch_expiry_conflict','operation_conflict'].includes(e.message)?409:400,e.message);}
+  audit(user,business,'batch_received');return snapshot(user);
+ },
+ batchAdjust(user,input){
+  const business=authorize(user,'stock',input.tenantId);
+  try{save(business,current=>adjustProductBatch(current,business,input,user.id));}
+  catch(e){if(e instanceof HttpError)throw e;fail(['stock_conflict','operation_conflict'].includes(e.message)?409:400,e.message);}
+  audit(user,business,'batch_adjusted');return snapshot(user);
  },
  customerSave(user,input){const business=authorize(user,'customers');try{save(business,current=>saveCustomer(current,business,input));}catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}audit(user,business,'customer_saved');return snapshot(user);},
  purchaseCreate(user,input){const business=authorize(user,'purchases');try{save(business,current=>recordPurchase(current,business,input,user.id));}catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}audit(user,business,'purchase_created');return snapshot(user);},

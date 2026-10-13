@@ -1,3 +1,4 @@
+import {trackedBatches} from './batches.js';
 import {normalizeExpiryDate} from './expiry.js';
 // Inventory mutations shared by the authenticated API and the local demo.
 // All financial values are integer cents; stock supports up to 3 decimals.
@@ -57,6 +58,7 @@ export function recordInventoryMovement(state,tenantId,input,actorId){
  const sig=signature(input,['productId','kind','quantity','expectedStock','reason']);
  if(protect(state,input,tenantId,actorId,input.kind,sig))return state;
  const p=own(state,input.productId,tenantId);
+ if(input.kind==='adjust'&&trackedBatches(state,p).some(b=>b.quantity>0))throw Error('batch_adjust_required');
  const amount=stockNumber(input.quantity,p.unit,input.kind==='receive');
  if(input.kind==='adjust'&&(typeof input.expectedStock!=='number'||!Number.isFinite(input.expectedStock)||input.expectedStock!==p.stock))throw Error('stock_conflict');
  const after=input.kind==='receive'?Math.round((p.stock+amount)*1000)/1000:amount;

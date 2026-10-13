@@ -1,3 +1,4 @@
+import {afterBatchRefund} from './batches.js';
 export const paymentMethods=['cash','mpesa','emola','transfer'];
 export function activeCash(state,{tenantId,userId,deviceId}){return (state.cashSessions||[]).find(s=>s.tenantId===tenantId&&s.userId===userId&&s.deviceId===deviceId&&s.status==='open');}
 function allocations(sale){return Array.isArray(sale.payments)&&sale.payments.length?sale.payments:[{method:sale.method,amount:sale.total}];}
@@ -57,5 +58,5 @@ export function refundSale(state,context,{saleId,id,reason}){
  return {...state,products:state.products.map(p=>{
   const line=sale.lines.find(l=>l.productId===p.id);
   return line?{...p,stock:Math.round((p.stock+line.quantity)*1000)/1000}:p;
- }),sales:state.sales.map(s=>s.id===sale.id?{...s,refundId:id}:s),refunds:[refund,...(state.refunds||[])],inventoryEvents:[...stockEvents,...(state.inventoryEvents||[])],stockMovements:[...stockEvents,...(state.stockMovements||[])]};
+ }),sales:state.sales.map(s=>s.id===sale.id?{...s,refundId:id}:s),refunds:[refund,...(state.refunds||[])],stockBatches:afterBatchRefund(state,sale),inventoryEvents:[...stockEvents,...(state.inventoryEvents||[])],stockMovements:[...stockEvents,...(state.stockMovements||[])]};
 }

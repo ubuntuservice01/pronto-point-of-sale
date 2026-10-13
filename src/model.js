@@ -1,3 +1,4 @@
+import {allocateFEFO,afterBatchSale} from './batches.js';
 import {normalizeExpiryDate} from './expiry.js';
 export const units=['un','m','m²','kg','g','l','ml','caixa','pacote','saco','rolo','par','conjunto'];
 export const roles=['owner','manager','cashier','stock','finance'];
@@ -24,7 +25,7 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
   if(!Number.isFinite(qty)||qty<=0||qty>p.stock)throw Error('stock');
   if(Math.abs(qty*1000-Math.round(qty*1000))>0.00001)throw Error('quantity');
   if(['un','caixa','pacote','saco','rolo','par','conjunto'].includes(p.unit)&&!Number.isInteger(qty))throw Error('quantity');
-  return {productId:p.id,name:p.name,unit:p.unit,quantity:qty,price:p.price,cost:Number.isSafeInteger(p.cost)&&p.cost>=0?p.cost:null,total:Math.round(p.price*qty)};
+  return {productId:p.id,name:p.name,unit:p.unit,quantity:qty,batchAllocations:allocateFEFO(state,p,qty),price:p.price,cost:Number.isSafeInteger(p.cost)&&p.cost>=0?p.cost:null,total:Math.round(p.price*qty)};
  });
  if(customerId!==null&&customerId!==''&&!(state.customers||[]).some(c=>c.id===customerId&&c.tenantId===tenantId))throw Error('customer');
  const subtotal=lines.reduce((sum,line)=>sum+line.total,0);
@@ -54,6 +55,6 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
   const after=Math.round((before-line.quantity)*1000)/1000;
   return {id:crypto.randomUUID(),tenantId,productId:line.productId,productName:line.name,unit:line.unit,action:'sale',type:'sale',referenceId:id,createdAt:sale.createdAt,actorId:userId||'demo',reason:'Venda #'+String(id).slice(0,10),before,after,delta:-line.quantity};
  });
- return {...state,products:state.products.map(p=>{const line=lines.find(l=>l.productId===p.id);return line?{...p,stock:Math.round((p.stock-line.quantity)*1000)/1000}:p;}),sales:[sale,...state.sales],inventoryEvents:[...stockEvents,...(state.inventoryEvents||[])],stockMovements:[...stockEvents,...(state.stockMovements||[])]};
+ return {...state,products:state.products.map(p=>{const line=lines.find(l=>l.productId===p.id);return line?{...p,stock:Math.round((p.stock-line.quantity)*1000)/1000}:p;}),sales:[sale,...state.sales],stockBatches:afterBatchSale(state,lines),inventoryEvents:[...stockEvents,...(state.inventoryEvents||[])],stockMovements:[...stockEvents,...(state.stockMovements||[])]};
 }
 export function addProduct(state,tenantId,product){if(!state.tenants.some(t=>t.id===tenantId))throw Error('tenant');if(!product.name.trim()||!units.includes(product.unit)||!Number.isSafeInteger(product.price)||product.price<=0||!Number.isFinite(product.stock)||product.stock<0||!Number.isFinite(product.min)||product.min<0)throw Error('product');if(['un','caixa','pacote','saco','rolo','par','conjunto'].includes(product.unit)&&!Number.isInteger(product.stock))throw Error('quantity');if(product.code&&state.products.some(p=>p.tenantId===tenantId&&p.code===product.code))throw Error('code');return {...state,products:[...state.products,{...product,expiryDate:normalizeExpiryDate(product.expiryDate),id:crypto.randomUUID(),tenantId,active:true,revision:0}]};}
