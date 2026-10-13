@@ -487,3 +487,47 @@ dialog::backdrop{background:#122c3c86}
 @media(prefers-reduced-motion:reduce){
  .primary,.secondary,.product-card{transition:none!important}
 }
+
+
+/* Phase 3 — mobile ergonomics and product-form hierarchy. */
+.form-section{border:1px solid var(--border);padding:12px 16px 16px;margin:14px 0;border-radius:14px;min-width:0;background:#fff}
+.form-section legend{padding:0 8px;font-size:14px;font-weight:750;color:var(--green-dark)}
+.form-section>label:first-of-type{margin-top:8px}
+.form-section .product-photo-field{margin-top:0}
+.form-section .form-grid{margin-top:0}
+@media(max-width:760px){
+ body{overflow-x:hidden}
+ .workspace,.workspace main,.panel,.sale-layout,.management-filters{min-width:0}
+ .page-heading{gap:12px;flex-wrap:wrap}
+ .page-heading>div{min-width:0;flex:1 1 190px}
+ .page-heading h1{overflow-wrap:anywhere;line-height:1.2}
+ .page-heading-actions{min-width:0}
+ .page-heading-actions button{white-space:normal}
+ .stat,.management-stats article{min-width:0}
+ .stat strong,.management-stats strong{overflow-wrap:anywhere}
+ .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+ .form-grid label{min-width:0;overflow-wrap:anywhere}
+ .form-section{padding:10px 12px 14px;margin:13px 0}
+ .form-section legend{font-size:15px}
+ dialog:not(.scanner-dialog){width:calc(100vw - 20px);max-width:540px;padding:22px 18px;max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
+ dialog .modal-close{position:sticky;float:right;top:0;right:0;z-index:2;width:44px;height:44px;margin:-12px -7px 0 2px;border-radius:12px;background:#fff;color:var(--ink)}
+ dialog h2{clear:both;line-height:1.2;font-size:21px;margin:8px 0 12px;padding-right:0}
+ dialog input,dialog select,dialog textarea{font-size:16px;max-width:100%}
+ dialog button[type=submit],dialog form>.primary.full{min-height:54px;font-size:16px}
+ .catalog-buttons,.cart-tools{gap:8px}
+ .catalog-buttons button,.cart-tools button{min-height:44px;padding:9px 11px;font-size:13px}
+ .quantity button{width:44px;min-height:44px}
+ .mobile-nav{grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+ .mobile-nav .nav-item{min-width:0;overflow-wrap:anywhere;line-height:1.15}
+ .mobile-nav .nav-item>span{flex-shrink:0}
+ .mobile-nav .nav-item.mobile-sell-action{transform:translateY(-14px)}
+ .more-menu .nav-item{min-height:48px;font-size:14px;gap:12px}
+ .more-menu .nav-item>span svg{width:23px;height:23px}
+}
+@media(max-width:390px){
+ .form-grid{grid-template-columns:1fr}
+ .form-section{padding:10px}
+ .mobile-nav{padding-inline:3px}
+ .mobile-nav .nav-item{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){dialog,.mobile-nav .nav-item{scroll-behavior:auto}}
