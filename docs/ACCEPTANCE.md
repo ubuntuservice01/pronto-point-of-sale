@@ -120,3 +120,9 @@
 - [x] Comprovativos com desconto e discriminação de meios.
 - [ ] Execução da bateria de testes em Node e inspecção visual em dispositivos.
 - [ ] Devoluções parciais e reembolsos M-Pesa/e-Mola automáticos.
+
+
+## Testes adicionais da Fase 2
+- [x] Testes de unidade do domínio executados em ambiente JavaScript isolado para desconto, repartição de pagamentos, troco, reposição de stock, idempotência e permissões de devolução.
+- [x] Acrescentados testes de integração para caixa autenticado, fecho, venda descontada, devolução e confirmação manual obrigatória.
+- [ ] Executar testes Node no ambiente do projecto e validar interface em navegador/equipamento real.

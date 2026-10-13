@@ -52,3 +52,14 @@ Em modo autenticado, contas e sessões são reais: hash scrypt com salt, cookie 
 O build `dist/` contém só o cliente; hospedagem estática não executa o servidor. Para usar as contas reais, é necessário alojamento Node com disco persistente. Para produção: HTTPS reverse proxy, `NODE_ENV=production`, `APP_ORIGIN` exacta em HTTPS e acesso restrito ao ficheiro SQLite e aos backups. Não executar várias réplicas com bases SQLite independentes. O servidor de demonstração `npm run dev` não oferece a API; usar `npm start` para esta fase.
 
 17 testes passaram, incluindo integração HTTP, cookie, sessão, primeiro acesso, isolamento e venda transaccional. O teste visual continua pendente pela ausência de Chromium neste ambiente.
+
+
+## Entrega 0.3 — Venda e caixa
+- Caixa real no modo autenticado: abrir turno, entradas/retiradas com motivo, fecho e histórico no servidor, isolados por negócio/utilizador/dispositivo.
+- Cada nova venda autenticada exige turno aberto; operações são associadas ao turno e o preço, desconto, pagamentos e stock são validados no servidor.
+- Descontos fixos em meticais, pagamentos mistos (dinheiro, M-Pesa, e-Mola e transferência), cálculo do troco e comprovativo não fiscal.
+- Devolução **integral** por proprietário ou gerente, com motivo e confirmação do reembolso manual, devolvendo unidades ao stock e preservando a venda original.
+- Carrinhos suspensos apenas em memória da aba do navegador; perdem-se quando a aba é fechada ou a página recarregada.
+- O sistema **não efectua nem confirma automaticamente** cobranças ou reembolsos M-Pesa/e-Mola. É necessária confirmação humana. Não emite nota de crédito fiscal.
+- Offline autenticado continua pendente. A nova fase usa a API Node/SQLite já existente, não o Supabase.
+- Testes de integração em Node, navegador e equipamento real continuam a ser obrigatórios antes de uso comercial.

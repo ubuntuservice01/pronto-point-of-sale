@@ -46,3 +46,39 @@ test('Authenticated cashier cannot sell without an open cash shift',()=>{
  assert.equal(store.sale(owner,sale).sales[0].cashSessionId!==undefined,true);
  }finally{store.close();}
 });
+
+test('Server cash register supports a complete discounted sale and refund reconciliation',()=>{
+ const store=createStore(':memory:',{bootstrapUser:'ubuntu.root',bootstrapPassword:'VeryLongPassword123!',secure:false});
+ try {
+ const admin=store.session(store.login('ubuntu.root','VeryLongPassword123!','root').token);
+ const welcome=store.createBusiness(admin,{name:'Store',type:'Retail',owner:'Ana'});
+ const login=store.login(welcome.onboarding.username,welcome.onboarding.temporaryPassword,'phone');
+ store.changePassword(store.session(login.token),welcome.onboarding.temporaryPassword,'ChangedPassword2026!',login.token);
+ const owner=store.session(login.token),tenantId=owner.business_id;
+ const product=store.product(owner,{tenantId,name:'Oil',category:'Food',unit:'un',code:'A',price:2000,stock:5,min:1}).products[0];
+ store.cashOpen(owner,{opening:5000});
+ const after=store.sale(owner,{id:'sale-1',tenantId,deviceId:'forged-device',cart:[{productId:product.id,quantity:1}],discount:200,payments:[{method:'cash',amount:1000},{method:'emola',amount:800}],received:1500});
+ const sale=after.sales[0];assert.equal(sale.total,1800);assert.equal(sale.change,500);
+ assert.equal(sale.cashSessionId,after.cashSessions[0].id);
+ assert.equal(sale.deviceId,'phone');
+ assert.throws(()=>store.refund(owner,{id:'refund-1',saleId:'sale-1',reason:'Defect'}),/refund_not_confirmed/);
+ const returned=store.refund(owner,{id:'refund-1',saleId:'sale-1',reason:'Defect',manualConfirmed:true});
+ assert.equal(returned.products[0].stock,5);assert.equal(returned.sales[0].refundId,'refund-1');
+ assert.throws(()=>store.refund(owner,{id:'refund-2',saleId:'sale-1',reason:'Duplicate',manualConfirmed:true}),/already_refunded/);
+ const closed=store.cashClose(owner,{counted:{cash:5000,mpesa:0,emola:0,transfer:0},note:''});
+ assert.equal(closed.cashSessions[0].status,'closed');
+ assert.throws(()=>store.sale(owner,{id:'sale-2',tenantId,cart:[{productId:product.id,quantity:1}],method:'cash',received:2000}),/cash_not_open/);
+ }finally{store.close();}
+});
+test('Cash closing validates its reconciliation object at API boundary',()=>{
+ const store=createStore(':memory:',{bootstrapUser:'ubuntu.root',bootstrapPassword:'VeryLongPassword123!',secure:false});
+ try{
+  const admin=store.session(store.login('ubuntu.root','VeryLongPassword123!','root').token);
+  const welcome=store.createBusiness(admin,{name:'Store',type:'Retail',owner:'Ana'});
+  const login=store.login(welcome.onboarding.username,welcome.onboarding.temporaryPassword,'phone');
+  store.changePassword(store.session(login.token),welcome.onboarding.temporaryPassword,'ChangedPassword2026!',login.token);
+  const owner=store.session(login.token);
+  store.cashOpen(owner,{opening:0});
+  assert.throws(()=>store.cashClose(owner,{}),/cash_amount/);
+ }finally{store.close();}
+});

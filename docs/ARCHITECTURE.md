@@ -61,3 +61,11 @@ Isolamento imposto pela associação business_id da conta. Clientes não podem a
 Autenticação cliente usa cookie HttpOnly; nenhuma palavra-passe é guardada em IndexedDB/localStorage. Endpoints API não são armazenados pelo service worker. Operações autenticadas são online nesta etapa. O demo local tem outro fluxo, continua sem segurança e não é utilizado como cache de dados reais.
 
 Pendências antes de produção: testes visuais e scanner, reset seguro de acessos, suspensão/revogação de colaboradores, recuperação do Super Admin, outbox autenticada, sincronização e conflitos offline, caixas/turnos completos, conversões e stock_movements normalizados. Backups e restauro de SQLite precisam de procedimento operacional e validação.
+
+
+## Fase 2 — actualização do caixa e vendas
+A venda autenticada exige caixa aberto no mesmo negócio, utilizador e dispositivo indicado na sessão autenticada. O servidor ignora o deviceId de venda enviado pelo cliente e associa a operação à sessão de login, evitando que um pedido escolha outro caixa. O controlo de caixa, venda e stock é persistido no payload do negócio sob transacção SQLite.
+
+O servidor recalcula subtotal, desconto fixo, alocação exacta de pagamento por meio e troco do montante recebido em dinheiro. Os movimentos de devolução são autorizações administrativas de devolução integral; apenas proprietário/gerente podem registar, um motivo e confirmação explícita de reembolso manual são obrigatórios. Não existe integração financeira para executar devoluções automáticas, emissão de notas de crédito fiscais ou suporte a devoluções parciais. Reembolso registado é uma declaração do operador; não é prova bancária.
+
+O carrinho suspenso é temporário na aba; não equivale a uma encomenda persistida, reserva de stock ou venda sincronizada. A operação autenticada continua a exigir internet e o software ainda requer validação de campo.
