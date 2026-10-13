@@ -571,3 +571,31 @@ dialog::backdrop{background:#122c3c86}
 .category-suggestion{min-height:39px;max-width:100%;font-size:12px;font-weight:650;border:1px solid #bfdbcf;border-radius:25px;background:#f4faf7;color:var(--green-dark);padding:7px 12px}
 .category-suggestion:hover{background:var(--green-wash);border-color:#8ac6b0}
 @media(max-width:760px){.business-preset-note{padding:12px;gap:10px}.category-suggestion{min-height:44px;font-size:13px}}
+
+
+/* Phase 6 — merchant dashboard, readable KPIs and honest margin reporting. */
+.merchant-insights{margin:20px 0}
+.merchant-insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:13px}
+.merchant-insight{position:relative;min-width:0;min-height:125px;padding:19px 17px;border:1px solid var(--border);border-radius:16px;background:#fff;box-shadow:var(--shadow-card)}
+.merchant-insight>small{display:block;margin:0 34px 12px 0;font-size:12px;line-height:1.4;color:var(--muted)}
+.merchant-insight>strong{display:block;font-size:clamp(19px,2vw,25px);font-weight:790;font-variant-numeric:tabular-nums;line-height:1.2;overflow-wrap:anywhere;letter-spacing:-.03em}
+.merchant-insight-symbol{position:absolute;right:15px;top:16px;display:grid;place-items:center;width:29px;height:29px;border-radius:9px;background:var(--green-wash);color:var(--green-dark);font-size:18px}
+.merchant-margin-note{margin:10px 2px 18px;font-size:12px;color:var(--muted)}
+.merchant-insights-bottom{display:grid;grid-template-columns:1.2fr 1fr;gap:15px;align-items:stretch;margin-top:15px}
+.merchant-insights-bottom:has(> :only-child){grid-template-columns:1fr}
+.merchant-insights-bottom .panel{min-width:0}
+.merchant-chart h2,.merchant-top h2{font-size:17px;margin:0 0 18px}
+.merchant-chart-bars{height:165px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:13px;align-items:end}
+.merchant-chart-day{height:100%;display:flex;align-items:center;flex-direction:column;justify-content:end;gap:8px;min-width:0}
+.merchant-chart-track{height:125px;width:100%;display:flex;align-items:end;justify-content:center;border-radius:7px;background:#f4f8f6;overflow:hidden}
+.merchant-chart-track i{display:block;width:100%;min-height:2px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,#10a37f,#087f68)}
+.merchant-chart-day small{font-size:11px;font-variant-numeric:tabular-nums}
+.merchant-chart-caption{margin:10px 0 0;font-size:11px}
+.merchant-top-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);padding:10px 0;min-width:0}
+.merchant-top-row:last-child{border-bottom:0}
+.merchant-top-row>span{display:grid;place-items:center;flex:0 0 26px;height:26px;background:var(--green-wash);border-radius:8px;color:var(--green-dark);font-weight:750;font-size:12px}
+.merchant-top-row>strong{flex:1;min-width:0;font-size:13px;overflow-wrap:anywhere}
+.merchant-top-row>small{font-weight:750;font-size:13px}
+@media(max-width:920px){.merchant-insights-bottom{grid-template-columns:1fr}}
+@media(max-width:760px){.merchant-insights-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.merchant-insight{min-height:114px;padding:16px 12px}.merchant-insight>small{font-size:12px;margin-right:23px}.merchant-insight>strong{font-size:19px}.merchant-insight-symbol{right:10px;top:12px;width:25px;height:25px;font-size:15px}.merchant-chart-bars{gap:7px}.merchant-insights-bottom .panel{padding:18px 14px}}
+@media(max-width:360px){.merchant-insights-grid{grid-template-columns:1fr}.merchant-insight{min-height:94px}}
