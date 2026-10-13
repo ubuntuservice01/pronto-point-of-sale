@@ -50,6 +50,8 @@ export function createApp(store,{root=process.cwd(),origin}={}){
  else if(path==='/api/customers'&&req.method==='POST')send(res,200,store.customerSave(user,input));
  else if(path==='/api/customers/credit'&&req.method==='POST')send(res,200,store.customerCredit(user,input));
  else if(path==='/api/alerts/settings'&&req.method==='POST')send(res,200,store.alertConfigure(user,input));
+ else if(path==='/api/shopping/create'&&req.method==='POST')send(res,201,store.shoppingCreate(user,input));
+ else if(path==='/api/shopping/update'&&req.method==='POST')send(res,200,store.shoppingUpdate(user,input));
  else if(path==='/api/debts/payments'&&req.method==='POST')send(res,201,store.debtPayment(user,input));
  else if(path==='/api/purchases'&&req.method==='POST')send(res,201,store.purchaseCreate(user,input));
  else if(path==='/api/expenses'&&req.method==='POST')send(res,201,store.expenseCreate(user,input));
