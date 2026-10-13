@@ -80,3 +80,13 @@
 - O arranque mostra uma mensagem recuperável se os módulos falharem, em vez de uma página em branco.
 - Testes HTTP verificam index, módulos, MIME types e a diferença entre prévia e servidor: 20 testes passaram.
 - Prévia real do Lovable ainda precisa de actualização e validação visual.
+
+## Caixa no front-end
+
+- Demonstração com abertura por negócio/utilizador/dispositivo e saldo inicial.
+- Vendas de demonstração exigem caixa aberto e são associadas ao turno na mesma gravação local.
+- Entradas/retiradas com motivo; retirada superior ao dinheiro disponível é rejeitada.
+- Fecho com valores contados/confirmados para dinheiro, M-Pesa, e-Mola e transferência.
+- Diferenças exigem observação; resumo do fecho fica preservado e consultável.
+- Modo autenticado apresenta a função como ainda não ligada, sem guardar movimentos no servidor.
+- 23 testes passaram, incluindo reconciliação, diferenças, dispositivos e limites. Validação visual continua pendente.
