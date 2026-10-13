@@ -31,7 +31,8 @@ export function recordPurchase(state,tenantId,input,userId){
  const after=Math.round((product.stock+input.quantity)*1000)/1000;
  if(!Number.isFinite(after)||after>100000000)throw Error('stock');
  const item={id:input.id,tenantId,productId:product.id,productName:product.name,unit:product.unit,supplier:input.supplier.trim(),reference:(input.reference||'').trim(),quantity:input.quantity,unitCost:input.unitCost,total,userId,createdAt:new Date().toISOString()};
- return {...state,products:state.products.map(p=>p.id===product.id?{...p,stock:after,cost:input.unitCost}:p),purchases:[item,...(state.purchases||[])]};
+ const movement={id:crypto.randomUUID(),tenantId,productId:product.id,productName:product.name,unit:product.unit,action:'purchase',type:'purchase',actorId:userId||'demo',referenceId:item.id,createdAt:item.createdAt,reason:'Compra: '+item.supplier+(item.reference?' · '+item.reference:''),before:product.stock,after,delta:input.quantity};
+ return {...state,products:state.products.map(p=>p.id===product.id?{...p,stock:after,cost:input.unitCost}:p),purchases:[item,...(state.purchases||[])],inventoryEvents:[movement,...(state.inventoryEvents||[])],stockMovements:[movement,...(state.stockMovements||[])]};
 }
 export function recordExpense(state,tenantId,input,userId){
  if(!state.tenants.some(t=>t.id===tenantId))throw Error('tenant');

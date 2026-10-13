@@ -49,8 +49,13 @@ export function refundSale(state,context,{saleId,id,reason}){
  const cashRefund=methods.find(p=>p.method==='cash')?.amount||0;
  if(cashRefund>cashSummary(state,session).expected.cash)throw Error('cash_insufficient');
  const refund={id,saleId,tenantId:context.tenantId,userId:context.userId,deviceId:context.deviceId,cashSessionId:session.id,createdAt:new Date().toISOString(),total:sale.total,payments:methods.map(p=>({...p})),reason:reason.trim(),manualConfirmed:true};
+ const stockEvents=sale.lines.map(line=>{
+  const p=state.products.find(p=>p.id===line.productId&&p.tenantId===context.tenantId);
+  if(!p)return null;
+  return {id:crypto.randomUUID(),tenantId:context.tenantId,productId:p.id,productName:p.name,unit:p.unit,action:'refund',type:'refund',actorId:context.userId,referenceId:saleId,reason:'Devolução: '+reason.trim(),createdAt:refund.createdAt,before:p.stock,after:Math.round((p.stock+line.quantity)*1000)/1000,delta:line.quantity};
+ }).filter(Boolean);
  return {...state,products:state.products.map(p=>{
   const line=sale.lines.find(l=>l.productId===p.id);
   return line?{...p,stock:Math.round((p.stock+line.quantity)*1000)/1000}:p;
- }),sales:state.sales.map(s=>s.id===sale.id?{...s,refundId:id}:s),refunds:[refund,...(state.refunds||[])]};
+ }),sales:state.sales.map(s=>s.id===sale.id?{...s,refundId:id}:s),refunds:[refund,...(state.refunds||[])],inventoryEvents:[...stockEvents,...(state.inventoryEvents||[])],stockMovements:[...stockEvents,...(state.stockMovements||[])]};
 }

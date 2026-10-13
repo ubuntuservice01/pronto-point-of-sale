@@ -48,6 +48,11 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
  if(cashAmount&&(!Number.isSafeInteger(received)||received<cashAmount))throw Error('received');
  const tender=cashAmount?received:total;
  const sale={id,tenantId,deviceId,userId,customerId:customerId||null,createdAt:new Date().toISOString(),lines,subtotal,discount,total,payments:normalized,method:normalized.length===1?normalized[0].method:'mixed',received:tender,change:cashAmount?received-cashAmount:0,syncStatus:'local'};
- return {...state,products:state.products.map(p=>{const line=lines.find(l=>l.productId===p.id);return line?{...p,stock:Math.round((p.stock-line.quantity)*1000)/1000}:p;}),sales:[sale,...state.sales]};
+ const stockEvents=lines.map(line=>{
+  const before=state.products.find(p=>p.id===line.productId&&p.tenantId===tenantId).stock;
+  const after=Math.round((before-line.quantity)*1000)/1000;
+  return {id:crypto.randomUUID(),tenantId,productId:line.productId,productName:line.name,unit:line.unit,action:'sale',type:'sale',referenceId:id,createdAt:sale.createdAt,actorId:userId||'demo',reason:'Venda #'+String(id).slice(0,10),before,after,delta:-line.quantity};
+ });
+ return {...state,products:state.products.map(p=>{const line=lines.find(l=>l.productId===p.id);return line?{...p,stock:Math.round((p.stock-line.quantity)*1000)/1000}:p;}),sales:[sale,...state.sales],inventoryEvents:[...stockEvents,...(state.inventoryEvents||[])],stockMovements:[...stockEvents,...(state.stockMovements||[])]};
 }
 export function addProduct(state,tenantId,product){if(!state.tenants.some(t=>t.id===tenantId))throw Error('tenant');if(!product.name.trim()||!units.includes(product.unit)||!Number.isSafeInteger(product.price)||product.price<=0||!Number.isFinite(product.stock)||product.stock<0||!Number.isFinite(product.min)||product.min<0)throw Error('product');if(['un','caixa','pacote','saco','rolo','par','conjunto'].includes(product.unit)&&!Number.isInteger(product.stock))throw Error('quantity');if(product.code&&state.products.some(p=>p.tenantId===tenantId&&p.code===product.code))throw Error('code');return {...state,products:[...state.products,{...product,id:crypto.randomUUID(),tenantId,active:true,revision:0}]};}
