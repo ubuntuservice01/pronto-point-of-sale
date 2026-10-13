@@ -643,3 +643,26 @@ button:not(:disabled){-webkit-tap-highlight-color:transparent}
 .panel,.catalog-entry,.quick-actions button,.merchant-insight{transition:box-shadow .18s ease,border-color .18s ease}
 @media(max-width:760px){#notice{bottom:calc(94px + env(safe-area-inset-bottom));font-size:13px;padding:12px 15px}.cashier-mode #notice{bottom:92px}.sale-empty-results{padding:25px 12px}.empty-state h2{font-size:16px}}
 @media(prefers-reduced-motion:reduce){#loading-indicator:not([hidden]){animation:none}.panel,.catalog-entry,.quick-actions button,.merchant-insight{transition:none}}
+
+
+/* Mobile preview corrections: readable hero and unclipped red alert counter. */
+.hero h2{color:#fff!important;text-shadow:0 2px 12px rgba(0,0,0,.16)}
+.nav-item>span:has(.nav-alert-badge){position:relative;overflow:visible!important}
+.nav-alert-badge,.nav-alert-badge-critical{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ position:absolute;top:-8px;right:-13px;z-index:5;
+ width:max-content!important;min-width:23px!important;max-width:none!important;height:23px!important;
+ padding:0 6px!important;margin:0!important;box-sizing:border-box;
+ border:2px solid #fff;border-radius:999px;
+ background:#d62828!important;color:#fff!important;
+ font-size:11px!important;font-weight:800!important;line-height:1!important;
+ letter-spacing:0!important;white-space:nowrap!important;
+ box-shadow:0 3px 9px rgba(115,22,22,.24);
+ transform:none!important;
+}
+@media(max-width:760px){
+ .mobile-nav,.mobile-nav .nav-item,.mobile-nav .nav-item>span{overflow:visible!important}
+ .mobile-nav .nav-item>span:has(.nav-alert-badge){position:relative;isolation:isolate}
+ .mobile-nav .nav-alert-badge{top:-9px;right:-12px;min-width:24px!important;height:24px!important;padding:0 6px!important;font-size:11px!important}
+ .hero h2{color:#fff!important}
+}
