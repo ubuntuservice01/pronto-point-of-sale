@@ -192,3 +192,15 @@
 - [x] Testes de servidor, rotas HTTP e migração integrados no GitHub Actions.
 - [ ] Testar sessões com dois dispositivos reais e o fluxo completo de criação/edição nos navegadores.
 - [ ] Recuperação de acesso e gestão de credenciais perdidas.
+
+
+## Super Admin e comerciantes — Fase 0.8
+- [x] Super Admin pode editar dados do negócio com motivo, histórico e revisão optimista.
+- [x] Suspensão invalida todas as sessões de proprietário/equipa e bloqueia logins futuros.
+- [x] Reactivação preserva dados e permite novos logins com credenciais existentes.
+- [x] Consulta do histórico administrativo, filtro por negócios activos/suspensos e dados de contacto.
+- [x] Migração SQLite aditiva, sem perda dos negócios existentes.
+- [x] Rotas de API protegidas contra utilizadores não autorizados e escrita de outras origens.
+- [x] Testes de regressão, migração, isolamento e interface acrescentados.
+- [ ] Homologar suspensão/reactivação com vários aparelhos reais.
+- [ ] Gestão de planos, subscrições e cobranças (não implementada).
