@@ -122,3 +122,28 @@ dialog.scanner-dialog .scanner-viewfinder video{display:block;width:100%;height:
 @media(max-width:1050px){.business-toolbar{grid-template-columns:minmax(0,1fr) minmax(130px,180px)}.business-toolbar #business-status-filter{grid-column:1/-1}}
 @media(max-width:760px){.business-toolbar{grid-template-columns:1fr 1fr}.business-toolbar .search-box{grid-column:1/-1}.business-toolbar #business-status-filter{grid-column:auto}.business-detail-actions{grid-template-columns:1fr 1fr}}
 @media(max-width:390px){.business-toolbar{grid-template-columns:1fr}.business-toolbar .search-box{grid-column:auto}.business-detail-actions{grid-template-columns:1fr}}
+
+/* Pronto POS v0.9 — Planos, Subscrições e Licenciamento */
+.licensing-panel{margin-top:26px;padding:22px}
+.licensing-panel .panel-title{display:flex;align-items:start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.licensing-panel h2{font-size:21px;margin-bottom:6px}
+.small-muted{color:var(--muted);font-size:12px;line-height:1.5}
+.license-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.license-plan-card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:17px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.license-plan-card strong,.license-plan-card small{display:block;overflow-wrap:anywhere}
+.license-plan-card strong{font-size:15px;margin-bottom:6px}
+.license-plan-card small{color:var(--muted);font-size:11px;margin-bottom:10px}
+.license-pill{display:inline-flex;width:max-content;max-width:100%;font-size:10px;line-height:1.35;font-weight:700;align-items:center;border-radius:999px;padding:5px 10px;background:#e9eef2;color:#375766;overflow-wrap:anywhere}
+.license-active{color:#096d54;background:#dff7eb}
+.license-expired,.license-cancelled{color:#9e3b22;background:#fff0ed}
+.license-legacy{color:#825b0d;background:#fff3d4}
+.business-card>.license-pill{margin-top:10px}
+.license-detail{border:1px solid var(--border);border-radius:13px;background:#f8fbfa;margin:18px 0;padding:18px}
+.license-detail h3{font-size:16px;margin:0 0 12px}
+.license-detail h4{font-size:13px;margin:22px 0 10px}
+.license-detail>p{overflow-wrap:anywhere}
+.license-detail .business-detail-actions{display:flex;flex-wrap:wrap;gap:9px}
+.license-detail .business-detail-actions button{flex:1 1 120px}
+.license-plan-card button{white-space:normal;min-width:0}
+@media(max-width:760px){.licensing-panel{padding:17px}.license-plans{grid-template-columns:1fr}.license-plan-card{align-items:flex-start}.license-detail{padding:14px}.licensing-panel .panel-title>.primary{width:100%}}
+@media(max-width:390px){.license-plan-card{flex-direction:column;align-items:stretch}.license-detail .business-detail-actions{flex-direction:column}}
