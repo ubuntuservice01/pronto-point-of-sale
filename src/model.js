@@ -52,7 +52,7 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
  const cashAmount=normalized.find(p=>p.method==='cash')?.amount||0;
  if(cashAmount&&(!Number.isSafeInteger(received)||received<cashAmount))throw Error('received');
  const tender=isDebt?0:cashAmount?received:total;
- const sale={id,tenantId,deviceId,userId,customerId:customerId||null,createdAt:new Date().toISOString(),lines,subtotal,discount,total,payments:normalized,method:normalized.length===1?normalized[0].method:'mixed',received:tender,change:cashAmount?received-cashAmount:0,syncStatus:'local'};
+ const sale={id,tenantId,deviceId,userId,customerId:customerId||null,debtDueDate:isDebt?debtDueDate:null,createdAt:new Date().toISOString(),lines,subtotal,discount,total,payments:normalized,method:normalized.length===1?normalized[0].method:'mixed',received:tender,change:cashAmount?received-cashAmount:0,syncStatus:'local'};
  const stockEvents=lines.map(line=>{
   const before=state.products.find(p=>p.id===line.productId&&p.tenantId===tenantId).stock;
   const after=Math.round((before-line.quantity)*1000)/1000;
