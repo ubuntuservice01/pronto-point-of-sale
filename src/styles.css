@@ -45,3 +45,25 @@
 .confirm-refund{display:flex;align-items:start;gap:10px;line-height:1.5}.confirm-refund input{width:19px;height:19px;min-height:0;flex-shrink:0;margin:0}
 .receipt-payments{border-top:1px solid var(--border);padding:10px 0;margin-top:14px}
 .receipt-payments div{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:12px}
+
+
+/* Fase 3 — gestão comercial */
+.sidebar nav{min-height:0;overflow-y:auto;padding-right:4px}
+.commercial-filter{margin-bottom:14px;padding:15px}
+.commercial-list{display:grid;gap:12px}.commercial-person{display:flex;align-items:center;gap:15px}
+.commercial-person .grow strong{display:block;font-size:15px}
+.commercial-person small{margin-top:6px;overflow-wrap:anywhere}
+.commercial-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+.commercial-records{margin-bottom:14px}.commercial-records .list-row strong{overflow-wrap:anywhere}
+.report-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:17px}
+.report-toolbar label{margin:0;flex:1;min-width:135px}.report-toolbar button{white-space:nowrap;min-height:44px}
+.report-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.report-kpis strong{overflow-wrap:anywhere;font-size:20px}
+.report-main-number{display:block;font-size:27px;margin:12px 0}
+.report-two-columns{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:16px 0}
+.report-bar-row{display:grid;grid-template-columns:90px 1fr auto;gap:9px;align-items:center;margin:12px 0}
+.report-bar-row strong{font-size:11px}.report-bar-track{height:10px;border-radius:6px;background:#e8eeec;overflow:hidden}
+.report-bar-track i{display:block;height:100%;background:#087f68;border-radius:6px}
+.report-print dl div{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid #ddd}
+.report-print dt{font-weight:600}.report-print dd{margin:0}
+@media(max-width:900px){.report-two-columns{grid-template-columns:1fr}.report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.report-toolbar{align-items:stretch}.report-toolbar label{flex:1 1 42%}.report-toolbar button{flex:1 1 42%}.commercial-person{flex-wrap:wrap}.commercial-person button{min-height:36px}}

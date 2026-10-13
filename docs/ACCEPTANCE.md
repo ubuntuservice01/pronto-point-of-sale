@@ -126,3 +126,16 @@
 - [x] Testes de unidade do domínio executados em ambiente JavaScript isolado para desconto, repartição de pagamentos, troco, reposição de stock, idempotência e permissões de devolução.
 - [x] Acrescentados testes de integração para caixa autenticado, fecho, venda descontada, devolução e confirmação manual obrigatória.
 - [ ] Executar testes Node no ambiente do projecto e validar interface em navegador/equipamento real.
+
+
+## Fase 3 — Gestão comercial (13/10/2026)
+- [x] Menus por perfil para clientes, compras, despesas e relatórios.
+- [x] Clientes com contacto, observações, edição e associação opcional à venda.
+- [x] Compras com fornecedor, produto, custo unitário, referência e entrada automática de stock.
+- [x] Despesas operacionais, separadas de movimentos de caixa.
+- [x] Relatórios por datas UTC, vendas brutas/líquidas, devoluções, compras, despesas, histórico diário e produtos mais vendidos.
+- [x] Margem bruta parcial estimada apenas a partir de custos conhecidos.
+- [x] Exportação CSV e impressão/guardar como PDF do resumo não fiscal.
+- [x] Endpoints autenticados e permissões por negócio para gestão comercial.
+- [ ] Executar testes completos Node e validação visual real em dispositivo.
+- [ ] Fornecedores avançados, compras/vendas a crédito, custos médios e contabilidade fiscal.
