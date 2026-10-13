@@ -10,8 +10,8 @@ export function cashSummary(state,session){
  const payments=Object.fromEntries(paymentMethods.map(method=>[method,sales.reduce((n,s)=>n+allocations(s).filter(p=>p.method===method).reduce((a,p)=>a+p.amount,0),0)-refunds.reduce((n,r)=>n+allocations(r).filter(p=>p.method===method).reduce((a,p)=>a+p.amount,0),0)+debtReceipts.filter(p=>p.method===method).reduce((n,p)=>n+p.amount,0)]));
  const incoming=session.movements.filter(m=>m.type==='in').reduce((n,m)=>n+m.amount,0);
  const outgoing=session.movements.filter(m=>m.type==='out').reduce((n,m)=>n+m.amount,0);
- const gross=sales.reduce((n,s)=>n+s.total,0),refundTotal=refunds.reduce((n,r)=>n+r.total,0);
- return {sales,refunds,payments,debtReceipts,debtReceived:debtReceipts.reduce((n,p)=>n+p.amount,0),incoming,outgoing,refundTotal,expected:{...payments,cash:session.opening+payments.cash+incoming-outgoing},total:gross-refundTotal};
+ const gross=sales.reduce((n,s)=>n+s.total,0),creditIssued=sales.filter(s=>s.method==='credit').reduce((n,s)=>n+s.total,0),refundTotal=refunds.reduce((n,r)=>n+r.total,0);
+ return {sales,refunds,creditIssued,payments,debtReceipts,debtReceived:debtReceipts.reduce((n,p)=>n+p.amount,0),incoming,outgoing,refundTotal,expected:{...payments,cash:session.opening+payments.cash+incoming-outgoing},total:gross-refundTotal};
 }
 function cents(value){if(!Number.isSafeInteger(value)||value<0)throw Error('cash_amount');}
 export function openCash(state,context,opening){

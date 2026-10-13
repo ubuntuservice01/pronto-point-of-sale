@@ -54,6 +54,8 @@ export function commercialReport(state,tenantId,{from='',to=''}={}){
  const expenses=(state.expenses||[]).filter(e=>e.tenantId===tenantId&&inDates(e.createdAt,from,to));
  const gross=sales.reduce((n,s)=>n+s.total,0),refundTotal=refunds.reduce((n,r)=>n+r.total,0),net=gross-refundTotal;
  const purchasesTotal=purchases.reduce((n,p)=>n+p.total,0),expensesTotal=expenses.reduce((n,e)=>n+e.amount,0);
+ const creditSales=sales.filter(s=>s.method==='credit').reduce((n,s)=>n+s.total,0);
+ const debtCollections=(state.debtPayments||[]).filter(p=>p.tenantId===tenantId&&inDates(p.createdAt,from,to)).reduce((n,p)=>n+p.amount,0);
  const refundedIds=new Set((state.refunds||[]).filter(r=>r.tenantId===tenantId).map(r=>r.saleId));
  let marginRevenue=0,cogs=0,costedSales=0;
  for(const sale of sales){
@@ -77,7 +79,7 @@ export function commercialReport(state,tenantId,{from='',to=''}={}){
    const sale=(state.sales||[]).find(s=>s.id===refund.saleId&&s.tenantId===tenantId);
    for(const line of sale?.lines||[]){const entry=grouped.get(line.productId);if(entry){entry.quantity-=line.quantity;entry.revenue-=line.total;}}
  }
- return {gross,refundTotal,net,purchasesTotal,expensesTotal,transactions:sales.length,refundsCount:refunds.length,marginRevenue,cogs,costedSales,estimatedGrossMargin:marginRevenue-cogs,marginCoverage:sales.length?costedSales/sales.length:0,products:[...grouped.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,8),daily:[...daily].sort(([a],[b])=>a.localeCompare(b)).map(([date,total])=>({date,total})),sales,refunds,purchases,expenses};
+ return {gross,refundTotal,net,creditSales,debtCollections,purchasesTotal,expensesTotal,transactions:sales.length,refundsCount:refunds.length,marginRevenue,cogs,costedSales,estimatedGrossMargin:marginRevenue-cogs,marginCoverage:sales.length?costedSales/sales.length:0,products:[...grouped.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,8),daily:[...daily].sort(([a],[b])=>a.localeCompare(b)).map(([date,total])=>({date,total})),sales,refunds,purchases,expenses};
 }
 export function csvCell(value){
  const str=String(value??'');
