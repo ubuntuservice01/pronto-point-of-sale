@@ -1,6 +1,7 @@
 import {activeCash,openCash,moveCash,closeCash,attachCashSale,refundSale,paymentMethods} from './cash.js';
 import {cashPage,cashLabels,reconciliation} from './cash-ui.js';
 import {adminPage,businessResults,businessDetail,adminText} from './admin-ui.js';
+import {makeLicensingActions} from './licensing-ui.js';
 import {icon} from './icons.js';
 import {catalogPage,peoplePage,bindManagement} from './management-ui.js';
 import {commercialPage,bindCommercial} from './commercial-ui.js';
@@ -233,16 +234,18 @@ try{await authenticate();state=await open();if(isRemote){role=state.auth.role;te
 function remoteSettings(){return `<div class="page-heading"><div><h1 tabindex="-1">${t('settings')}</h1><p>${t('account')}</p></div></div><section class="panel settings-panel"><h2>${esc(state.auth.name)}</h2><p>${roleLabel(role)} · ${esc(state.auth.username)}</p><label>${t('language')}<select id="lang"><option value="pt" ${lang==='pt'?'selected':''}>Português de Moçambique</option><option value="en" ${lang==='en'?'selected':''}>English</option></select></label><p class="info-note">${t('syncNote')}</p><button id="sessions" class="secondary full">${lang==='pt'?'Dispositivos e sessões':'Devices and sessions'}</button><button id="logout" class="primary full">${lang==='pt'?'Terminar sessão':'Sign out'}</button></section>`;}
 async function sessionsModal(){try{const items=await api('sessions');const d=modal(`<h2>${lang==='pt'?'Sessões activas':'Active sessions'}</h2>${items.map(s=>`<div class="list-row"><div class="grow"><strong>${esc(s.device)}</strong><small>${new Date(s.expires).toLocaleString()}</small></div>${s.current?`<small>${lang==='pt'?'Actual':'Current'}</small>`:`<button class="secondary" data-revoke="${esc(s.id)}">${lang==='pt'?'Terminar':'End'}</button>`}</div>`).join('')}`);d.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{await api('sessions/revoke',{id:b.dataset.revoke});d.close();await sessionsModal();});}catch{toast(t('saveError'));}}
 
-function admin(){return adminPage({businesses:state.tenants,lang,search:businessSearch,type:businessType,status:businessStatusFilter,remote:isRemote});}
+function admin(){return adminPage({businesses:state.tenants,state,lang,search:businessSearch,type:businessType,status:businessStatusFilter,remote:isRemote});}
+function licensingActions(){return makeLicensingActions({getState:()=>state,submit:async(path,body)=>{state=await remoteAction(path,body);return state;},reload:async()=>{state=await read();render();},render,modal,toast,lang});}
 function bindBusinessActions(root=document){root.querySelectorAll('[data-business-details]').forEach(button=>button.onclick=()=>showBusiness(button.dataset.businessDetails));root.querySelectorAll('[data-tenant]').forEach(button=>button.onclick=()=>{stopCamera();document.querySelector('#modal')?.close();switchTenant(button.dataset.tenant);});const reset=root.querySelector('#reset-business-filters');if(reset)reset.onclick=()=>{businessSearch='';businessType='';businessStatusFilter='';render();};}
-function bindAdmin(){const search=document.querySelector('#business-search');const select=document.querySelector('#business-type');const status=document.querySelector('#business-status-filter');const refresh=()=>{document.querySelector('#admin-results').innerHTML=businessResults({businesses:state.tenants,lang,search:businessSearch,type:businessType,status:businessStatusFilter,remote:isRemote});bindBusinessActions(document.querySelector('#admin-results'));};if(search)search.oninput=()=>{businessSearch=search.value;refresh();};if(select)select.onchange=()=>{businessType=select.value;refresh();};if(status)status.onchange=()=>{businessStatusFilter=status.value;refresh();};bindBusinessActions();}
+function bindAdmin(){const search=document.querySelector('#business-search');const select=document.querySelector('#business-type');const status=document.querySelector('#business-status-filter');const refresh=()=>{document.querySelector('#admin-results').innerHTML=businessResults({businesses:state.tenants,lang,search:businessSearch,type:businessType,status:businessStatusFilter,remote:isRemote});bindBusinessActions(document.querySelector('#admin-results'));};if(search)search.oninput=()=>{businessSearch=search.value;refresh();};if(select)select.onchange=()=>{businessType=select.value;refresh();};if(status)status.onchange=()=>{businessStatusFilter=status.value;refresh();};bindBusinessActions();if(isRemote)licensingActions().bindDashboard(document);}
 function moreMenu(){const d=modal(`<h2>${lang==='pt'?'O seu negócio':'Your business'}</h2><nav class="more-menu">${nav()}</nav>`);d.querySelectorAll('[data-page]').forEach(button=>button.onclick=()=>{d.close();navigate(button.dataset.page);});}
 function showBusiness(id){
  const business=state.tenants.find(b=>b.id===id);if(!business)return;
- const d=modal(businessDetail({business,lang,remote:isRemote,events:state.businessEvents||[]}));
+ const d=modal(businessDetail({business,state,lang,remote:isRemote,events:state.businessEvents||[]}));
  bindBusinessActions(d);
  d.querySelector('#edit-business')?.addEventListener('click',()=>{d.close();businessEdit(id);});
  d.querySelector('#status-business')?.addEventListener('click',()=>{d.close();businessStatus(id);});
+ if(isRemote)licensingActions().bindBusiness(d,id);
 }
 function businessAdminError(error){
  const en=lang==='en';
