@@ -16,16 +16,24 @@ export function productPhotoHTML(product, escape = value => String(value)) {
 }
 export function photoFieldHTML(photo = '', en = false, required = false) {
  const current = (() => { try { return normaliseProductPhoto(photo); } catch { return ''; } })();
- return `<div class="product-photo-field">
-  <label>${en ? 'Product photograph' : 'Fotografia real do produto'}${required ? ' *' : ''}
-   <input type="file" name="productPhoto" accept="image/*" ${required ? 'required' : ''} aria-describedby="product-photo-help">
-  </label>
-  <div class="product-photo-preview">
+ return `<div class="product-photo-field" data-photo-required="${required ? 'true' : 'false'}">
+  <p class="product-photo-label">${en ? 'Product photograph' : 'Fotografia real do produto'}${required ? ' *' : ''}</p>
+  <div class="product-photo-actions" role="group" aria-label="${en ? 'Choose a product photo' : 'Escolher fotografia do produto'}">
+   <label class="product-photo-action photo-upload">
+    <span aria-hidden="true">▧</span><span>${en ? 'Upload photograph' : 'Carregar fotografia'}</span>
+    <input type="file" name="productPhoto" accept="image/*" aria-label="${en ? 'Upload a product photo' : 'Carregar fotografia do produto'}" aria-describedby="product-photo-help">
+   </label>
+   <label class="product-photo-action photo-camera">
+    <span aria-hidden="true">📷</span><span>${en ? 'Take photograph' : 'Tirar fotografia'}</span>
+    <input type="file" name="productCamera" accept="image/*" capture="environment" aria-label="${en ? 'Take a product photo with the camera' : 'Tirar fotografia com a câmara'}" aria-describedby="product-photo-help">
+   </label>
+  </div>
+  <div class="product-photo-preview" aria-live="polite">
    <img data-photo-preview src="${current}" alt="${en ? 'Product photo preview' : 'Pré-visualização da fotografia'}" ${current ? '' : 'hidden'}>
    <span data-photo-placeholder ${current ? 'hidden' : ''}>${en ? 'No photograph selected' : 'Sem fotografia seleccionada'}</span>
   </div>
   ${current ? `<label class="photo-remove"><input name="removeProductPhoto" type="checkbox"> ${en ? 'Remove current photograph' : 'Remover fotografia actual'}</label>` : ''}
-  <p class="form-hint" id="product-photo-help">${en ? 'Choose a real product photo from your phone or camera. JPG, PNG and WebP are accepted and automatically resized.' : 'Escolha uma fotografia real do produto na galeria ou câmara. JPG, PNG e WebP são aceites e reduzidos automaticamente.'}</p>
+  <p class="form-hint" id="product-photo-help">${en ? 'Upload an image from the gallery or take a new photo with the phone camera. The rear camera is preferred when available. JPG, PNG and WebP are automatically resized.' : 'Carregue uma imagem da galeria ou tire uma nova fotografia com a câmara do telemóvel. Sempre que possível, será usada a câmara traseira. JPG, PNG e WebP são reduzidos automaticamente.'}</p>
  </div>`;
 }
 export async function compressProductPhoto(file) {
@@ -54,28 +62,47 @@ export async function compressProductPhoto(file) {
   throw Error('photo_too_complex');
  } finally { if(typeof bitmap.close === 'function') bitmap.close(); }
 }
+// Both capture and gallery feed the same compressed preview and saved photo.
 export function bindProductPhoto(form, onError = () => {}) {
- const input=form.querySelector('[name="productPhoto"]');
- if(!input)return;
- input.addEventListener('change',async()=>{
-  const file=input.files?.[0];
-  form._photoFile=null;form._photoValue=null;
-  if(!file)return;
-  try {
-   const photo=await compressProductPhoto(file);
-   if(input.files?.[0]!==file)return;
-   form._photoFile=file;form._photoValue=photo;
-   const image=form.querySelector('[data-photo-preview]'),placeholder=form.querySelector('[data-photo-placeholder]');
-   image.src=photo;image.hidden=false;placeholder.hidden=true;
-   const remove=form.querySelector('[name="removeProductPhoto"]');if(remove)remove.checked=false;
-  } catch(error) {
-   input.value='';onError(error);
-  }
- });
+ const inputs=[form.querySelector('[name="productPhoto"]'),form.querySelector('[name="productCamera"]')].filter(Boolean);
+ if(!inputs.length)return;
+ let serial=0;
+ const preview=(src)=>{
+  const image=form.querySelector('[data-photo-preview]'),placeholder=form.querySelector('[data-photo-placeholder]');
+  if(!image||!placeholder)return;
+  image.src=src||'';
+  image.hidden=!src;
+  placeholder.hidden=Boolean(src);
+ };
+ for(const input of inputs){
+  input.addEventListener('change',async()=>{
+   const file=input.files?.[0];
+   if(!file)return; // Cancelling the camera should not discard the previous photo.
+   const token=++serial;
+   form._photoInput=input;form._photoFile=null;form._photoValue=null;
+   for(const other of inputs)if(other!==input)other.value='';
+   try {
+    const photo=await compressProductPhoto(file);
+    if(serial!==token || input.files?.[0]!==file)return;
+    form._photoFile=file;form._photoValue=photo;
+    preview(photo);
+    const remove=form.querySelector('[name="removeProductPhoto"]');if(remove)remove.checked=false;
+   } catch(error) {
+    if(serial!==token)return;
+    input.value='';form._photoInput=null;form._photoFile=null;form._photoValue=null;
+    preview(form.querySelector('[data-photo-preview]')?.getAttribute('data-original-photo')||'');
+    onError(error);
+   }
+  });
+ }
+ const image=form.querySelector('[data-photo-preview]');
+ if(image)image.setAttribute('data-original-photo',image.getAttribute('src')||'');
 }
 export async function photoFromForm(form, existing='') {
  if(form.querySelector('[name="removeProductPhoto"]')?.checked)return '';
- const file=form.querySelector('[name="productPhoto"]')?.files?.[0];
+ const selected=[form.querySelector('[name="productPhoto"]'),form.querySelector('[name="productCamera"]')].filter(Boolean);
+ const input=selected.find(node=>node===form._photoInput&&node.files?.[0])||selected.find(node=>node.files?.[0]);
+ const file=input?.files?.[0];
  if(!file)return normaliseProductPhoto(existing);
  return file===form._photoFile&&form._photoValue?form._photoValue:compressProductPhoto(file);
 }
