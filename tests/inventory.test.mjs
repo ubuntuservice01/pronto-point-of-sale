@@ -91,6 +91,7 @@ test('Authenticated server enforces permissions, tenant scoping and movement aud
   assert.throws(()=>store.inventoryMovement(owner,{id:'stale-count',productId:p.id,kind:'adjust',quantity:3,expectedStock:10,reason:'Desactualizado'}),e=>e.status===409);
   assert.equal(s.stockMovements.length,2);
   assert.ok(s.inventoryEvents.some(e=>e.actorId===owner.id&&e.action==='edit'));
+  assert.equal(s.inventoryEvents.find(e=>e.action==='edit').actorName,owner.name);
   const person=store.createMember(owner,{name:'Cash',role:'cashier'}).onboarding;
   const l=store.login(person.username,person.temporaryPassword,'cash');
   store.changePassword(store.session(l.token),person.temporaryPassword,'ChangedCash2026!abc',l.token);

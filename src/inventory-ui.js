@@ -6,7 +6,7 @@ export function inventoryHistoryHTML(state,tenantId,lang,money){
  const history=[...events,...legacy].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,20);
  if(!history.length)return `<p class="empty">${en?'No recorded changes yet. Operations before this update may not have history.':'Ainda não existem alterações registadas. Operações anteriores a esta actualização podem não ter histórico.'}</p>`;
  const actions={created:en?'Created':'Criado',edit:en?'Edited':'Editado',status:en?'Status':'Estado',receive:en?'Stock received':'Stock recebido',adjust:en?'Stock count':'Contagem',sale:en?'Sale':'Venda',purchase:en?'Purchase':'Compra',refund:en?'Return':'Devolução'};
- const actor=e=>(state.members||[]).find(m=>m.id===(e.actorId||e.userId))?.name||e.actorId||e.userId||'—';
+ const actor=e=>e.actorName||(state.members||[]).find(m=>m.id===(e.actorId||e.userId))?.name||e.actorId||e.userId||'—';
  const difference=e=>{
   if(e.action==='status')return e.after?.active?(en?'Activated':'Activado'):(en?'Deactivated':'Desactivado');
   if(e.action==='edit'){
