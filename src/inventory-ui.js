@@ -10,7 +10,7 @@ export function inventoryHistoryHTML(state,tenantId,lang,money){
  const difference=e=>{
   if(e.action==='status')return e.after?.active?(en?'Activated':'Activado'):(en?'Deactivated':'Desactivado');
   if(e.action==='edit'){
-   const fields={name:en?'Name':'Nome',category:en?'Category':'Categoria',code:en?'Barcode':'Código',price:en?'Price':'Preço',min:en?'Minimum':'Mínimo'};
+   const fields={name:en?'Name':'Nome',category:en?'Category':'Categoria',code:en?'Barcode':'Código',price:en?'Price':'Preço',min:en?'Minimum':'Mínimo',expiryDate:en?'Expiry date':'Validade'};
    return Object.keys(e.after||{}).filter(k=>e.before?.[k]!==e.after?.[k]).map(k=>`${fields[k]||k}: ${k==='price'?money(e.before[k]):String(e.before?.[k]??'—')} → ${k==='price'?money(e.after[k]):String(e.after?.[k]??'—')}`).join(' · ');
   }
   return e.before!==undefined&&e.after!==undefined?`${e.before} → ${e.after} ${e.unit||''} (${e.delta>0?'+':''}${e.delta})`:'';
@@ -33,9 +33,9 @@ export function inventoryActions({getProducts,submit,modal,render,toast,reload,l
  return {
   edit(id){
    const p=find(id);if(!p)return;const opId=crypto.randomUUID();
-   const d=modal(`<h2>${labels.edit}</h2><form><label>${en?'Name':'Nome'}<input name="name" value="${escape(p.name)}" maxlength="100" required></label><label>${en?'Category':'Categoria'}<input name="category" value="${escape(p.category)}" maxlength="60" required></label><label>${en?'Barcode':'Código de barras'}<input name="code" value="${escape(p.code)}" maxlength="80"></label><div class="form-grid"><label>${en?'Price (MT)':'Preço (MT)'}<input name="price" type="number" min="0.01" step="0.01" value="${(p.price/100).toFixed(2)}" required></label><label>${en?'Minimum stock':'Stock mínimo'}<input name="min" type="number" min="0" step="0.001" value="${p.min}" required></label></div>${reasons()}<p class="info-note">${en?'To change quantity, use Adjust.':'Para alterar a quantidade, utilize Ajustar.'}</p><button class="primary full">${labels.save}</button></form>`);
+   const d=modal(`<h2>${labels.edit}</h2><form><label>${en?'Name':'Nome'}<input name="name" value="${escape(p.name)}" maxlength="100" required></label><label>${en?'Category':'Categoria'}<input name="category" value="${escape(p.category)}" maxlength="60" required></label><label>${en?'Barcode':'Código de barras'}<input name="code" value="${escape(p.code)}" maxlength="80"></label><div class="form-grid"><label>${en?'Price (MT)':'Preço (MT)'}<input name="price" type="number" min="0.01" step="0.01" value="${(p.price/100).toFixed(2)}" required></label><label>${en?'Minimum stock':'Stock mínimo'}<input name="min" type="number" min="0" step="0.001" value="${p.min}" required></label></div><label>${en?'Expiry date (optional)':'Data de validade (opcional)'}<input name="expiryDate" type="date" value="${escape(p.expiryDate||'')}"></label><p class="form-hint">${en?'Leave this blank if there is no expiry date.':'Deixe em branco se não houver data de validade.'}</p>${reasons()}<p class="info-note">${en?'To change quantity, use Adjust.':'Para alterar a quantidade, utilize Ajustar.'}</p><button class="primary full">${labels.save}</button></form>`);
    d.querySelector('form').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),reason=String(f.get('reason')).trim(),price=Number(f.get('price')),min=Number(f.get('min'));if(!reason)return toast(labels.missing);if(!Number.isFinite(price)||price<=0||!Number.isFinite(min)||min<0)return toast(labels.failed);
-    handle(d,'products/edit',{id:opId,productId:p.id,expectedRevision:p.revision||0,name:String(f.get('name')).trim(),category:String(f.get('category')).trim(),code:String(f.get('code')).trim(),price:Math.round(price*100),min,reason},e.target.querySelector('button'));
+    handle(d,'products/edit',{id:opId,productId:p.id,expectedRevision:p.revision||0,name:String(f.get('name')).trim(),category:String(f.get('category')).trim(),code:String(f.get('code')).trim(),price:Math.round(price*100),min,expiryDate:String(f.get('expiryDate')||''),reason},e.target.querySelector('button'));
    };
   },
   status(id){
