@@ -16,7 +16,7 @@ test('Customer edits are scoped to their business and may be linked to sales',()
  assert.equal(sale.sales[0].customerId,'c1');
  assert.throws(()=>createSale(state,{tenantId:'t2',role:'owner',cart:[{productId:'p6',quantity:1}],id:'s2',customerId:'c1',method:'cash',received:999999}),/customer/);
 });
-test('Purchases update stock and latest cost without altering previous sale snapshots',()=>{
+test('Purchases update stock and lot cost without altering previous sale snapshots',()=>{
  let s=base();
  s=createSale(s,{tenantId:'t1',role:'owner',cart:[{productId:'p1',quantity:1}],id:'old',method:'cash',received:8500});
  assert.equal(s.sales[0].lines[0].cost,null);
@@ -30,6 +30,8 @@ test('Purchases update stock and latest cost without altering previous sale snap
  assert.throws(()=>recordPurchase(s,'t1',{...purchase,id:'new',quantity:-1},'owner'),/purchase_amount/);
  s=createSale(s,{tenantId:'t1',role:'owner',cart:[{productId:'p1',quantity:1}],id:'new',method:'cash',received:8500});
  assert.equal(s.sales[0].lines[0].cost,6500);
+ assert.equal(s.sales[0].lines[0].costAmount,6500);
+ assert.equal(s.sales[0].lines[0].batchAllocations[0].batchNumber,'LOT-COST-65');
  assert.equal(s.sales[1].lines[0].cost,null);
 });
 test('Expenses are distinct from cash movements and reject invalid or conflicting IDs',()=>{
@@ -49,13 +51,39 @@ test('Reports reconcile sales, expenses, purchases and known cost coverage',()=>
  assert.equal(report.expensesTotal,2000);assert.equal(report.marginRevenue,17000);
  assert.equal(report.cogs,10000);assert.equal(report.estimatedGrossMargin,7000);
  assert.equal(report.costedSales,1);
+ assert.equal(report.completeCostData,true);
+ assert.equal(report.netOperatingResult,5000);
  assert.equal(report.products[0].quantity,2);
  assert.throws(()=>commercialReport(s,'t1',{from:'2026-11-02',to:'2026-10-01'}),/date/);
+});
+test('Untracked stock keeps cost unknown despite a later purchase price',()=>{
+ let s=recordPurchase(base(),'t1',{id:'untracked',productId:'p1',quantity:4,unitCost:5000,supplier:'A'},'owner');
+ s=createSale(s,{tenantId:'t1',role:'owner',cart:[{productId:'p1',quantity:2}],id:'unknown-cost',method:'cash',received:17000});
+ assert.equal(s.sales[0].lines[0].cost,null);
+ assert.equal(s.sales[0].lines[0].costAmount,null);
+ const report=commercialReport(s,'t1');
+ assert.equal(report.net,17000);
+ assert.equal(report.unknownSales,1);
+ assert.equal(report.costedSales,0);
+ assert.equal(report.completeCostData,false);
+ assert.equal(report.netOperatingResult,null);
+});
+test('Replenishing a lot changes its weighted cost without rewriting a sale snapshot',()=>{
+ const purchase={productId:'p1',quantity:2,unitCost:5000,supplier:'A',batchNumber:'WEIGHTED-1',expiryDate:'2099-01-01'};
+ let s=recordPurchase(base(),'t1',{...purchase,id:'first'},'owner');
+ s=createSale(s,{tenantId:'t1',role:'owner',cart:[{productId:'p1',quantity:1}],id:'before',method:'cash',received:8500});
+ s=recordPurchase(s,'t1',{...purchase,id:'second',quantity:3,unitCost:7000},'owner');
+ s=createSale(s,{tenantId:'t1',role:'owner',cart:[{productId:'p1',quantity:2}],id:'after',method:'cash',received:17000});
+ assert.equal(s.sales[0].lines[0].costAmount,13000);
+ assert.equal(s.sales[1].lines[0].costAmount,5000);
+ assert.equal(commercialReport(s,'t1').cogs,18000);
 });
 test('CSV preserves numeric negative values, escapes formulas and adds UTF-8 BOM',()=>{
  assert.equal(csvCell('-120.50'),'"-120.50"');
  assert.equal(csvCell('=HYPERLINK(1)'),'"\'=HYPERLINK(1)"');
  assert.equal(csvCell('texto "exemplo"'),'"texto ""exemplo"""');
+ for(const text of ['texto','relatório','123',''])assert.equal(csvCell(text),'"'+text+'"');
+ for(const text of ['+SUM(1,2)','@SUM(1,2)','-SUM(1,2)','  =1+1','\ttexto','\rtexto','\ntexto'])assert.equal(csvCell(text),'"\''+text+'"');
  const output=reportCsv(commercialReport(base(),'t1'));
  assert.ok(output.startsWith('\uFEFF'));assert.match(output,/Data \(UTC\)/);
 });
