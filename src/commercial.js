@@ -74,7 +74,16 @@ export function commercialReport(state,tenantId,{from='',to=''}={}){
  }
  return {gross,refundTotal,net,purchasesTotal,expensesTotal,transactions:sales.length,refundsCount:refunds.length,marginRevenue,cogs,costedSales,estimatedGrossMargin:marginRevenue-cogs,marginCoverage:sales.length?costedSales/sales.length:0,products:[...grouped.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,8),daily:[...daily].sort(([a],[b])=>a.localeCompare(b)).map(([date,total])=>({date,total})),sales,refunds,purchases,expenses};
 }
-export function csvCell(value){const str=String(value??'');const v=/^-?\\d+(?:\\.\\d+)?$/.test(str)?str:/^[=+@\\-\\t\\r]/.test(str)?"'"+str:str;return '"'+v.replaceAll('"','""')+'"';}
+export function csvCell(value){
+ const str=String(value??'');
+ const leading=str.trimStart();
+ const first=leading[0]||'';
+ const numeric=Number.isFinite(Number(leading))&&leading!==''&&first==='-';
+ const potentiallyFormula=['=','+','@','-'].includes(first)&&!(first==='-'&&numeric);
+ const controlPrefix=str.length>0&&(str[0]==='\t'||str[0]==='\r'||str[0]==='\n');
+ const safe=potentiallyFormula||controlPrefix?"'"+str:str;
+ return '"'+safe.replaceAll('"','""')+'"';
+}
 export function reportCsv(report,lang='pt'){
  const header=lang==='en'?['Date (UTC)','Record','Reference','Description','Amount MT']:['Data (UTC)','Tipo','Referência','Descrição','Valor MT'];
  const entries=[
