@@ -394,3 +394,30 @@ dialog.scanner-dialog .scanner-viewfinder video{display:block;width:100%;height:
  .product-photo-action span:first-child{font-size:30px}
 }
 @media(max-width:355px){.product-photo-action{font-size:12px}}
+
+
+/* Mobile bottom dock: elegant five-item navigation and primary sales action. */
+@media(max-width:760px){
+ .mobile-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;gap:2px;overflow:visible;min-height:80px;padding:8px 6px max(10px,env(safe-area-inset-bottom));border-top:1px solid #dfebe6;background:linear-gradient(180deg,#fff 0%,#f9fcfa 100%);box-shadow:0 -8px 28px #073b3110}
+ .mobile-nav .nav-item{flex:none;min-width:0;width:100%;min-height:59px;margin:0;padding:10px 2px 6px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#526777;font-size:11px;font-weight:650;line-height:1.2}
+ .mobile-nav .nav-item>span{display:grid;place-items:center;font-size:27px;line-height:1;min-height:27px}
+ .mobile-nav .nav-item>span svg{width:25px;height:25px;stroke-width:1.75}
+ .mobile-nav .nav-item.active:not(.mobile-sell-action){background:#eaf6f1;color:#087f68}
+ .mobile-nav .nav-item.mobile-sell-action{position:relative;isolation:isolate;align-self:center;transform:translateY(-14px);min-height:78px;margin-bottom:-13px;padding:8px 2px 9px;border:1px solid #0b876b;border-radius:20px;background:linear-gradient(145deg,#119c7b 0%,#087f68 52%,#08644f 100%);color:white;font-size:12px;font-weight:800;letter-spacing:.1px;box-shadow:0 9px 21px #076f5652,0 3px 5px #075b4633;transition:transform .16s ease,box-shadow .16s ease}
+ .mobile-nav .nav-item.mobile-sell-action>span{width:41px;height:41px;border-radius:14px;background:#ffffff25}
+ .mobile-nav .nav-item.mobile-sell-action>span svg{width:29px;height:29px;stroke-width:2.1}
+ .mobile-nav .nav-item.mobile-sell-action.active{box-shadow:0 12px 27px #086c5960,0 0 0 3px #cdeee1}
+ .mobile-nav .nav-item.mobile-sell-action:active{transform:translateY(-12px) scale(.97)}
+ .mobile-nav .nav-item:focus-visible{outline:3px solid #e9b850;outline-offset:3px}
+ .mobile-sale-bar{bottom:calc(89px + env(safe-area-inset-bottom))}
+ footer{padding-bottom:116px}
+ #notice{bottom:112px}
+}
+@media(max-width:370px){
+ .mobile-nav{gap:0;padding-left:3px;padding-right:3px}
+ .mobile-nav .nav-item{font-size:10px;gap:4px}
+ .mobile-nav .nav-item.mobile-sell-action{font-size:11px;border-radius:17px}
+}
+@media(prefers-reduced-motion:reduce){
+ .mobile-nav .nav-item.mobile-sell-action{transition:none}
+}
