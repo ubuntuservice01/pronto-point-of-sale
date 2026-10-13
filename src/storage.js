@@ -18,7 +18,7 @@ async function remoteUpdate(mutator){
  if(business){route='businesses';body=business;}
  else if(member){route='members';body=member;}
  else if(product){route='products';body=product;}
- else if(sale){route='sales';body={id:sale.id,tenantId:sale.tenantId,cart:sale.lines.map(l=>({productId:l.productId,quantity:l.quantity})),method:sale.method,payments:sale.payments,discount:sale.discount||0,received:sale.received,deviceId:sale.deviceId};}
+ else if(sale){route='sales';body={id:sale.id,tenantId:sale.tenantId,cart:sale.lines.map(l=>({productId:l.productId,quantity:l.quantity})),method:sale.method,payments:sale.payments,discount:sale.discount||0,customerId:sale.customerId||null,received:sale.received,deviceId:sale.deviceId};}
  else if(stock){route='stock';body={tenantId:stock.tenantId,productId:stock.id,quantity:stock.stock-old.products.find(p=>p.id===stock.id).stock};}
  else throw Error('unsupported_operation');
  remoteState=await api(route,body);return remoteState;
