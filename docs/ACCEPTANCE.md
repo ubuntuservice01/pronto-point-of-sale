@@ -33,3 +33,15 @@
 - [ ] Stock concorrente, conflitos, auditoria e caixa separado.
 - [ ] Backup e recuperação testados.
 - [ ] Validação fiscal e de pagamentos conforme as integrações contratadas.
+
+## Actualização 0.2
+
+- [x] Contas reais e senha temporária com mudança obrigatória.
+- [x] Isolamento e autorização no servidor para negócios, produtos, stock e vendas.
+- [x] Mesma conta em sessões diferentes e revogação de sessões.
+- [x] Mudança de palavra-passe termina outras sessões.
+- [x] API rejeita origem externa e acesso a ficheiros privados.
+- [x] Totais calculados no servidor; preço/role/userId enviados pelo cliente não substituem a fonte autorizada.
+- [x] Venda idempotente e conflito de operação detectado.
+- [ ] Validação visual do novo acesso, credenciais temporárias, criação de negócios e de operadores.
+- [ ] Implantação em servidor Node/SQLite persistente, backup e recuperação.

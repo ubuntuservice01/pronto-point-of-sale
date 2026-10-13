@@ -51,3 +51,13 @@ Stock concorrente offline: nenhum dispositivo conhece as operações não enviad
 6. Piloto, backups, recuperação, monitorização e implantação.
 
 Registo de M-Pesa/e-Mola não confirma pagamentos; integração será uma fase separada. Comprovativos de demonstração não são documentos fiscais.
+
+## Actualização 0.2 — fundação autenticada implementada
+
+Servidor HTTP nativo e SQLite: businesses, users, sessions, payloads e audit. O estado operacional de cada negócio está, nesta fase, num payload JSON independente; o esquema relacional detalhado acima continua a ser a evolução prevista. Transacções BEGIN IMMEDIATE serializam alterações de stock/vendas. Este é um servidor único com armazenamento persistente, sem integração com o serviço de hospedagem estática.
+
+Isolamento imposto pela associação business_id da conta. Clientes não podem atribuir a si mesmos perfil, utilizador ou negócio na venda. Super Admin cria negócios/acessos e pode consultar um negócio explicitamente, mas não opera caixas. O proprietário cria colaboradores; perfis têm permissões impostas no servidor. Sessões são independentes, têm expiração de oito horas e tokens guardados por hash; credenciais iniciais exigem alteração. Identificação de dispositivo é declarada pelo cliente e serve para identificação na lista, não como prova de identidade.
+
+Autenticação cliente usa cookie HttpOnly; nenhuma palavra-passe é guardada em IndexedDB/localStorage. Endpoints API não são armazenados pelo service worker. Operações autenticadas são online nesta etapa. O demo local tem outro fluxo, continua sem segurança e não é utilizado como cache de dados reais.
+
+Pendências antes de produção: testes visuais e scanner, reset seguro de acessos, suspensão/revogação de colaboradores, recuperação do Super Admin, outbox autenticada, sincronização e conflitos offline, caixas/turnos completos, conversões e stock_movements normalizados. Backups e restauro de SQLite precisam de procedimento operacional e validação.
