@@ -20,7 +20,7 @@ test('Purchases update stock and latest cost without altering previous sale snap
  let s=base();
  s=createSale(s,{tenantId:'t1',role:'owner',cart:[{productId:'p1',quantity:1}],id:'old',method:'cash',received:8500});
  assert.equal(s.sales[0].lines[0].cost,null);
- const purchase={id:'purch1',productId:'p1',quantity:2.5,unitCost:6500,supplier:'Supply',reference:'INV-1'};
+ const purchase={id:'purch1',productId:'p1',quantity:2.5,unitCost:6500,supplier:'Supply',reference:'INV-1',batchNumber:'LOT-COST-65',expiryDate:'2099-01-01'};
  s=recordPurchase(s,'t1',purchase,'owner');
  assert.equal(s.products.find(p=>p.id==='p1').stock,49.5);
  assert.equal(s.products.find(p=>p.id==='p1').cost,6500);
@@ -41,7 +41,7 @@ test('Expenses are distinct from cash movements and reject invalid or conflictin
  assert.throws(()=>recordExpense(s,'t1',{id:'invalid',category:'Renda',note:'Outubro',amount:12.5},'finance'),/expense/);
 });
 test('Reports reconcile sales, expenses, purchases and known cost coverage',()=>{
- let s=recordPurchase(base(),'t1',{id:'purchase',productId:'p1',quantity:4,unitCost:5000,supplier:'A',reference:''},'owner');
+ let s=recordPurchase(base(),'t1',{id:'purchase',productId:'p1',quantity:4,unitCost:5000,supplier:'A',reference:'',batchNumber:'LOT-COST-50',expiryDate:'2099-01-01'},'owner');
  s=recordExpense(s,'t1',{id:'expense',category:'Energia',note:'Monthly',amount:2000},'owner');
  s=createSale(s,{tenantId:'t1',role:'owner',cart:[{productId:'p1',quantity:2}],id:'s1',method:'cash',received:17000});
  const report=commercialReport(s,'t1');
