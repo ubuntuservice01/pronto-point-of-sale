@@ -1,4 +1,5 @@
 import {aggregateDemand,updateAlertSettings,alertSettings} from '../src/alerts.js';
+import {createShoppingList,updateShoppingList} from '../src/shopping.js';
 import {saveCreditPolicy,registerDebtPayment} from '../src/debts.js';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, scryptSync, timingSafeEqual, createHash, randomUUID } from 'node:crypto';
@@ -26,7 +27,7 @@ function businessFields(input){
 }
 function businessReason(input){return text(input?.reason,250);}
 const validInventoryId=v=>typeof v==='string'&&v.length>0&&v.length<=80;
-const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],debts:[],debtPayments:[],debtEvents:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[],stockBatches:[],memberEvents:[],alertEvents:[]});
+const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],debts:[],debtPayments:[],debtEvents:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[],stockBatches:[],memberEvents:[],alertEvents:[],shoppingLists:[],shoppingEvents:[]});
 export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,now=()=>Date.now()}={}){
  if(path!==':memory:')mkdirSync(dirname(path),{recursive:true,mode:0o700});
  const db=new DatabaseSync(path);db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS businesses(id TEXT PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,owner TEXT NOT NULL); CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password_hash TEXT NOT NULL,business_id TEXT REFERENCES businesses(id),role TEXT NOT NULL,must_change INTEGER NOT NULL DEFAULT 1,active INTEGER NOT NULL DEFAULT 1); CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL,device TEXT NOT NULL); CREATE TABLE IF NOT EXISTS payloads(business_id TEXT PRIMARY KEY REFERENCES businesses(id),data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,user_id TEXT,business_id TEXT,action TEXT NOT NULL,created_at TEXT NOT NULL);`);
@@ -72,6 +73,8 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  function authorize(user,action,id){const business=businessFor(user,id);if(user.role==='super'||!can(user.role,action))fail(403,'forbidden');return business;}
  function snapshot(user,id){ready(user);if(user.role==='super'&&!id)return {...empty(),tenants:db.prepare('SELECT * FROM businesses ORDER BY name COLLATE NOCASE').all().map(b=>({...b,license:licenseFor(b.id)})),plans:db.prepare('SELECT id,name,price_cents AS priceCents,duration_days AS durationDays,active,created_at AS createdAt FROM subscription_plans ORDER BY created_at DESC').all().map(p=>({...p,active:!!p.active})),licenseEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.plan_id AS planId,e.previous_expiry_ms AS previousExpiryMs,e.new_expiry_ms AS newExpiryMs,e.reason,e.reference,e.periods,e.created_at AS createdAt FROM license_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC LIMIT 250').all(),businessEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.before_data AS beforeData,e.after_data AS afterData,e.reason,e.created_at AS createdAt FROM business_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC,e.rowid DESC LIMIT 250').all().map(e=>({...e,before:JSON.parse(e.beforeData),after:JSON.parse(e.afterData),beforeData:undefined,afterData:undefined})),auth:publicUser(user)};const business=businessFor(user,id);const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);const data=JSON.parse(row.data);const members=['owner','super'].includes(user.role)?db.prepare('SELECT id,name,username,role,active,revision,business_id AS tenantId FROM users WHERE business_id=? ORDER BY name COLLATE NOCASE').all(business).map(m=>({...m,active:!!m.active})):[];const actorNames=new Map(db.prepare('SELECT id,name FROM users WHERE business_id=?').all(business).map(m=>[m.id,m.name]));return {...data,
   customers:can(user.role,'customers')||can(user.role,'debts')?(data.customers||[]):[],
+  shoppingLists:can(user.role,'purchases')?(data.shoppingLists||[]):[],
+  shoppingEvents:can(user.role,'purchases')?(data.shoppingEvents||[]):[],
   alertSettings:can(user.role,'alerts')?alertSettings(data):null,
   alertEvents:['owner','manager'].includes(user.role)?(data.alertEvents||[]).map(e=>({...e,actorName:actorNames.get(e.actorId)||null})):[],
   alertDemand:can(user.role,'alerts')?aggregateDemand(data,business,new Date(now())):{windowDays:30,byProduct:{}},
@@ -425,6 +428,18 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
   audit(user,business,'batch_adjusted');return snapshot(user);
  },
  customerSave(user,input){const business=authorize(user,'customers');try{save(business,current=>saveCustomer(current,business,input));}catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}audit(user,business,'customer_saved');return snapshot(user);},
+ shoppingCreate(user,input){
+  const business=authorize(user,'purchases',input?.tenantId);
+  try{save(business,current=>createShoppingList(current,business,input,{id:user.id,tenantId:business,role:user.role}));}
+  catch(e){if(e instanceof HttpError)throw e;fail(['shopping_conflict'].includes(e.message)?409:400,e.message);}
+  audit(user,business,'shopping_list_created');return snapshot(user);
+ },
+ shoppingUpdate(user,input){
+  const business=authorize(user,'purchases',input?.tenantId);
+  try{save(business,current=>updateShoppingList(current,business,input,{id:user.id,tenantId:business,role:user.role}));}
+  catch(e){if(e instanceof HttpError)throw e;fail(e.message==='revision_conflict'?409:400,e.message);}
+  audit(user,business,'shopping_list_updated');return snapshot(user);
+ },
  alertConfigure(user,input){
   if(!['owner','manager'].includes(user.role))fail(403,'forbidden');
   const business=authorize(user,'alerts',input?.tenantId);
