@@ -38,7 +38,7 @@ export function editInventoryProduct(state,tenantId,input,actorId){
  const p=own(state,input.productId,tenantId);
  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision!==revision(p))throw Error('revision_conflict');
  if(state.products.some(x=>x.tenantId===tenantId&&x.id!==p.id&&code&&x.code===code))throw Error('barcode_in_use');
- if(Object.entries(nextFields).every(([k,v])=>(k==='expiryDate'?(p[k]??''):p[k])===v))throw Error('no_change');
+ if(Object.entries(nextFields).every(([k,v])=>(k==='expiryDate'||k==='photo'?(p[k]??''):p[k])===v))throw Error('no_change');
  const before=Object.fromEntries(Object.keys(nextFields).map(k=>[k,k==='photo'?Boolean(p.photo):k==='expiryDate'?(p[k]??''):p[k]]));
  const updated={...p,...nextFields,revision:revision(p)+1};
  const event={id:input.id,tenantId,productId:p.id,productName:updated.name,action:'edit',actorId,createdAt:new Date().toISOString(),reason:input.reason.trim(),before,after:{...nextFields,...('photo' in nextFields?{photo:Boolean(nextFields.photo)}:{})},signature:sig};
