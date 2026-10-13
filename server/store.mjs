@@ -14,23 +14,35 @@ function verify(password,hash){const [salt,key]=hash.split(':');return timingSaf
 function validPassword(p){if(typeof p!=='string'||p.length<12||p.length>128)fail(400,'password_policy');}
 function text(v,max=100){if(typeof v!=='string'||!v.trim()||v.length>max)fail(400,'invalid');return v.trim();}
 function username(v){const s=text(v,80).toLowerCase();if(!/^[a-z0-9][a-z0-9._@-]{2,79}$/.test(s))fail(400,'username');return s;}
+function optionalBusinessText(v,max){if(v==null)return '';if(typeof v!=='string'||v.length>max)fail(400,'invalid');return v.trim();}
+function businessFields(input){
+ const name=text(input?.name),type=text(input?.type,60),owner=text(input?.owner);
+ const phone=optionalBusinessText(input.phone,40),email=optionalBusinessText(input.email,120),address=optionalBusinessText(input.address,160);
+ if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))fail(400,'invalid_email');
+ return {name,type,owner,phone,email,address};
+}
+function businessReason(input){return text(input?.reason,250);}
 const validInventoryId=v=>typeof v==='string'&&v.length>0&&v.length<=80;
 const empty=()=>({version:1,tenants:[],products:[],sales:[],members:[],cashSessions:[],refunds:[],customers:[],purchases:[],expenses:[],inventoryEvents:[],stockMovements:[],memberEvents:[]});
 export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,now=()=>Date.now()}={}){
  if(path!==':memory:')mkdirSync(dirname(path),{recursive:true,mode:0o700});
  const db=new DatabaseSync(path);db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS businesses(id TEXT PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,owner TEXT NOT NULL); CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password_hash TEXT NOT NULL,business_id TEXT REFERENCES businesses(id),role TEXT NOT NULL,must_change INTEGER NOT NULL DEFAULT 1,active INTEGER NOT NULL DEFAULT 1); CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL,device TEXT NOT NULL); CREATE TABLE IF NOT EXISTS payloads(business_id TEXT PRIMARY KEY REFERENCES businesses(id),data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,user_id TEXT,business_id TEXT,action TEXT NOT NULL,created_at TEXT NOT NULL);`);
- // Existing SQLite installations require an additive migration for optimistic edits.
+ // Additive schema migrations preserve businesses and logins from earlier releases.
  if(!db.prepare('PRAGMA table_info(users)').all().some(col=>col.name==='revision'))db.exec('ALTER TABLE users ADD COLUMN revision INTEGER NOT NULL DEFAULT 0');
+ for(const [name,definition] of [['phone',"TEXT NOT NULL DEFAULT ''"],['email',"TEXT NOT NULL DEFAULT ''"],['address',"TEXT NOT NULL DEFAULT ''"],['active','INTEGER NOT NULL DEFAULT 1'],['revision','INTEGER NOT NULL DEFAULT 0']]){
+  if(!db.prepare('PRAGMA table_info(businesses)').all().some(col=>col.name===name))db.exec('ALTER TABLE businesses ADD COLUMN '+name+' '+definition);
+ }
+ db.exec("CREATE TABLE IF NOT EXISTS business_events(id TEXT PRIMARY KEY,business_id TEXT NOT NULL REFERENCES businesses(id),actor_id TEXT NOT NULL REFERENCES users(id),action TEXT NOT NULL,before_data TEXT NOT NULL,after_data TEXT NOT NULL,reason TEXT NOT NULL,created_at TEXT NOT NULL); CREATE INDEX IF NOT EXISTS idx_business_events_recent ON business_events(business_id,created_at DESC);");
  const dummyHash=passwordHash(randomBytes(24).toString('hex'));
  if(bootstrapUser&&bootstrapPassword&&!db.prepare("SELECT id FROM users WHERE role='super'").get()){validPassword(bootstrapPassword);db.prepare('INSERT INTO users(id,username,name,password_hash,business_id,role,must_change,active) VALUES(?,?,?,?,?,?,0,1)').run(randomUUID(),username(bootstrapUser),'Ubuntu Service',passwordHash(bootstrapPassword),null,'super');}
  function audit(user,business,action){db.prepare('INSERT INTO audit VALUES(?,?,?,?,?)').run(randomUUID(),user?.id||null,business||null,action,new Date(now()).toISOString());}
  function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const value=fn();db.exec('COMMIT');return value;}catch(e){db.exec('ROLLBACK');throw e;}}
  function publicUser(user){return {id:user.id,name:user.name,username:user.username,tenantId:user.business_id,role:user.role,mustChange:!!user.must_change};}
- function session(token){if(!token)fail(401,'unauthorized');const row=db.prepare('SELECT users.*, sessions.expires, sessions.device AS session_device FROM sessions JOIN users ON users.id=sessions.user_id WHERE token_hash=?').get(digest(token));if(!row||row.expires<=now()||!row.active)fail(401,'unauthorized');return row;}
+ function session(token){if(!token)fail(401,'unauthorized');const row=db.prepare('SELECT users.*, sessions.expires, sessions.device AS session_device, businesses.active AS business_active FROM sessions JOIN users ON users.id=sessions.user_id LEFT JOIN businesses ON businesses.id=users.business_id WHERE token_hash=?').get(digest(token));if(!row||row.expires<=now()||!row.active||(row.business_id&&row.business_active!==1))fail(401,'unauthorized');return row;}
  function ready(user){if(user.must_change)fail(403,'password_change_required');}
- function businessFor(user,id){ready(user);const business=id||user.business_id;if(!business)fail(400,'business_required');if(user.role!=='super'&&business!==user.business_id)fail(403,'forbidden');if(!db.prepare('SELECT id FROM businesses WHERE id=?').get(business))fail(404,'not_found');return business;}
+ function businessFor(user,id){ready(user);const business=id||user.business_id;if(!business)fail(400,'business_required');if(user.role!=='super'&&business!==user.business_id)fail(403,'forbidden');const found=db.prepare('SELECT id,active FROM businesses WHERE id=?').get(business);if(!found)fail(404,'not_found');if(user.role!=='super'&&!found.active)fail(403,'business_suspended');return business;}
  function authorize(user,action,id){const business=businessFor(user,id);if(user.role==='super'||!can(user.role,action))fail(403,'forbidden');return business;}
- function snapshot(user,id){ready(user);if(user.role==='super'&&!id)return {...empty(),tenants:db.prepare('SELECT * FROM businesses').all(),auth:publicUser(user)};const business=businessFor(user,id);const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);const data=JSON.parse(row.data);const members=['owner','super'].includes(user.role)?db.prepare('SELECT id,name,username,role,active,revision,business_id AS tenantId FROM users WHERE business_id=? ORDER BY name COLLATE NOCASE').all(business).map(m=>({...m,active:!!m.active})):[];const actorNames=new Map(db.prepare('SELECT id,name FROM users WHERE business_id=?').all(business).map(m=>[m.id,m.name]));return {...data,
+ function snapshot(user,id){ready(user);if(user.role==='super'&&!id)return {...empty(),tenants:db.prepare('SELECT * FROM businesses ORDER BY name COLLATE NOCASE').all(),businessEvents:db.prepare('SELECT e.id,e.business_id AS tenantId,e.actor_id AS actorId,u.name AS actorName,e.action,e.before_data AS beforeData,e.after_data AS afterData,e.reason,e.created_at AS createdAt FROM business_events e JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC,e.rowid DESC LIMIT 250').all().map(e=>({...e,before:JSON.parse(e.beforeData),after:JSON.parse(e.afterData),beforeData:undefined,afterData:undefined})),auth:publicUser(user)};const business=businessFor(user,id);const row=db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business);const data=JSON.parse(row.data);const members=['owner','super'].includes(user.role)?db.prepare('SELECT id,name,username,role,active,revision,business_id AS tenantId FROM users WHERE business_id=? ORDER BY name COLLATE NOCASE').all(business).map(m=>({...m,active:!!m.active})):[];const actorNames=new Map(db.prepare('SELECT id,name FROM users WHERE business_id=?').all(business).map(m=>[m.id,m.name]));return {...data,
   customers:can(user.role,'customers')?(data.customers||[]):[],
   purchases:can(user.role,'purchases')||can(user.role,'reports')?(data.purchases||[]):[],
   expenses:can(user.role,'expenses')||can(user.role,'reports')?(data.expenses||[]):[],
@@ -44,14 +56,65 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  function save(business,fn){return transaction(()=>{const current=JSON.parse(db.prepare('SELECT data FROM payloads WHERE business_id=?').get(business).data);const next=fn(current);db.prepare('UPDATE payloads SET data=? WHERE business_id=?').run(JSON.stringify(next),business);return next;});}
  function onboard(business,name,role){const login='pos-'+randomBytes(5).toString('hex');const password=randomBytes(15).toString('base64url');const id=randomUUID();db.prepare('INSERT INTO users(id,username,name,password_hash,business_id,role,must_change,active) VALUES(?,?,?,?,?,?,1,1)').run(id,login,text(name),passwordHash(password),business,role);return {username:login,temporaryPassword:password,name,role};}
  return {secure,close:()=>db.close(), publicUser,
- login(login,password,device){const u=db.prepare('SELECT * FROM users WHERE username=?').get(String(login||'').toLowerCase());const match=typeof password==='string'&&password.length<=128&&verify(password,u?.password_hash||dummyHash);if(!u||!u.active||!match)fail(401,'invalid_credentials');const token=randomBytes(32).toString('base64url');db.prepare('DELETE FROM sessions WHERE expires<=?').run(now());db.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(digest(token),u.id,now()+8*60*60*1000,String(device||'browser').slice(0,80));audit(u,u.business_id,'login');return {token,user:publicUser(u)};},
+ login(login,password,device){const u=db.prepare('SELECT users.*,businesses.active AS business_active FROM users LEFT JOIN businesses ON businesses.id=users.business_id WHERE users.username=?').get(String(login||'').toLowerCase());const match=typeof password==='string'&&password.length<=128&&verify(password,u?.password_hash||dummyHash);if(!u||!u.active||!match||(u.business_id&&u.business_active!==1))fail(401,'invalid_credentials');const token=randomBytes(32).toString('base64url');db.prepare('DELETE FROM sessions WHERE expires<=?').run(now());db.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(digest(token),u.id,now()+8*60*60*1000,String(device||'browser').slice(0,80));audit(u,u.business_id,'login');return {token,user:publicUser(u)};},
  session,
  logout(token){db.prepare('DELETE FROM sessions WHERE token_hash=?').run(digest(token||''));},
  changePassword(user,current,next,token){validPassword(next);if(!verify(String(current||''),user.password_hash))fail(401,'invalid_credentials');if(current===next)fail(400,'password_policy');transaction(()=>{db.prepare('UPDATE users SET password_hash=?,must_change=0 WHERE id=?').run(passwordHash(next),user.id);db.prepare('DELETE FROM sessions WHERE user_id=? AND token_hash<>?').run(user.id,digest(token));audit(user,user.business_id,'password_changed');});return publicUser(db.prepare('SELECT * FROM users WHERE id=?').get(user.id));},
  sessions(user,token){ready(user);return db.prepare('SELECT token_hash,device,expires FROM sessions WHERE user_id=? AND expires>?').all(user.id,now()).map(s=>({id:s.token_hash,device:s.device,expires:s.expires,current:s.token_hash===digest(token)}));},
  revoke(user,id){ready(user);db.prepare('DELETE FROM sessions WHERE token_hash=? AND user_id=?').run(text(id,64),user.id);audit(user,user.business_id,'session_revoked');},
  snapshot,
- createBusiness(user,input){ready(user);if(user.role!=='super')fail(403,'forbidden');return transaction(()=>{const id=randomUUID();const name=text(input.name),type=text(input.type,60),owner=text(input.owner);db.prepare('INSERT INTO businesses VALUES(?,?,?,?)').run(id,name,type,owner);const data={...empty(),tenants:[{id,name,type,owner}]};db.prepare('INSERT INTO payloads VALUES(?,?)').run(id,JSON.stringify(data));const onboarding=onboard(id,owner,'owner');audit(user,id,'business_created');return {...snapshot(user),onboarding};});},
+ createBusiness(user,input){
+  ready(user);if(user.role!=='super')fail(403,'forbidden');
+  const fields=businessFields(input);
+  return transaction(()=>{
+   const id=randomUUID();
+   db.prepare('INSERT INTO businesses(id,name,type,owner,phone,email,address,active,revision) VALUES(?,?,?,?,?,?,?,1,0)').run(id,fields.name,fields.type,fields.owner,fields.phone,fields.email,fields.address);
+   db.prepare('INSERT INTO payloads VALUES(?,?)').run(id,JSON.stringify({...empty(),tenants:[{id,...fields,active:1,revision:0}]}));
+   const onboarding=onboard(id,fields.owner,'owner');
+   const entry={id:randomUUID(),business:id,actor:user.id,action:'created',before:{},after:fields,reason:'Business onboarding',createdAt:new Date(now()).toISOString()};
+   db.prepare('INSERT INTO business_events VALUES(?,?,?,?,?,?,?,?)').run(entry.id,id,entry.actor,entry.action,JSON.stringify(entry.before),JSON.stringify(entry.after),entry.reason,entry.createdAt);
+   audit(user,id,'business_created');return {...snapshot(user),onboarding};
+  });
+ },
+ businessEdit(user,input){
+  ready(user);if(user.role!=='super')fail(403,'forbidden');
+  const id=typeof input?.businessId==='string'?input.businessId:'';
+  if(!id||id.length>80)fail(400,'business_id');
+  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0)fail(400,'revision');
+  const fields=businessFields(input),reason=businessReason(input);
+  return transaction(()=>{
+   const previous=db.prepare('SELECT * FROM businesses WHERE id=?').get(id);
+   if(!previous)fail(404,'not_found');
+   if(previous.revision!==input.expectedRevision)fail(409,'revision_conflict');
+   const before=Object.fromEntries(Object.keys(fields).map(key=>[key,previous[key]??'']));
+   if(Object.keys(fields).every(k=>fields[k]===before[k]))fail(400,'no_change');
+   db.prepare('UPDATE businesses SET name=?,type=?,owner=?,phone=?,email=?,address=?,revision=revision+1 WHERE id=?').run(fields.name,fields.type,fields.owner,fields.phone,fields.email,fields.address,id);
+   // The owner name here is display metadata. Account identity and password remain unchanged.
+   const entry={id:randomUUID(),actor:user.id,action:'edited',before,after:fields,reason,createdAt:new Date(now()).toISOString()};
+   db.prepare('INSERT INTO business_events VALUES(?,?,?,?,?,?,?,?)').run(entry.id,id,entry.actor,entry.action,JSON.stringify(before),JSON.stringify(fields),entry.reason,entry.createdAt);
+   audit(user,id,'business_edited');return snapshot(user);
+  });
+ },
+ businessStatus(user,input){
+  ready(user);if(user.role!=='super')fail(403,'forbidden');
+  const id=typeof input?.businessId==='string'?input.businessId:'';
+  if(!id||id.length>80||typeof input.active!=='boolean')fail(400,'business_status');
+  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0)fail(400,'revision');
+  const reason=businessReason(input);
+  return transaction(()=>{
+   const previous=db.prepare('SELECT id,active,revision FROM businesses WHERE id=?').get(id);
+   if(!previous)fail(404,'not_found');
+   if(previous.revision!==input.expectedRevision)fail(409,'revision_conflict');
+   if(!!previous.active===input.active)fail(400,'no_change');
+   db.prepare('UPDATE businesses SET active=?,revision=revision+1 WHERE id=?').run(input.active?1:0,id);
+   // Revoking all merchant sessions prevents access across devices immediately.
+   db.prepare('DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE business_id=?)').run(id);
+   const before={active:!!previous.active},after={active:input.active};
+   const entry={id:randomUUID(),actor:user.id,action:'status',before,after,reason,createdAt:new Date(now()).toISOString()};
+   db.prepare('INSERT INTO business_events VALUES(?,?,?,?,?,?,?,?)').run(entry.id,id,entry.actor,entry.action,JSON.stringify(before),JSON.stringify(after),reason,entry.createdAt);
+   audit(user,id,input.active?'business_reactivated':'business_suspended');return snapshot(user);
+  });
+ },
  createMember(user,input){
   const business=authorize(user,'team');
   if(!roles.includes(input.role)||input.role==='owner')fail(400,'role');
