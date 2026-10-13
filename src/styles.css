@@ -258,3 +258,9 @@ dialog.scanner-dialog .scanner-viewfinder video{display:block;width:100%;height:
 @media(max-width:920px){.alerts-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.alert-row{flex-wrap:wrap}.alert-row-actions{margin-left:48px;justify-content:start}}
 @media(max-width:650px){.alerts-home{padding:16px;align-items:stretch;flex-direction:column}.alerts-home .primary{width:100%}.alerts-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.alerts-main,.alert-reorder{padding:14px}.alerts-filters{grid-template-columns:1fr}.alert-row{padding:13px}.alert-row-actions{margin-left:0;width:100%;justify-content:stretch}.alert-row-actions button{flex:1}.alert-reorder-item{flex-wrap:wrap}.alert-suggest{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;width:100%}.alert-suggest small{display:none}.alert-suggest .text-button{margin-top:0}.alert-share-actions{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.alerts-stats>article,.alert-row{transition:none}}
+
+/* Product catalogue shortcut to inventory alerts. */
+.page-heading-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.page-heading-actions button{white-space:normal;min-width:0}
+@media(max-width:650px){.page-heading-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.page-heading-actions button{width:100%;font-size:12px}}
+@media(max-width:390px){.page-heading-actions{grid-template-columns:1fr}}

@@ -254,3 +254,18 @@
 - [x] Testes automatizados de permissões, checkout, caixa, devoluções e API.
 - [ ] Homologar fluxos em navegadores e telemóveis reais e testes de acessibilidade.
 - [ ] Cobrança automática, envio programado de avisos e regularização de vendas a crédito já pagas.
+
+
+## Alertas de Stock e Validade — Versão 0.12
+- [x] Avisar por lote quando a validade expirou, vence hoje ou está dentro dos limiares configurados.
+- [x] Considerar o fuso horário de Moçambique e usar data única no cálculo de stock disponível/validade.
+- [x] Detectar stock baixo e esgotado com base no **stock vendável**, excluindo produtos inactivos dos avisos de reposição.
+- [x] Recomendação de compra com base em vendas não devolvidas dos últimos 30 dias e stock mínimo.
+- [x] Não fabricar estimativas de procura quando não há vendas recentes.
+- [x] Criar lista de compras com cópia e partilha manual pelo WhatsApp, sem efectuar pedidos ou envios automáticos.
+- [x] Definir limiares por comerciante com motivo, auditoria e revisão de concorrência.
+- [x] Restringir edição dos limiares ao proprietário/gerente; permitir consulta ao responsável de stock sem acesso a dados financeiros.
+- [x] Adicionar atalhos à página Início e Produtos e Stock, com interface adaptável ao telemóvel.
+- [x] Testes automáticos da lógica, das permissões, do isolamento e da API.
+- [ ] Testes visuais em Android e desktop e avaliação de acessibilidade com leitores de ecrã.
+- [ ] Envio automático de notificações (ainda não implementado).

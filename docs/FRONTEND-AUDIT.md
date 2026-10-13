@@ -53,3 +53,7 @@ A administração de comerciantes está ligada ao Node/SQLite: edição de nome 
 
 ## Actualização — Licenciamento (13/10/2026)
 Planos de duração/preço configurável, licenças por comerciante, renovação e cancelamento manual estão ligados ao servidor. A expiração é verificada nas sessões e no login pelo relógio do servidor; os comerciantes legados sem licença atribuída não ficam bloqueados. Os planos não executam cobrança, verificação financeira ou notificações. O painel apresenta preços configuráveis e validade, sem alegar pagamentos efectuados.
+
+
+## Actualização — Alertas Inteligentes de Stock e Validade (13/10/2026)
+Implementados alertas de validade por lote, ruptura e stock baixo calculado pela quantidade vendável, estimativas de reposição baseadas em vendas recentes e stock mínimo, lista de compras partilhável manualmente e configurações por negócio. Integração com o painel Início, Produtos e Stock e novo menu Alertas. O servidor limita a consulta a perfis autorizados e disponibiliza agregados de quantidades, sem revelar transacções ao responsável de stock. **Pendente:** testes visuais e em dispositivos reais, notificações push e eventual WhatsApp Business Platform; estes envios não são automáticos nesta versão.

@@ -98,3 +98,20 @@ Em cada execução, registar data, perfil, dispositivo, browser, ID do cenário,
 | QA-53 | Premir lembrete WhatsApp para cliente com número moçambicano | Abre mensagem pronta, sem envio automático | Pendente |
 | QA-54 | Devolução integral sem pagamentos e com pagamento parcial | Sem pagamentos anula dívida; com pagamento exige regularização | Pendente |
 | QA-55 | Fechar caixa com vendas a crédito e recebimentos de dívidas | Crédito não entra em dinheiro; recebimentos são reconciliados uma vez | Pendente |
+
+
+## Alertas de Stock e Validade — cenários manuais (0.12)
+| ID | Cenário | Critério | Resultado |
+|---|---|---|---|
+| QA-56 | Produto com 2 lotes vencidos e 1 lote válido | Mostra alertas por lote; stock vendável exclui vencidos | Pendente |
+| QA-57 | Produto com stock físico 30, mas todo vencido | Apresenta ruptura de stock e aviso de validade vencida | Pendente |
+| QA-58 | Lote vence hoje em Moçambique | Estado `Vence hoje`, sem confundir data UTC | Pendente |
+| QA-59 | Alterar antecedência dos avisos (30 para 15 dias) | Lista actualiza e configuração persiste após novo login | Pendente |
+| QA-60 | Alterar configuração no perfil responsável de stock ou caixa | Operação é recusada (403 no servidor) | Pendente |
+| QA-61 | Ver alerta de produto e clicar em Receber lote | Abre o formulário de recepção do produto correcto | Pendente |
+| QA-62 | Confirmar sugestão de reposição com dados de vendas reais | Estimativa bate com vendas dos últimos 30 dias e stock mínimo | Pendente |
+| QA-63 | Produtos sem vendas recentes, com stock mínimo definido | Sugestão baseia-se no mínimo sem afirmar procura inexistente | Pendente |
+| QA-64 | Copiar/partilhar lista sugerida pelo WhatsApp | Abre texto pronto; mensagem não é enviada automaticamente | Pendente |
+| QA-65 | Responsável de stock consultar alertas | Vê agregados de quantidades, sem recibos ou informação de clientes | Pendente |
+| QA-66 | Mudança de negócio na demonstração | Pesquisa e filtros de alertas são reiniciados | Pendente |
+| QA-67 | Comprovar cálculo em telemóvel Android e desktop | Cartões, filtros e botões funcionam sem sobreposição visual | Pendente |

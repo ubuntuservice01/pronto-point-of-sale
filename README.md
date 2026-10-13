@@ -2,7 +2,7 @@
 
 **O seu negócio na palma da mão.** POS geral mobile first da Ubuntu Service, Lda.
 
-## Estado actual — 0.9
+## Estado actual — 0.12
 
 Duas modalidades separadas:
 
@@ -164,3 +164,15 @@ A antiga designação informal de vendas a fiado passa a ser apresentada como **
 - **Devoluções:** uma devolução integral de venda a crédito **sem pagamentos** anula o saldo em dívida e repõe o stock. Caso a dívida já tenha pagamentos, a devolução automática é recusada até existir um fluxo próprio de regularização/reembolso, evitando inconsistências financeiras.
 - **Dados anteriores:** clientes, vendas e stock anteriores são preservados. A migração é aditiva no payload JSON de cada empresa (arrays `debts`, `debtPayments`, `debtEvents`).
 - **Limites:** não existe cobrança electrónica automática, verificação por M-Pesa/e-Mola nem envio automatizado de lembretes. O modo autenticado requer ligação à internet e não oferece sincronização offline de cobranças.
+
+
+## Pronto POS 0.12 — Alertas Inteligentes de Stock e Validade
+O novo menu **Alertas** permite ao proprietário, gerente e responsável de stock anteciparem problemas nas existências. Existe ainda um resumo na página **Início** e uma ligação em **Produtos e Stock**.
+- **Alertas por lote:** vencidos, vencem hoje, próximos da validade em **7 dias** (urgentes) e até **30 dias**. Cada aviso identifica artigo, lote, quantidade e data, incluindo stock legado com validade previamente declarada. A data é calculada no fuso de Moçambique (`Africa/Maputo`).
+- **Stock vendável:** stock baixo (igual ou inferior ao mínimo do artigo) e ruptura de stock são determinados pelas unidades **ainda vendáveis**; lotes vencidos não entram nessa quantidade. Produtos inactivos não geram sugestões de reposição.
+- **Sugestões de reposição:** a quantidade é estimada a partir das vendas **não devolvidas** dos últimos 30 dias, para uma cobertura inicial de **14 dias**, respeitando o stock mínimo. Quando não há vendas recentes, a sugestão baseia-se **apenas no mínimo configurado**. O sistema nunca inventa procura nem efectua encomendas automaticamente.
+- **Filtros e acções:** pesquisar por artigo/lote, filtrar por tipo de alerta, abrir a ficha de lotes e receber novo lote directamente a partir de um aviso. Criar uma **lista de compras sugerida** para copiar ou partilhar manualmente pelo WhatsApp; o utilizador decide o envio e as quantidades.
+- **Parâmetros configuráveis:** o proprietário e o gerente ajustam o número de dias de antecedência, urgência e cobertura de reposição, com motivo registado e revisão optimista. As definições são por negócio e persistem em SQLite ou IndexedDB na demonstração. O responsável de stock pode consultar os alertas, mas não alterar os parâmetros.
+- **Privacidade:** o servidor fornece ao perfil de stock apenas as quantidades vendidas agregadas por artigo, **sem expor facturas, clientes ou valores de vendas**. Só os perfis autorizados recebem parâmetros e eventos de alertas.
+- **Sem cobranças ou notificações ocultas:** os avisos surgem na interface ao consultar o negócio; não existem notificações push, envio automático WhatsApp ou descontos automáticos. O módulo actualiza os cálculos ao recarregar/navegar para a página.
+- **Escalabilidade:** para muitos milhares de produtos e lotes, é recomendado normalizar e paginar dados de stock e vendas; a versão actual utiliza os snapshots existentes por negócio.
