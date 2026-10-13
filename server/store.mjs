@@ -333,6 +333,7 @@ export function createStore(path,{bootstrapUser,bootstrapPassword,secure=true,no
  },
  customerSave(user,input){const business=authorize(user,'customers');try{save(business,current=>saveCustomer(current,business,input));}catch(e){if(e instanceof HttpError)throw e;fail(400,e.message);}audit(user,business,'customer_saved');return snapshot(user);},
  customerCredit(user,input){
+  if(!['owner','manager'].includes(user.role))fail(403,'forbidden');
   const business=authorize(user,'debts');
   try{save(business,current=>saveCreditPolicy(current,business,{...input,actorRole:user.role},user.id));}
   catch(e){if(e instanceof HttpError)throw e;fail(e.message==='revision_conflict'?409:400,e.message);}
