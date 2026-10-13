@@ -71,3 +71,9 @@ O servidor recalcula subtotal, desconto fixo, alocação exacta de pagamento por
 O carrinho suspenso é temporário na aba; não equivale a uma encomenda persistida, reserva de stock ou venda sincronizada. A operação autenticada continua a exigir internet e o software ainda requer validação de campo.
 
 Na Fase 2, descontos monetários são permitidos apenas aos perfis proprietário e gerente; o servidor valida esta autorização, mesmo que um cliente envie valores manipulados.
+
+
+## Fase 3 — Gestão comercial
+As entidades comerciais (`customers`, `purchases`, `expenses`) são listas dentro do payload JSON independente de cada negócio, ainda não tabelas normalizadas. Todas as operações são validadas e autorizadas no servidor por perfil e associação ao negócio, com gravação transaccional em SQLite. Criar ou editar clientes requer a permissão `customers`; compras requerem `purchases`; despesas, `expenses`. O snapshot autenticado filtra estas listas segundo as permissões de leitura.
+As compras aumentam o stock e registam o custo unitário da última aquisição, preservando custos anteriores nas linhas de vendas históricas. Uma venda armazena o custo vigente como fotografia histórica (`line.cost`) e opcionalmente associa `customerId`, validado no negócio. As vendas antigas podem não ter custo, pelo que a margem estimada é deliberadamente parcial. Valores financeiros são armazenados como inteiros de cêntimos, quantidades em até 3 casas decimais.
+Relatórios são agregados no cliente a partir do snapshot autorizado e filtrados por data UTC. A exportação CSV contém dados operacionais; não é certificado fiscal nem um livro de contabilidade. Para escalabilidade, futura evolução deverá normalizar compras, fornecedores, custos, clientes, despesas e auditoria.

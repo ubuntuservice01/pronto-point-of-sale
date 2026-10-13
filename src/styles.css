@@ -67,3 +67,9 @@
 .report-print dt{font-weight:600}.report-print dd{margin:0}
 @media(max-width:900px){.report-two-columns{grid-template-columns:1fr}.report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.report-toolbar{align-items:stretch}.report-toolbar label{flex:1 1 42%}.report-toolbar button{flex:1 1 42%}.commercial-person{flex-wrap:wrap}.commercial-person button{min-height:36px}}
+
+/* CSP-safe report bars: native progress uses no inline style attributes. */
+.report-progress{width:100%;height:12px;accent-color:#087f68;border:0;border-radius:6px;background:#e8eeec}
+.report-progress::-webkit-progress-bar{background:#e8eeec;border-radius:6px}
+.report-progress::-webkit-progress-value{background:#087f68;border-radius:6px}
+.report-progress::-moz-progress-bar{background:#087f68;border-radius:6px}

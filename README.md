@@ -63,3 +63,15 @@ O build `dist/` contém só o cliente; hospedagem estática não executa o servi
 - O sistema **não efectua nem confirma automaticamente** cobranças ou reembolsos M-Pesa/e-Mola. É necessária confirmação humana. Não emite nota de crédito fiscal.
 - Offline autenticado continua pendente. A nova fase usa a API Node/SQLite já existente, não o Supabase.
 - Testes de integração em Node, navegador e equipamento real continuam a ser obrigatórios antes de uso comercial.
+
+
+## Entrega 0.4 — Gestão comercial e relatórios
+- Clientes: cadastro e edição, contactos e histórico das vendas associadas. A venda pode ser anónima ou atribuída a um cliente existente.
+- Compras de mercadoria: fornecedor, produto, quantidade, custo de aquisição e referência. A compra acrescenta stock e actualiza o **último custo unitário** do produto. A compra não é um movimento de caixa.
+- Despesas: categoria, descrição e montante, sem afectar automaticamente o saldo do caixa.
+- Relatórios: filtros por intervalo de dias UTC, vendas brutas, devoluções, vendas líquidas, compras, despesas, produtos e evolução diária.
+- Estimativa de **margem bruta parcial** baseada apenas em linhas de venda com custo de aquisição conhecido no momento da venda. Não é lucro líquido, não substitui contabilidade e não extrapola o custo de mercadorias sem dados.
+- Exportação CSV (compatível com Excel, com protecção básica contra fórmulas maliciosas) e opção Imprimir/Guardar como PDF para resumo **não fiscal**.
+- Permissões: clientes (proprietário, gerente, caixa); compras (proprietário, gerente, stock); despesas (proprietário, gerente, financeiro); relatórios (proprietário, gerente, financeiro). O financeiro pode ler compras para relatórios, mas não registá-las.
+- Backend existente Node/SQLite persiste os dados por negócio; o Supabase continua sem utilização nesta implementação. Não há integração com AT, facturação fiscal, vendas a crédito ou contas correntes.
+- Os testes Node e os testes reais de interface/dispositivos devem ser executados antes do lançamento comercial.

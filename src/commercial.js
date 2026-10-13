@@ -21,7 +21,7 @@ export function saveCustomer(state,tenantId,input){
 export function recordPurchase(state,tenantId,input,userId){
  if(!state.tenants.some(t=>t.id===tenantId))throw Error('tenant');
  const previous=(state.purchases||[]).find(p=>p.id===input.id);
- if(previous){if(previous.tenantId===tenantId&&previous.productId===input.productId&&previous.quantity===input.quantity&&previous.unitCost===input.unitCost&&previous.supplier===input.supplier)return state;throw Error('purchase_conflict');}
+ if(previous){if(previous.tenantId===tenantId&&previous.productId===input.productId&&previous.quantity===input.quantity&&previous.unitCost===input.unitCost&&previous.supplier===input.supplier&&previous.reference===(input.reference||''))return state;throw Error('purchase_conflict');}
  if(typeof input.id!=='string'||!input.id||input.id.length>80||!positiveText(input.supplier,120)||!boundedText(input.reference??'',120))throw Error('purchase');
  const product=state.products.find(p=>p.id===input.productId&&p.tenantId===tenantId);
  if(!product)throw Error('product');
