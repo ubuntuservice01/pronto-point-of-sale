@@ -23,9 +23,9 @@ test('catalog escapes untrusted product text', () => {
  assert.match(html,/&lt;script&gt;/);
 });
 
-test('catalog keeps remote unsupported operations visibly pending', () => {
+test('catalog exposes stock and change history for authenticated stores', () => {
  const html = catalogPage({items:[product],state:{},tenantId:'shop',lang:'pt',money,remote:true});
- assert.match(html,/ainda não estão ligados ao servidor/);
+ assert.match(html,/Histórico de alterações e stock/);
 });
 
 test('team listing protects owners and exposes staff management', () => {
