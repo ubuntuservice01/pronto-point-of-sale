@@ -204,3 +204,16 @@
 - [x] Testes de regressão, migração, isolamento e interface acrescentados.
 - [ ] Homologar suspensão/reactivação com vários aparelhos reais.
 - [ ] Gestão de planos, subscrições e cobranças (não implementada).
+
+
+## Planos e Licenciamento — Fase 0.9
+- [x] Super Admin cria e desactiva/reactiva planos com valor (MZN) e dias de validade.
+- [x] Atribuição manual e renovação por períodos sem pagamentos fictícios.
+- [x] Licenças expiradas/canceladas bloqueiam operações e login pelo relógio do servidor.
+- [x] Licenças e suspensão de comerciantes são controlos independentes.
+- [x] Negócios existentes sem licença mantêm acesso legado.
+- [x] Renovação idempotente, com revisão e auditoria de acções/operadores.
+- [x] Interface do Super Admin e validade visível ao proprietário.
+- [x] Testes automatizados de expiração, renovação, migração, permissões e segurança HTTP.
+- [ ] Testes reais em browsers e dispositivos físicos, incluindo expiração durante uma venda.
+- [ ] Integrações reais de cobrança, notificações, facturação fiscal e validação legal de contratos.
