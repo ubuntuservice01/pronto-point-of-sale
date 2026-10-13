@@ -32,7 +32,7 @@ export function recordPurchase(state,tenantId,input,userId){
  if(!moneyCents(total)||total<=0)throw Error('purchase_amount');
  const after=Math.round((product.stock+input.quantity)*1000)/1000;
  if(!Number.isFinite(after)||after>100000000)throw Error('stock');
- const incoming=input.batchNumber?addIncomingBatch(state,tenantId,product,{batchNumber:input.batchNumber,expiryDate:input.expiryDate||'',quantity:input.quantity}):null;
+ const incoming=input.batchNumber?addIncomingBatch(state,tenantId,product,{batchNumber:input.batchNumber,expiryDate:input.expiryDate||'',quantity:input.quantity,unitCost:input.unitCost}):null;
  if(input.expiryDate&&!input.batchNumber)throw Error('batch_number');
  const item={id:input.id,tenantId,batchNumber:input.batchNumber||'',expiryDate:input.expiryDate||'',batchId:incoming?.batchId||null,productId:product.id,productName:product.name,unit:product.unit,supplier:input.supplier.trim(),reference:(input.reference||'').trim(),quantity:input.quantity,unitCost:input.unitCost,total,userId,createdAt:new Date().toISOString()};
  const movement={id:crypto.randomUUID(),tenantId,productId:product.id,productName:product.name,unit:product.unit,batchNumber:item.batchNumber,expiryDate:item.expiryDate,batchId:item.batchId,action:'purchase',type:'purchase',actorId:userId||'demo',referenceId:item.id,createdAt:item.createdAt,reason:'Compra: '+item.supplier+(item.reference?' · '+item.reference:''),before:product.stock,after,delta:input.quantity};

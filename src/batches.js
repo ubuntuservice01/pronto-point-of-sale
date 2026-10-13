@@ -28,7 +28,7 @@ export function allocateFEFO(state,product,amount,at=new Date()){
   if(remaining<=0)break;
   const taken=q(Math.min(remaining,batch.quantity));
   if(!taken)continue;
-  allocations.push({batchId:batch.id,batchNumber:batch.number||'',expiryDate:batch.expiryDate||'',quantity:taken});
+  allocations.push({batchId:batch.id,batchNumber:batch.number||'',expiryDate:batch.expiryDate||'',quantity:taken,unitCost:Number.isSafeInteger(batch.unitCost)&&batch.unitCost>=0?batch.unitCost:null});
   remaining=q(remaining-taken);
  }
  if(remaining>0)throw Error('stock_expired_or_insufficient');
@@ -38,10 +38,11 @@ function checkNumber(number){
  if(typeof number!=='string'||number.trim().length<1||number.trim().length>80)throw Error('batch_number');
  return number.trim();
 }
-export function addIncomingBatch(state,tenantId,product,{batchNumber,expiryDate,quantity}){
+export function addIncomingBatch(state,tenantId,product,{batchNumber,expiryDate,quantity,unitCost=null}){
  if(product.tenantId!==tenantId)throw Error('product_not_found');
  if(!validQty(quantity,product.unit))throw Error('invalid_quantity');
  const number=checkNumber(batchNumber),date=normalizeExpiryDate(expiryDate);
+ if(unitCost!==null&&(!Number.isSafeInteger(unitCost)||unitCost<0))throw Error('batch_cost');
  const batches=state.stockBatches||[];
  const existing=batches.find(b=>b.tenantId===tenantId&&b.productId===product.id&&b.number.toLowerCase()===number.toLowerCase());
  if(existing&&existing.expiryDate!==date)throw Error('batch_expiry_conflict');
@@ -49,10 +50,15 @@ export function addIncomingBatch(state,tenantId,product,{batchNumber,expiryDate,
  let next;
  if(existing){
   batchId=existing.id;
-  next=batches.map(b=>b.id===existing.id?{...b,quantity:q(b.quantity+quantity)}:b);
+  next=batches.map(b=>{
+   if(b.id!==existing.id)return b;
+   const known=Number.isSafeInteger(b.unitCost)&&b.unitCost>=0&&unitCost!==null;
+   const weighted=known?Math.round((b.unitCost*b.quantity+unitCost*quantity)/(b.quantity+quantity)):null;
+   return {...b,quantity:q(b.quantity+quantity),unitCost:weighted};
+  });
  }else{
   batchId=crypto.randomUUID();
-  next=[...batches,{id:batchId,tenantId,productId:product.id,number,expiryDate:date,quantity,createdAt:new Date().toISOString()}];
+  next=[...batches,{id:batchId,tenantId,productId:product.id,number,expiryDate:date,quantity,unitCost,createdAt:new Date().toISOString()}];
  }
  return {stockBatches:next,batchId};
 }

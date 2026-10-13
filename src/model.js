@@ -26,7 +26,10 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
   if(!Number.isFinite(qty)||qty<=0||qty>p.stock)throw Error('stock');
   if(Math.abs(qty*1000-Math.round(qty*1000))>0.00001)throw Error('quantity');
   if(['un','caixa','pacote','saco','rolo','par','conjunto'].includes(p.unit)&&!Number.isInteger(qty))throw Error('quantity');
-  return {productId:p.id,name:p.name,unit:p.unit,quantity:qty,batchAllocations:allocateFEFO(state,p,qty),price:p.price,cost:Number.isSafeInteger(p.cost)&&p.cost>=0?p.cost:null,total:Math.round(p.price*qty)};
+  const batchAllocations=allocateFEFO(state,p,qty);
+  const costKnown=batchAllocations.every(b=>Number.isSafeInteger(b.unitCost)&&b.unitCost>=0);
+  const costAmount=costKnown?batchAllocations.reduce((sum,b)=>sum+Math.round(b.unitCost*b.quantity),0):null;
+  return {productId:p.id,name:p.name,unit:p.unit,quantity:qty,batchAllocations,price:p.price,cost:costKnown?Math.round(costAmount/qty):null,costAmount,total:Math.round(p.price*qty)};
  });
  if(customerId!==null&&customerId!==''&&!(state.customers||[]).some(c=>c.id===customerId&&c.tenantId===tenantId))throw Error('customer');
  const subtotal=lines.reduce((sum,line)=>sum+line.total,0);
