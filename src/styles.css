@@ -421,3 +421,69 @@ dialog.scanner-dialog .scanner-viewfinder video{display:block;width:100%;height:
 @media(prefers-reduced-motion:reduce){
  .mobile-nav .nav-item.mobile-sell-action{transition:none}
 }
+
+
+/* Pronto POS visual system · phase 2: consistent premium brand identity.
+   Cosmetic only: preserve permissions, navigation and transactional flows. */
+:root{
+ --green:#087f68;
+ --green-bright:#10a37f;
+ --green-dark:#08644f;
+ --green-wash:#e8f7ef;
+ --ink:#193547;
+ --muted:#607483;
+ --border:#e2eae9;
+ --surface:#fff;
+ --app-bg:#f5f7f9;
+ --warning:#a86400;
+ --danger:#c93737;
+ --card-radius:16px;
+ --control-radius:11px;
+ --shadow-card:0 3px 16px rgba(16,57,63,.045);
+ --shadow-hover:0 10px 25px rgba(16,57,63,.09);
+}
+html{background:var(--app-bg);color-scheme:light}
+body{background:var(--app-bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+h1,h2{color:var(--ink);text-wrap:balance}
+h1{letter-spacing:-.035em}
+button,input,select,textarea{accent-color:var(--green)}
+button{touch-action:manipulation}
+.primary{background:var(--green);color:#fff;border-radius:var(--control-radius);box-shadow:0 3px 9px #087f681c;transition:background .16s ease,box-shadow .16s ease,transform .16s ease}
+.primary:hover:not(:disabled){background:var(--green-dark);box-shadow:0 7px 16px #087f6830}
+.secondary{background:var(--green-wash);color:var(--green-dark);border-radius:var(--control-radius);transition:background .16s ease,transform .16s ease}
+.secondary:hover:not(:disabled){background:#d5eee2}
+.text-button{color:var(--green-dark);font-weight:650}
+.panel,.stat,.catalog-entry,.product-card,.quick-actions button{border-color:var(--border);box-shadow:var(--shadow-card)}
+.panel,.stat{border-radius:var(--card-radius)}
+.product-card{border-radius:14px;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.product-card:hover:not(:disabled){border-color:#b0d8ca;box-shadow:var(--shadow-hover)}
+.product-card:disabled{box-shadow:none}
+.product-picture{background:#eff5f2}
+.product-card>strong,.catalog-entry strong{color:var(--ink)}
+.stat strong{font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+.stat-icon,.quick-icon{background:var(--green-wash);color:var(--green-dark)}
+.shop-card,.info-note{background:#edf6f2}
+.nav-item.active{background:var(--green-wash);color:var(--green-dark)}
+input,select,textarea{border-color:#d6e1e3;border-radius:var(--control-radius)}
+input:focus,select:focus,textarea:focus{outline:2px solid #79c4a8;outline-offset:1px;border-color:var(--green)}
+button:focus-visible,a:focus-visible,[role="button"]:focus-visible{outline:3px solid #d9a431;outline-offset:3px}
+.chip{border-color:var(--border)}
+.chip.selected{background:var(--green);border-color:var(--green);color:#fff;font-weight:650}
+.search-box:focus-within{border-color:#8fcbb5;box-shadow:0 0 0 3px #087f6814}
+dialog{border-radius:20px}
+dialog::backdrop{background:#122c3c86}
+.modal-close{border-radius:8px}
+.warning,.management-tag.caution{color:var(--warning)}
+.low-stock{color:var(--warning)}
+.cashier-mode .primary{color:#fff}
+.cashier-mode .mobile-nav .mobile-sell-action{color:#fff}
+@media(max-width:760px){
+ .panel,.stat{border-radius:14px}
+ .product-card{border-radius:14px}
+ .primary,.secondary{font-weight:700}
+ .mobile-nav .nav-item.mobile-sell-action{background:linear-gradient(145deg,#10a37f,#087f68 54%,#08644f);color:white}
+ .mobile-nav .nav-item.active:not(.mobile-sell-action){background:var(--green-wash);color:var(--green-dark)}
+}
+@media(prefers-reduced-motion:reduce){
+ .primary,.secondary,.product-card{transition:none!important}
+}
