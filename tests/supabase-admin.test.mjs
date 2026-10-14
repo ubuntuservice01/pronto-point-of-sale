@@ -99,8 +99,8 @@ test('The five navigation pages exist; no editable financial or licensing contro
  assert.match(shell,/id="pronto-admin-logout"/);
  assert.match(shell,/id="pronto-admin-search"/);
  assert.match(renderUbuntuAdminTab('businesses',data),/Mercearia São João/);
- assert.match(renderUbuntuAdminTab('licenses',data),/Expirada|Activa/);
- assert.match(renderUbuntuAdminTab('plans',data),/3.500,00 MT/);
+ assert.match(renderUbuntuAdminTab('licenses',data),/Activo|Sem licença/);
+ assert.match(renderUbuntuAdminTab('plans',data),/3[ .\u00a0\u202f]500,00 MT/);
  assert.match(renderUbuntuAdminTab('businesses',data,{query:'inexistente'}),/Nenhum comerciante encontrado/);
 });
 test('All untrusted business details and emails are escaped in the dashboard',()=>{
