@@ -53,7 +53,7 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
  try {
   await new Promise(resolve => preview.listen(0, '127.0.0.1', resolve));
   listening = true;
-  const pageUrl = 'http://127.0.0.1:' + preview.address().port + '/?__pronto_debug=1#sell';
+  const pageUrl = 'http://127.0.0.1:' + preview.address().port + '/#sell';
   const debugPort = await availablePort();
   chrome = spawn(executable, [
    '--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu',
@@ -100,8 +100,8 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
   for (const key of ['emola','mpesa','transfer','mixed','cash','credit','mixed','emola','cash']) {
    const result = await clickMethod(key);
    assert.equal(result.selected,'true',key);
-   assert.equal(result.sameSearch,true,'search replaced on '+key+' — '+JSON.stringify(await evalJS('window.__prontoRenders')));
-   assert.equal(result.sameCheckout,true,'checkout replaced on '+key+' — '+JSON.stringify(await evalJS('window.__prontoRenders')));
+   assert.equal(result.sameSearch,true,'search replaced on '+key);
+   assert.equal(result.sameCheckout,true,'checkout replaced on '+key);
   }
   const searched = await evalJS('(() => {const field=document.querySelector("#search");field.value="sab";field.dispatchEvent(new Event("input",{bubbles:true}));return {value:field.value,products:[...document.querySelectorAll("#product-grid .product-card strong")].map(x=>x.textContent)};})()');
   assert.equal(searched.value,'sab');
