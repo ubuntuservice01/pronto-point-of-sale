@@ -29,6 +29,10 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   if(!session)throw Error('supabase_unauthorized');
   const user=await call('/auth/v1/user');
   if(!uuid(user?.id) || user.id!==session.user.id)throw Error('supabase_identity_mismatch');
+  // Read-only RPC: verifies the *current token's* UUID against a private admin registry.
+  // Never trust user_metadata, a caller-supplied role, or an email string for elevation.
+  const ubuntuAdmin=await call('/rest/v1/rpc/pronto_admin_status',{method:'POST',payload:{}});
+  if(typeof ubuntuAdmin!=='boolean')throw Error('supabase_response');
   const memberships=await call('/rest/v1/pronto_memberships?select=business_id,role,active&user_id=eq.'+encodeURIComponent(user.id)+'&active=eq.true');
   if(!Array.isArray(memberships))throw Error('supabase_response');
   const safe=memberships.filter(m=>uuid(m.business_id)&&['owner','manager','cashier','stock','finance'].includes(m.role)&&m.active===true);
@@ -42,7 +46,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   const grants=safe.filter(m=>allowed.has(m.business_id)).map(m=>({
    id:m.business_id,name:allowed.get(m.business_id).name,role:m.role
   }));
-  return {userId:user.id,email:user.email||'',grants};
+  return {userId:user.id,email:user.email||'',ubuntuAdmin,grants};
  }
  async function signIn(email,password){
   if(!validEmail(email)||typeof password!=='string'||password.length<1||password.length>200)throw Error('supabase_invalid_credentials');
