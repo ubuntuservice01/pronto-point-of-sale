@@ -7,7 +7,7 @@ export function createApp(store,{root=process.cwd(),origin}={}){
  root=resolve(root);const attempts=new Map();
  const send=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
  const cookie=(token,remove=false)=>`pronto_session=${remove?'':token}; HttpOnly; SameSite=Strict; Path=/; ${store.secure?'Secure; ':''}Max-Age=${remove?0:28800}`;
- return createServer(async(req,res)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");try{
+ return createServer(async(req,res)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://xgtpvszwzvkwysrswkek.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");try{
  const url=new URL(req.url,'http://localhost');
  if(url.pathname.startsWith('/api/')){
  if(!['GET','POST'].includes(req.method))throw new HttpError(405,'method');
