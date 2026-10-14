@@ -1,0 +1,63 @@
+import {prontoSupabaseConfig} from './pronto-supabase-config.js';
+import {createProntoIdentity} from './supabase-identity.js';
+
+// A read-only identity test; the operational POS remains on the existing server.
+export function startSupabaseIdentityCheck(root=document.querySelector('#app')) {
+ if(!root)throw Error('auth_root');
+ const client=createProntoIdentity(prontoSupabaseConfig);
+ const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ })[char]);
+ const shell=content=>{
+  root.innerHTML='<section class="login-shell pronto-auth-test"><div class="login-brand"><img src="/icon.svg" alt=""><h1>Pronto POS</h1><p>Verificação de acesso Supabase</p></div><div class="panel login-panel">'+content+'</div><footer>Ubuntu Service, Lda. · Ambiente de validação</footer></section>';
+ };
+ const form=()=>{
+  shell('<h2>Verificar identidade e permissões</h2>'+
+  '<p>Esta área testa o acesso por empresa e perfil. <strong>Não permite registar vendas nem alterar stock.</strong></p>'+
+  '<form id="pronto-auth-check-form">'+
+   '<label>Email da conta Supabase<input type="email" name="email" autocomplete="username" maxlength="254" required></label>'+
+   '<label>Palavra-passe<input type="password" name="password" autocomplete="current-password" maxlength="200" required></label>'+
+   '<p id="pronto-auth-check-error" role="alert" aria-live="polite"></p>'+
+   '<button class="primary full" type="submit">Entrar e verificar acesso</button>'+
+  '</form>'+
+  '<p class="form-hint">As credenciais não são guardadas neste navegador. Apenas contas previamente criadas pela Ubuntu Service podem ser verificadas.</p>'+
+  '<a class="demo-link" href="/?demo=1">Voltar à demonstração</a>');
+  const node=root.querySelector('#pronto-auth-check-form');
+  node.addEventListener('submit',async event=>{
+   event.preventDefault();
+   const button=node.querySelector('button'),error=node.querySelector('#pronto-auth-check-error');
+   button.disabled=true;error.textContent='';
+   const data=new FormData(node);
+   try{
+    const account=await client.signIn(String(data.get('email')||''),String(data.get('password')||''));
+    node.reset();ready(account);
+   }catch(e){
+    const messages={
+     supabase_rate_limit:'Demasiadas tentativas. Aguarde e volte a tentar.',
+     supabase_unauthorized:'Não foi possível autenticar. Confira a conta e as permissões.',
+     supabase_invalid_credentials:'Introduza o email e a palavra-passe.',
+     supabase_unavailable:'Não foi possível contactar o serviço Supabase.'
+    };
+    error.textContent=messages[e.message]||'Não foi possível verificar a conta. Confira as credenciais e a ligação.';
+    button.disabled=false;
+   }
+  });
+ };
+ const ready=account=>{
+  const grants=account.grants.length?
+   '<div class="pronto-auth-grants">'+account.grants.map(grant=>
+     '<article><strong>'+escape(grant.name)+'</strong><small>Perfil: '+escape(grant.role)+'</small></article>'
+    ).join('')+'</div>':
+    '<p class="held-sale-warning">Esta conta ainda não está associada a nenhuma empresa activa. Contacte a Ubuntu Service para concluir o registo.</p>';
+  shell('<h2>Identidade verificada</h2>'+
+   '<p>Conta: <strong>'+escape(account.email)+'</strong></p>'+
+   '<h3>Empresas autorizadas</h3>'+grants+
+   '<p class="form-hint">Este teste consulta permissões reais através das políticas RLS. As operações comerciais continuam no backend existente.</p>'+
+   '<button id="pronto-auth-check-logout" type="button" class="secondary full">Terminar sessão de teste</button>');
+  root.querySelector('#pronto-auth-check-logout').onclick=async()=>{
+   const button=root.querySelector('#pronto-auth-check-logout');button.disabled=true;
+   await client.signOut();form();
+  };
+ };
+ form();
+}
