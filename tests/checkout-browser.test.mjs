@@ -90,7 +90,7 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
   assert.equal(initial.nativeSelect, false);
   async function clickMethod(key) {
    const selector = '[data-quick-payment="' + key + '"]';
-   const rect = await evalJS('(() => {const button=document.querySelector(' + JSON.stringify(selector) + ');button.scrollIntoView({block:"center",inline:"nearest"});const r=button.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,hit:hit?.closest('[data-quick-payment]')?.dataset.quickPayment||'none',viewport:window.innerWidth};})()');
+   const rect = await evalJS('(() => {const button=document.querySelector(' + JSON.stringify(selector) + ');button.scrollIntoView({block:"center",inline:"nearest"});const r=button.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,hit:hit?.closest("[data-quick-payment]")?.dataset.quickPayment||"none",viewport:window.innerWidth};})()');
    assert.ok(rect && rect.x>0 && rect.y>0);
    assert.equal(rect.hit,key,'pointer blocked by another element (viewport '+rect.viewport+')');
    await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',x:rect.x,y:rect.y,button:'left',clickCount:1});
