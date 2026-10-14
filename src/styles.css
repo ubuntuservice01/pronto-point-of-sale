@@ -729,3 +729,69 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
  .held-sale-head>strong{font-size:16px}
  .held-sales-popup h2{font-size:20px}
 }
+
+
+/* Ubuntu administration — isolated from the merchant POS. */
+.pronto-admin-shell{min-height:100dvh;display:grid;grid-template-columns:260px minmax(0,1fr);background:#f6f8fa;color:#173749}
+.pronto-admin-sidebar{position:sticky;top:0;height:100dvh;background:#fff;border-right:1px solid #e0ebe8;display:flex;flex-direction:column;padding:24px 16px}
+.pronto-admin-brand{display:flex;align-items:center;gap:10px;padding:6px 10px 25px}
+.pronto-admin-brand img{width:43px;height:43px}
+.pronto-admin-brand strong{font-size:19px;letter-spacing:-.6px;display:block;color:#087f68}
+.pronto-admin-brand small{font-size:11px;line-height:1.4}
+.pronto-admin-user{display:flex;gap:10px;align-items:center;padding:14px 10px;background:#eff7f3;border-radius:14px;min-width:0;margin-bottom:22px}
+.pronto-admin-avatar{display:grid;place-items:center;border-radius:10px;background:#087f68;color:white;min-width:38px;height:38px;font-weight:800}
+.pronto-admin-user div{min-width:0;flex:1}
+.pronto-admin-user strong{display:block;font-size:12px}
+.pronto-admin-user small{font-size:10px;overflow-wrap:anywhere}
+.pronto-admin-nav{display:grid;gap:4px}
+.pronto-admin-nav button{width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:13px 14px;color:#607888;font-size:13px;font-weight:650}
+.pronto-admin-nav button:hover,.pronto-admin-nav button.active{background:#e6f5ef;color:#076b59}
+.pronto-admin-nav button:focus-visible{outline:3px solid #66bfa6;outline-offset:1px}
+.pronto-admin-sidebar-bottom{margin-top:auto;display:grid;gap:10px;padding:12px 7px}
+.pronto-admin-sidebar-bottom button{width:100%}
+.pronto-admin-secure{font-size:11px;color:#52796c;line-height:1.5}
+.pronto-admin-workspace{min-width:0}
+.pronto-admin-topbar{min-height:112px;background:#fff;border-bottom:1px solid #e0ebe8;padding:21px clamp(18px,3vw,42px);display:flex;gap:20px;align-items:center;justify-content:space-between}
+.pronto-admin-topbar h1{font-size:23px;line-height:1.2;margin:3px 0 0}
+.pronto-admin-topbar>div:first-child>span{font-size:10px;letter-spacing:2px;font-weight:750;color:#087f68}
+.pronto-admin-top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.pronto-admin-live{font-size:11px;color:#087f68;font-weight:700;background:#e8f6f0;border-radius:30px;padding:10px 13px;white-space:nowrap}
+.pronto-admin-top-actions button{min-height:40px}
+.pronto-admin-search input{width:min(240px,65vw);border-radius:8px;border:1px solid #bdcec8;padding:11px 12px;font-size:12px;background:#fff}
+#pronto-admin-search-wrap[hidden]{display:none}
+.pronto-admin-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.pronto-admin-main{max-width:1400px;margin:auto;padding:28px clamp(18px,3vw,42px) 45px}
+#pronto-admin-message:not(:empty){padding:12px 16px;margin-bottom:16px;background:#fff7e8;color:#855510;border:1px solid #f1dba5;border-radius:10px;font-size:13px}
+.pronto-admin-page-title{margin-bottom:22px}
+.pronto-admin-page-title h2{font-size:25px;margin-bottom:5px}
+.pronto-admin-page-title p{font-size:13px;margin:0}
+.pronto-admin-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:22px}
+.pronto-admin-stat,.pronto-admin-panel{background:#fff;border:1px solid #e3ebe8;border-radius:16px;box-shadow:0 7px 18px #143a3207;padding:22px;min-width:0}
+.pronto-admin-stat small{color:#708692;font-size:12px}
+.pronto-admin-stat strong{font-size:30px;display:block;color:#087f68;margin:10px 0;font-variant-numeric:tabular-nums}
+.pronto-admin-stat span{font-size:11px;color:#708692}
+.pronto-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pronto-admin-panel h3{font-size:16px;margin:0 0 16px}
+.pronto-admin-panel p{font-size:12px}
+.pronto-admin-status-grid{display:grid;gap:10px}
+.pronto-admin-status-grid p{margin:0;padding:12px;background:#f5f8f7;border-radius:9px;display:flex;justify-content:space-between}
+.pronto-admin-status-grid strong{color:#1c4550}
+.pronto-admin-table-wrap{max-width:100%;overflow-x:auto}
+.pronto-admin-table{width:100%;border-collapse:collapse;font-size:13px;text-align:left}
+.pronto-admin-table th{font-weight:650;font-size:11px;color:#617787;background:#f5f8f7}
+.pronto-admin-table th,.pronto-admin-table td{padding:14px 12px;border-bottom:1px solid #e8efec;vertical-align:middle}
+.pronto-admin-table td strong{font-size:13px;display:block}
+.pronto-admin-table td small{font-size:11px;margin-top:5px}
+.pronto-admin-chip{font-size:11px;display:inline-flex;white-space:nowrap;padding:5px 9px;border-radius:20px;background:#f0f2f5;color:#617080;font-weight:700}
+.pronto-admin-active{background:#e0f4eb;color:#077258}
+.pronto-admin-suspended,.pronto-admin-expired,.pronto-admin-cancelled{background:#fff0e7;color:#a74720}
+.pronto-admin-unassigned{background:#f3f1e7;color:#766528}
+.pronto-admin-note{color:#667783;margin:20px 0 0!important;line-height:1.7}
+.pronto-admin-count{background:#f0f5f3;padding:3px 9px;border-radius:40px;font-size:11px;margin-left:7px}
+.pronto-admin-empty{text-align:center;padding:35px 12px;color:#647c8b}
+.pronto-admin-empty strong{font-size:15px;display:block;color:#245065}
+.pronto-admin-check{padding:12px 0;border-top:1px solid #e8efec;display:grid;gap:5px}
+.pronto-admin-check strong{font-size:13px}
+.pronto-admin-check span{font-size:12px;color:#627789}
+@media(max-width:900px){.pronto-admin-shell{grid-template-columns:210px minmax(0,1fr)}.pronto-admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pronto-admin-topbar{flex-wrap:wrap}}
+@media(max-width:620px){.pronto-admin-shell{display:block}.pronto-admin-sidebar{position:static;height:auto;padding:12px;gap:8px}.pronto-admin-brand{padding:3px 8px}.pronto-admin-user{margin-bottom:0}.pronto-admin-nav{display:flex;overflow-x:auto;gap:5px;padding:0 2px}.pronto-admin-nav button{white-space:nowrap;width:auto;font-size:12px;padding:11px}.pronto-admin-sidebar-bottom{display:flex;align-items:center;justify-content:space-between;padding:0 4px}.pronto-admin-sidebar-bottom button{width:auto}.pronto-admin-topbar{min-height:auto;padding:18px}.pronto-admin-topbar h1{font-size:20px}.pronto-admin-main{padding:18px}.pronto-admin-stats{gap:10px}.pronto-admin-stat{padding:16px}.pronto-admin-stat strong{font-size:24px}.pronto-admin-grid{grid-template-columns:1fr}.pronto-admin-panel{padding:16px}.pronto-admin-live{font-size:10px}}
