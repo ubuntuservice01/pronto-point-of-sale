@@ -29,3 +29,12 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Migração Supabase: `20261014192010_pronto_pos_core`.
 - Security advisor: aviso informativo `rls_enabled_no_policy` exclusivamente para `pronto_plans`, intencional porque nenhum papel de browser recebe acesso ao catálogo de planos.
 - O workflow verde de 163 testes do ramo principal refere-se à versão SQLite **anterior** à integração real com Supabase e não valida futuras transacções PostgreSQL.
+
+## Super Administrador Ubuntu Service — identidade global
+
+- A identidade global reside exclusivamente em `pronto_private.ubuntu_super_admins`, com `user_id` referenciado a `auth.users` e uma flag de activação. O e-mail não é usado como permissão de autorização.
+- O único mecanismo exposto ao browser é o RPC `public.pronto_admin_status()`, protegido por autenticação e sem parâmetros. Lê a identidade do JWT actual por `auth.uid()` e devolve apenas `true` ou `false`.
+- O RPC não permite cadastrar comerciantes, consultar todas as vendas, alterar licenças ou elevar outras contas. Essas operações dependem de APIs administrativas futuras, protegidas no servidor e auditadas.
+- A atribuição inicial da conta foi executada separadamente no projecto Supabase depois de confirmar o UID e o e-mail; **não há e-mails nem UUIDs pessoais inseridos nos ficheiros de migração versionados**.
+- Na interface isolada `/?auth-check=1`, uma conta com o perfil global activo é reconhecida como «Super Administrador — Ubuntu Service».
+- A demonstração estática do Lovable continua separada da autenticação real e o login operacional Node/SQLite ainda não foi migrado.
