@@ -1,5 +1,5 @@
 // Keep a useful error visible if an application module fails to load.
-import('./app.js').catch(error=>{
+(new URLSearchParams(location.search).get('auth-check')==='1'?import('./supabase-auth-check-ui.js').then(mod=>mod.startSupabaseIdentityCheck()):import('./app.js')).catch(error=>{
  console.error('Pronto POS could not start:',error);
  const root=document.querySelector('#app');root.replaceChildren();
  const section=document.createElement('section');section.className='error-screen';
