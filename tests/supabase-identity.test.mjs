@@ -28,7 +28,7 @@ function mock({suspended=false,member=true,failLogin=false}={}){
    {id:B,name:'Mercearia da esquina',status:suspended?'suspended':'active'},
    {id:C,name:'Ferragem',status:'active'}
   ]);
-  if(url.endsWith('/auth/v1/logout'))return json(204,{});
+  if(url.endsWith('/auth/v1/logout'))return json(200,{});
   return json(404,{message:'Not found'});
  };
  return {calls,fetchImpl};
