@@ -36,7 +36,7 @@ test('Quick-payment and live-search handlers avoid full-app rebuilds', () => {
  assert.match(quick, /details\.innerHTML=paymentDetails\(\)/);
  assert.match(quick, /button\.setAttribute\('aria-pressed'/);
  const search = between('function bindSearch(){', 'function setCheckoutPayment(next){');
- assert.match(search, /search\.oninput=\(\)=>\{query=search\.value;updateProductResults\(\)/);
+ assert.match(search, /search\.oninput=\(\)=>\{selectedProductCode='';query=search\.value;updateProductResults\(\)/);
  assert.match(search, /productByExactCode/);
  assert.match(search, /focusSearch:true/);
  assert.match(app, /previousCartScroll/);
