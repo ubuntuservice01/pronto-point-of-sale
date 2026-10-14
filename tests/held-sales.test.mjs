@@ -12,7 +12,7 @@ const cart=[{productId:'p1',quantity:2},{productId:'p3',quantity:1}];
 const hold=(id='hold-1',tenantId='t1',userId='u2')=>makeHeldSale({
  id,tenantId,userId,cart,products:state.products,method:'mixed',
  mixed:{cash:'100',emola:'115'},received:'100',
- selectedCustomerId:'abc',discountText:'5',debtDueDate:'',
+ customerId:'abc',discountText:'5',debtDueDate:'',
  now:'2026-10-14T18:00:00.000Z'
 });
 
