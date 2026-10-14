@@ -1,6 +1,7 @@
 // Pronto POS Supabase identity smoke-test (no POS writes and no persistent tokens).
 // Keeps tokens in memory; pages must be re-authenticated on reload.
 const validEmail = value => typeof value === 'string' && value.length > 3 && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+import {normalizeAdminOverview} from './supabase-admin-model.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
@@ -8,7 +9,29 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
  if(apiURL.protocol!=='https:' || apiURL.hostname!=='xgtpvszwzvkwysrswkek.supabase.co' || apiURL.pathname!=='/') throw Error('supabase_project');
  if(typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(publishableKey)) throw Error('supabase_publishable_key');
  let session=null;
+ let refreshJob=null;
+ const expiresAt=data=>Number.isFinite(Number(data?.expires_in))&&Number(data.expires_in)>0?Date.now()+Number(data.expires_in)*1000:0;
+ async function ensureFresh(){
+  if(!session)throw Error('supabase_unauthorized');
+  if(!session.expiresAt||Date.now()<session.expiresAt-30000)return;
+  if(!session.refresh_token){session=null;throw Error('supabase_unauthorized');}
+  if(!refreshJob){
+   refreshJob=(async()=>{
+    const previous=session;
+    const response=await fetchImpl(apiURL.origin+'/auth/v1/token?grant_type=refresh_token',{
+     method:'POST',headers:{apikey:publishableKey,Accept:'application/json','Content-Type':'application/json'},
+     cache:'no-store',credentials:'omit',redirect:'error',body:JSON.stringify({refresh_token:previous.refresh_token})
+    });
+    if(!response.ok){session=null;throw Error('supabase_unauthorized');}
+    let data;try{data=await response.json();}catch{session=null;throw Error('supabase_unavailable');}
+    if(!data||typeof data.access_token!=='string'||!uuid(data.user?.id)||data.user.id!==previous.user.id){session=null;throw Error('supabase_identity_mismatch');}
+    session={access_token:data.access_token,refresh_token:data.refresh_token||previous.refresh_token,user:{id:data.user.id},expiresAt:expiresAt(data)};
+   })().finally(()=>{refreshJob=null;});
+  }
+  await refreshJob;
+ }
  async function call(endpoint, {method='GET', payload, authenticated=true}={}) {
+  if(authenticated)await ensureFresh();
   const headers={apikey:publishableKey,Accept:'application/json'};
   if(payload!==undefined)headers['Content-Type']='application/json';
   if(authenticated && session?.access_token)headers.Authorization='Bearer '+session.access_token;
@@ -19,7 +42,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   let data;
   try { data=await response.json(); } catch { throw Error('supabase_unavailable'); }
   if(!response.ok) {
-   if(response.status===401||response.status===403)throw Error('supabase_unauthorized');
+   if(response.status===401||response.status===403){if(authenticated)session=null;throw Error('supabase_unauthorized');}
    if(response.status===429)throw Error('supabase_rate_limit');
    throw Error('supabase_request_failed');
   }
@@ -53,9 +76,14 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   session=null;
   const result=await call('/auth/v1/token?grant_type=password',{authenticated:false,method:'POST',payload:{email,password}});
   if(typeof result.access_token!=='string'||!uuid(result.user?.id))throw Error('supabase_response');
-  session={access_token:result.access_token,user:{id:result.user.id}};
+  session={access_token:result.access_token,refresh_token:result.refresh_token||null,user:{id:result.user.id},expiresAt:expiresAt(result)};
   try{return await account();}
   catch(error){session=null;throw error;}
+ }
+ async function adminOverview(){
+  if(!session)throw Error('supabase_unauthorized');
+  const result=await call('/rest/v1/rpc/pronto_admin_overview',{method:'POST',payload:{}});
+  return normalizeAdminOverview(result);
  }
  async function signOut(){
   if(session){
@@ -63,5 +91,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;
  }
- return {signIn,account,signOut};
+ return {signIn,account,adminOverview,signOut};
 }
