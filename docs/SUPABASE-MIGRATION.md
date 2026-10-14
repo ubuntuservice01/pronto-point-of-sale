@@ -38,3 +38,15 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - A atribuição inicial da conta foi executada separadamente no projecto Supabase depois de confirmar o UID e o e-mail; **não há e-mails nem UUIDs pessoais inseridos nos ficheiros de migração versionados**.
 - Na interface isolada `/?auth-check=1`, uma conta com o perfil global activo é reconhecida como «Super Administrador — Ubuntu Service».
 - A demonstração estática do Lovable continua separada da autenticação real e o login operacional Node/SQLite ainda não foi migrado.
+
+## Fase 1 — painel administrativo Ubuntu Service (consulta protegida)
+
+- URL de acesso isolado: `/?mode=supabase` ou `/?auth-check=1` (na pré-visualização Lovable, mantenha o token de acesso da pré-visualização).
+- Depois de iniciar sessão no Supabase Auth, o perfil global é validado pelo RPC `pronto_admin_status()`. Só o perfil validado é encaminhado ao painel administrativo. Utilizadores comuns permanecem no ecrã de identificação, sem acesso ao painel.
+- O RPC `pronto_admin_overview()` é autenticado, de consulta e protegido na base de dados. Lista exclusivamente metadados de empresas, estado das licenças, planos, contagens de filiais e operadores. Não concede acesso aos produtos ou vendas, não disponibiliza movimentos de caixa e não expõe funções de escrita.
+- Secções funcionais: **Visão geral**, **Comerciantes**, **Licenças**, **Planos** e **Segurança**. Trocar de secção ou actualizar os dados reconsulta o RPC, permitindo que permissões revogadas deixem de dar acesso.
+- Pesquisa local de comerciantes por nome, contacto, plano ou ID, com saída HTML escapada.
+- Sessão: acesso e eventual refresh token ficam **apenas na memória da página**; o cliente renova tokens curtos enquanto a página está aberta, termina a sessão ao sair e pede novo login após recarregar a página. Nenhum token é persistido em `localStorage` ou `sessionStorage`.
+- Não alterar o modo de demonstração nem o modo Node/SQLite. O cadastro real, alterações, suspensão e atribuição de planos continuam **indisponíveis** até implementação da API transaccional segura com auditoria.
+- Estado inicial esperado no Supabase: **zero** comerciantes, **zero** planos. Estes são dados reais; não preencher com exemplos fictícios.
+- Testes de browser/móvel e login com palavra-passe da conta real dependem da validação do próprio administrador. Os testes automatizados cobrem o cliente com respostas simuladas; a criação de comerciantes reais e as operações de caixa ainda não foram homologadas.
