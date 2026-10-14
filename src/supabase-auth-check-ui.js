@@ -1,5 +1,6 @@
 import {prontoSupabaseConfig} from './pronto-supabase-config.js';
 import {createProntoIdentity} from './supabase-identity.js';
+import {mountUbuntuAdminDashboard} from './supabase-admin-dashboard.js';
 
 // A read-only identity test; the operational POS remains on the existing server.
 export function startSupabaseIdentityCheck(root=document.querySelector('#app')) {
@@ -43,8 +44,12 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    }
   });
  };
- const ready=account=>{
+ const ready=async account=>{
   const admin=account.ubuntuAdmin===true;
+  if(admin){
+   await mountUbuntuAdminDashboard({root,client,account,onLogout:form});
+   return;
+  }
   const grants=account.grants.length?
    '<div class="pronto-auth-grants">'+account.grants.map(grant=>
      '<article><strong>'+escape(grant.name)+'</strong><small>Perfil: '+escape(grant.role)+'</small></article>'
