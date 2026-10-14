@@ -695,3 +695,12 @@ button:not(:disabled){-webkit-tap-highlight-color:transparent}
 .search-box:focus-within{border-color:var(--green);outline:2px solid #79c4a8;outline-offset:2px;box-shadow:none}
 .split-payments #mixed-cash-received[hidden],.split-payments #mixed-change[hidden]{display:none}
 .cashier-payment:focus-visible{outline:3px solid #d9a431;outline-offset:3px}
+
+/* Payment methods are always visible: no browser-native select popup to flicker. */
+.checkout-payment-choice{border:0;padding:0;min-width:0;margin:16px 0 8px}
+.checkout-payment-choice legend{font-size:12px;font-weight:650;padding:0;color:var(--ink)}
+.checkout-payment-choice .cashier-payments{margin:8px 0 10px}
+.checkout-payment-choice .cashier-payment{min-width:0;min-height:52px;line-height:1.3;white-space:normal;overflow-wrap:anywhere}
+.checkout-payment-choice .cashier-payment[aria-pressed="true"]{background:var(--green);color:#fff;border-color:var(--green)}
+.checkout-payment-choice .cashier-payment:focus-visible{outline:3px solid #d9a431;outline-offset:2px}
+@media(max-width:420px){.checkout-payment-choice .cashier-payment{font-size:12px;min-height:56px}}
