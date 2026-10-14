@@ -42,3 +42,9 @@ test('Quick-payment and live-search handlers avoid full-app rebuilds', () => {
  assert.match(app, /previousCartScroll/);
  assert.match(app, /#payment-details/);
 });
+
+test('Cashier layout container never receives the cashier navigation click handler', () => {
+ const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+ assert.match(app, /document\.querySelectorAll\('button\[data-cashier-view\]'\)/);
+ assert.doesNotMatch(app, /document\.querySelectorAll\('\[data-cashier-view\]'\)/);
+});
