@@ -31,7 +31,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    const data=new FormData(node);
    try{
     const account=await client.signIn(String(data.get('email')||''),String(data.get('password')||''));
-    node.reset();ready(account);
+    node.reset();await ready(account);
    }catch(e){
     const messages={
      supabase_rate_limit:'Demasiadas tentativas. Aguarde e volte a tentar.',
