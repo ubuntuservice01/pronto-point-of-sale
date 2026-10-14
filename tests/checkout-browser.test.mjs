@@ -109,6 +109,32 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
   const after = await clickMethod('emola');
   assert.equal(after.sameSearch,true);
   assert.equal(await evalJS('document.querySelector("#search").value'),'sab');
+
+  // Suspend two distinct baskets; the operator selects a specific sale in a real browser.
+  assert.equal(await evalJS('document.querySelectorAll("#product-grid [data-product]").length'),1);
+  await evalJS('document.querySelector("#product-grid [data-product]").click()');
+  await evalJS('document.querySelector("#hold-sale").click()');
+  assert.equal(await evalJS('document.querySelector("#resume-sale").textContent.includes("(1)")'),true);
+  await evalJS('document.querySelector("#product-grid [data-product=p1]").click()');
+  await evalJS('document.querySelector("#hold-sale").click()');
+  assert.equal(await evalJS('document.querySelector("#resume-sale").textContent.includes("(2)")'),true);
+  await evalJS('document.querySelector("#resume-sale").click()');
+  assert.equal(await evalJS('document.querySelector("#modal").open'),true);
+  const popup = await evalJS('(() => ({items:document.querySelectorAll(".held-sale-item").length,actions:[...document.querySelectorAll("[data-resume-held]")].map(b=>b.textContent)}))()');
+  assert.equal(popup.items,2);
+  assert.equal(popup.actions.every(label=>label.includes('Retomar para finalizar')),true);
+  // Ordered newest first: resume the earlier Sabonete hold rather than the later Arroz hold.
+  await evalJS('document.querySelectorAll("[data-resume-held]")[1].click()');
+  assert.equal(await evalJS('document.querySelector("#modal").open'),false);
+  assert.equal(await evalJS('document.querySelector(".cart-row strong")?.textContent'),'Sabonete');
+  assert.equal(await evalJS('document.querySelector("#resume-sale").textContent.includes("(1)")'),true);
+  // When a basket is already open, selecting another preserves it as a new held sale.
+  await evalJS('document.querySelector("#resume-sale").click()');
+  assert.equal(await evalJS('document.querySelector("[data-resume-held]").textContent.includes("Suspender actual e retomar")'),true);
+  await evalJS('document.querySelector("[data-resume-held]").click()');
+  assert.equal(await evalJS('document.querySelector(".cart-row strong")?.textContent'),'Arroz');
+  assert.equal(await evalJS('document.querySelector("#resume-sale").textContent.includes("(1)")'),true);
+
  } finally {
   if (cdp) cdp.close();
   if (chrome) chrome.kill('SIGKILL');
