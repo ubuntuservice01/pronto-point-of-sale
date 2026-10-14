@@ -5,7 +5,7 @@ const date=s=>{
  if(!s)return '—';
  const d=new Date(s);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('pt-PT',{timeZone:'Africa/Maputo',day:'2-digit',month:'2-digit',year:'numeric'}).format(d):'—';
 };
-const currency=cents=>new Intl.NumberFormat('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100)+' MT';
+const currency=cents=>{const whole=String(Math.floor(cents/100)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');return whole+','+String(cents%100).padStart(2,'0')+' MT';};
 const status=s=>({active:'Activo',suspended:'Suspenso',unassigned:'Sem licença',cancelled:'Cancelada',expired:'Expirada'})[s]||'—';
 const badge=s=>'<span class="pronto-admin-chip pronto-admin-'+esc(s)+'">'+esc(status(s))+'</span>';
 const empty=(title,help)=>'<div class="pronto-admin-empty"><strong>'+esc(title)+'</strong><p>'+esc(help)+'</p></div>';
