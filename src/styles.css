@@ -666,3 +666,26 @@ button:not(:disabled){-webkit-tap-highlight-color:transparent}
  .mobile-nav .nav-alert-badge{top:-9px;right:-12px;min-width:24px!important;height:24px!important;padding:0 6px!important;font-size:11px!important}
  .hero h2{color:#fff!important}
 }
+
+/* Gestão: resumo financeiro por vendedor. */
+.seller-finance{margin-top:28px;padding-top:22px;border-top:1px solid var(--border,#dce4df)}
+.seller-finance .page-heading h2{font-size:clamp(20px,2vw,26px);margin:5px 0}
+.seller-toolbar label{min-width:145px}
+.seller-toolbar select,.seller-toolbar input{width:100%}
+.seller-report-list{display:grid;gap:14px;margin:16px 0}
+.seller-report-card{min-width:0}
+.seller-report-card h4{font-size:14px;margin:20px 0 12px}
+.seller-report-title{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.seller-report-title h3{font-size:19px;margin:0 0 5px;overflow-wrap:anywhere}
+.seller-report-title small,.seller-additional small,.seller-shift small{display:block;font-size:12px;opacity:.8}
+.seller-report-title>div:last-child{text-align:right}
+.seller-report-title>div:last-child strong{display:block;font-size:22px;margin-top:4px}
+.seller-total-grid{margin-bottom:16px}
+.seller-additional{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:15px}
+.seller-additional>div{min-width:0;padding:13px;border:1px solid #e4e9e7;border-radius:12px}
+.seller-additional strong{display:block;margin-top:6px;font-size:16px;overflow-wrap:anywhere}
+.seller-shift{display:grid;grid-template-columns:minmax(120px,1.5fr) repeat(3,minmax(110px,1fr));gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid #e4e9e7}
+.seller-shift>div{min-width:0}
+.seller-shift strong{display:block;margin-top:4px;overflow-wrap:anywhere}
+@media(max-width:850px){.seller-additional{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-shift{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.seller-toolbar label{flex:1 1 100%}.seller-toolbar button{flex:1}.seller-report-title>div:last-child{text-align:left}.seller-report-title>div:last-child strong{font-size:19px}.seller-payment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-shift{grid-template-columns:1fr 1fr}}
