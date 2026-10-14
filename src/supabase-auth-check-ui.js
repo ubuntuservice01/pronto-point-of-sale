@@ -44,13 +44,15 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   });
  };
  const ready=account=>{
+  const admin=account.ubuntuAdmin===true;
   const grants=account.grants.length?
    '<div class="pronto-auth-grants">'+account.grants.map(grant=>
      '<article><strong>'+escape(grant.name)+'</strong><small>Perfil: '+escape(grant.role)+'</small></article>'
     ).join('')+'</div>':
-    '<p class="held-sale-warning">Esta conta ainda não está associada a nenhuma empresa activa. Contacte a Ubuntu Service para concluir o registo.</p>';
-  shell('<h2>Identidade verificada</h2>'+
+    '<p class="held-sale-warning">'+(admin?'O Super Administrador não precisa de uma associação comercial para exercer funções administrativas.':'Esta conta ainda não está associada a nenhuma empresa activa. Contacte a Ubuntu Service para concluir o registo.')+'</p>';
+  shell('<h2>'+ (admin?'Super Administrador — Ubuntu Service':'Identidade verificada') +'</h2>'+
    '<p>Conta: <strong>'+escape(account.email)+'</strong></p>'+
+   (admin?'<p class="pronto-super-admin-status"><strong>Perfil confirmado:</strong> Super Administrador Ubuntu Service, Lda.</p><p class="form-hint">A verificação está activa. Os módulos de administração de comerciantes, licenças e subscrições serão ligados à nova base apenas depois da validação das operações seguras.</p>':'')+
    '<h3>Empresas autorizadas</h3>'+grants+
    '<p class="form-hint">Este teste consulta permissões reais através das políticas RLS. As operações comerciais continuam no backend existente.</p>'+
    '<button id="pronto-auth-check-logout" type="button" class="secondary full">Terminar sessão de teste</button>');
