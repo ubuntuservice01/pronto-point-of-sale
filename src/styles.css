@@ -689,3 +689,9 @@ button:not(:disabled){-webkit-tap-highlight-color:transparent}
 .seller-shift strong{display:block;margin-top:4px;overflow-wrap:anywhere}
 @media(max-width:850px){.seller-additional{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-shift{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.seller-toolbar label{flex:1 1 100%}.seller-toolbar button{flex:1}.seller-report-title>div:last-child{text-align:left}.seller-report-title>div:last-child strong{font-size:19px}.seller-payment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-shift{grid-template-columns:1fr 1fr}}
+
+/* Checkout stability: show one clear search focus ring and toggle mixed-cash fields safely. */
+.search-box input:focus,.search-box input:focus-visible{outline:none;outline-offset:0;box-shadow:none}
+.search-box:focus-within{border-color:var(--green);outline:2px solid #79c4a8;outline-offset:2px;box-shadow:none}
+.split-payments #mixed-cash-received[hidden],.split-payments #mixed-change[hidden]{display:none}
+.cashier-payment:focus-visible{outline:3px solid #d9a431;outline-offset:3px}
