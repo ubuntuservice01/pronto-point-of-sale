@@ -24,7 +24,7 @@ export function renderUbuntuAdminShell(account){
   '<div class="pronto-admin-sidebar-bottom"><span class="pronto-admin-secure">Acesso validado por Supabase Auth</span>'+
   '<button type="button" class="secondary" id="pronto-admin-logout">Terminar sessão</button></div></aside>'+
   '<div class="pronto-admin-workspace"><header class="pronto-admin-topbar"><div><span>UBUNTU SERVICE</span><h1>Administração Pronto POS</h1></div>'+
-  '<div class="pronto-admin-top-actions"><span class="pronto-admin-live">Consulta protegida</span>'+
+  '<div class="pronto-admin-top-actions"><label class="pronto-admin-search" id="pronto-admin-search-wrap" hidden><span class="pronto-admin-sr-only">Pesquisar comerciantes</span><input id="pronto-admin-search" autocomplete="off" placeholder="Pesquisar comerciante ou contacto"></label><span class="pronto-admin-live">Consulta protegida</span>'+
   '<button type="button" class="secondary" id="pronto-admin-refresh">Actualizar dados</button></div></header>'+
   '<main class="pronto-admin-main"><div id="pronto-admin-message" role="status" aria-live="polite"></div>'+
   '<div id="pronto-admin-content"></div></main></div></div>';
