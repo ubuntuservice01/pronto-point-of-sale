@@ -73,6 +73,7 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
   }
   assert.ok(endpoint, 'Chrome DevTools page not ready');
   cdp = await connect(endpoint);
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await cdp.send('Runtime.enable');
   const evalJS = async expression => {
    const result = await cdp.send('Runtime.evaluate', {expression, returnByValue:true, awaitPromise:true});
@@ -89,8 +90,9 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
   assert.equal(initial.nativeSelect, false);
   async function clickMethod(key) {
    const selector = '[data-quick-payment="' + key + '"]';
-   const rect = await evalJS('(() => {const button=document.querySelector(' + JSON.stringify(selector) + ');button.scrollIntoView({block:"center",inline:"nearest"});const r=button.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()');
+   const rect = await evalJS('(() => {const button=document.querySelector(' + JSON.stringify(selector) + ');button.scrollIntoView({block:"center",inline:"nearest"});const r=button.getBoundingClientRect();const x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,hit:hit?.closest('[data-quick-payment]')?.dataset.quickPayment||'none',viewport:window.innerWidth};})()');
    assert.ok(rect && rect.x>0 && rect.y>0);
+   assert.equal(rect.hit,key,'pointer blocked by another element (viewport '+rect.viewport+')');
    await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',x:rect.x,y:rect.y,button:'left',clickCount:1});
    await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:rect.x,y:rect.y,button:'left',clickCount:1});
    return evalJS('(() => ({selected:document.querySelector(' + JSON.stringify(selector) + ')?.getAttribute("aria-pressed"),sameSearch:window.__posSearch===document.querySelector("#search"),sameCheckout:window.__posCheckout===document.querySelector("#sale-cart")}))()');
