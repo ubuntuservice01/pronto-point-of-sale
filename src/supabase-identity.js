@@ -127,11 +127,49 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   if(!data||typeof data!=='object'||Array.isArray(data))throw Error('shop_action_invalid');
   return call('/rest/v1/rpc/pronto_merchant_action',{method:'POST',payload:{p_action:action,p_data:data}});
  }
+ async function requestPasswordRecovery(email,redirectUrl){
+  if(!validEmail(email))throw Error('supabase_invalid_credentials');
+  let redirect;
+  try{redirect=new URL(redirectUrl);}
+  catch{throw Error('recovery_redirect');}
+  if(!['https:','http:'].includes(redirect.protocol)||redirect.username||redirect.password||
+   (redirect.protocol==='http:'&&!['localhost','127.0.0.1'].includes(redirect.hostname))||
+   redirect.hash||redirect.searchParams.get('mode')!=='supabase'||redirect.searchParams.get('reset-password')!=='1')
+   throw Error('recovery_redirect');
+  // Password reset depends on Supabase Auth approved redirect URLs and SMTP.
+  await call('/auth/v1/recover?redirect_to='+encodeURIComponent(redirect.href),{
+   authenticated:false,method:'POST',payload:{email}
+  });
+  return true;
+ }
+ async function completePasswordRecovery(recoveryAccessToken,newPassword){
+  if(typeof recoveryAccessToken!=='string'||recoveryAccessToken.length<20||recoveryAccessToken.length>10000)throw Error('recovery_token');
+  if(typeof newPassword!=='string'||newPassword.length<12||newPassword.length>128)throw Error('recovery_password');
+  // The token is accepted only by Supabase Auth. It never becomes a merchant session.
+  const headers={apikey:publishableKey,Authorization:'Bearer '+recoveryAccessToken,Accept:'application/json'};
+  const verify=await fetchImpl(apiURL.origin+'/auth/v1/user',{
+   method:'GET',headers,cache:'no-store',credentials:'omit',redirect:'error'
+  });
+  if(!verify.ok)throw Error('recovery_invalid');
+  const user=await verify.json().catch(()=>null);
+  if(!uuid(user?.id))throw Error('recovery_invalid');
+  const updated=await fetchImpl(apiURL.origin+'/auth/v1/user',{
+   method:'PUT',headers:{...headers,'Content-Type':'application/json'},
+   body:JSON.stringify({password:newPassword}),
+   cache:'no-store',credentials:'omit',redirect:'error'
+  });
+  if(!updated.ok){
+   if(updated.status===401||updated.status===403)throw Error('recovery_invalid');
+   throw Error('recovery_rejected');
+  }
+  session=null;
+  return true;
+ }
  async function signOut(){
   if(session){
    try{await call('/auth/v1/logout',{method:'POST'});}catch{/* Clear local token even when service unavailable. */}
   }
   session=null;
  }
- return {signIn,account,adminOverview,adminMutate,inviteMember,merchantBranches,merchantSnapshot,merchantAction,signOut};
+ return {signIn,account,adminOverview,adminMutate,inviteMember,merchantBranches,merchantSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
