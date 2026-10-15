@@ -90,6 +90,53 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
   assert.equal(sale.calls[0].payload.cash_received_cents,2000);
   assert.equal(sale.cart,0);
   assert.match(sale.feedback,/Venda concluída/);
+
+  // The same real Chrome page now checks PIN enrollment and lock/unlock.
+  const pinMounted=await js([
+   '(async()=>{const root=document.querySelector("#app");',
+   'window.__pinChecks={pin:null,locked:false};',
+   'const pinClient={',
+   'async sessionPin(action,value){if(action==="status")return {configured:false};',
+   'if(action==="create"){window.__pinChecks.pin=value;return {ok:true};}',
+   'if(action==="verify"){const ok=value===window.__pinChecks.pin;if(ok)window.__pinChecks.locked=false;return {ok,reason:ok?null:"incorrect_pin",remaining_attempts:4};}',
+   'return {ok:false};},',
+   'lockScreen(){window.__pinChecks.locked=true;},async signOut(){}};',
+   'const module=await import("/src/supabase-pin-lock.js");',
+   'window.__gate=await module.mountProntoPinGate({root,client:pinClient,account:{userId:"11111111-1111-4111-8111-111111111111",email:"caixa@example.org"},',
+   'open:()=>{root.innerHTML="<div id=protected-work>Venda em memória</div>";},onLogout:()=>{},idleMs:60000});',
+   'return {title:document.querySelector("#pronto-pin-title")?.textContent,inert:root.inert};})()'
+  ].join(''));
+  assert.deepEqual(pinMounted,{title:'Criar PIN de 5 dígitos',inert:true});
+  const enrolled=await js([
+   '(async()=>{const form=document.querySelector("#pronto-pin-form");',
+   'form.querySelector("[name=new]").value="48291";form.querySelector("[name=confirm]").value="48291";form.requestSubmit();',
+   'for(let i=0;i<80&&!document.querySelector("#protected-work");i++)await new Promise(r=>setTimeout(r,20));',
+   'const protectedNode=document.querySelector("#protected-work");window.__protectedNode=protectedNode;',
+   'return {opened:!!protectedNode,toolbar:!!document.querySelector("[data-pin-lock]"),locked:window.__pinChecks.locked};})()'
+  ].join(''));
+  assert.deepEqual(enrolled,{opened:true,toolbar:true,locked:false});
+  const locked=await js([
+   '(()=>{document.querySelector("[data-pin-lock]").click();',
+   'return {inert:document.querySelector("#app").inert,overlay:!!document.querySelector(".pronto-pin-backdrop"),',
+   'preserved:document.querySelector("#protected-work")===window.__protectedNode};})()'
+  ].join(''));
+  assert.deepEqual(locked,{inert:true,overlay:true,preserved:true});
+  const unlocked=await js([
+   '(async()=>{const form=document.querySelector("#pronto-pin-form");',
+   'const field=form.querySelector("[name=pin]");field.value="48291";form.requestSubmit();',
+   'for(let i=0;i<80&&document.querySelector(".pronto-pin-backdrop");i++)await new Promise(r=>setTimeout(r,20));',
+   'return {inert:document.querySelector("#app").inert,overlay:!!document.querySelector(".pronto-pin-backdrop"),',
+   'preserved:document.querySelector("#protected-work")===window.__protectedNode};})()'
+  ].join(''));
+  assert.deepEqual(unlocked,{inert:false,overlay:false,preserved:true});
+  const backgroundLock=await js([
+   '(()=>{Object.defineProperty(document,"hidden",{configurable:true,get:()=>true});',
+   'document.dispatchEvent(new Event("visibilitychange"));',
+   'const result={locked:!!document.querySelector(".pronto-pin-backdrop"),inert:document.querySelector("#app").inert};',
+   'delete document.hidden;return result;})()'
+  ].join(''));
+  assert.deepEqual(backgroundLock,{locked:true,inert:true});
+
  }finally{
   if(debug)debug.close();if(browser)browser.kill('SIGKILL');
   if(opened)await new Promise(ok=>srv.close(ok));
