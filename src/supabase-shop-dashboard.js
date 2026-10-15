@@ -155,6 +155,17 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   if(el.hasAttribute('data-shop-credit')){if(lockPending())return;method=method==='credit'?'cash':'credit';updatePanel();return;}
   if(el.hasAttribute('data-shop-refresh'))return void safeLoad();
+  if(el.hasAttribute('data-inventory-select')){selectedProductId=el.dataset.inventorySelect;render();return;}
+  if(el.hasAttribute('data-inventory-export')){
+   if(!inventory)return;
+   const csv=shoppingListCSV(inventory);
+   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+   const url=URL.createObjectURL(blob);
+   const link=document.createElement('a');link.href=url;link.download='lista-compras-pronto-pos.csv';
+   document.body.appendChild(link);link.click();link.remove();
+   URL.revokeObjectURL(url);return;
+  }
+
   if(el.hasAttribute('data-shop-hold')){
    if(lockPending()||!cart.length||disconnected())return showMessage('A venda em espera exige ligação; não foi guardada.',true);
    busy=true;const holdId=holdIdToSave||crypto.randomUUID();holdIdToSave=holdId;
@@ -214,6 +225,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     const card=button.closest('.shop-product');
     if(p&&card)card.hidden=!(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase());
    });
+  }else if(el.id==='shop-inventory-search'){
+   inventoryQuery=el.value;
+   const term=inventoryQuery.toLocaleLowerCase();
+   root.querySelectorAll('[data-inventory-select]').forEach(button=>{
+    const p=inventory?.products.find(x=>x.id===button.dataset.inventorySelect);
+    button.hidden=!p||(p.name+' '+p.code).toLocaleLowerCase().includes(term);
+   });
   }else if(el.id==='shop-customer-search'){
    customerQuery=el.value;
    const visible=searchCustomers(credit?.customers||[],customerQuery).map(c=>c.id);
@@ -239,6 +257,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.id==='shop-credit-due'){creditDue=el.value;return;}
   if(el.id==='shop-debt-filter'){debtFilter=el.value;render();return;}
   if(el.id==='shop-return-sale'){selectedReturnSaleId=el.value;render();return;}
+  if(el.id==='shop-alert-days'){alertDays=Math.max(1,Math.min(365,Number(el.value)||30));render();return;}
   if(el.name==='discount'){if(!lockPending())updatePanel();return;}
   if(el.hasAttribute('data-cart-qty')){
    if(lockPending())return;
@@ -306,6 +325,37 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(['product_update','inventory_adjust','inventory_count'].includes(action)){
+   if(disconnected()||pending||pendingFinance||pendingPayment)return showMessage('Conclua primeiro as operações pendentes e confirme a ligação.',true);
+   const values=new FormData(form),get=k=>String(values.get(k)||'').trim();
+   const p=inventory?.products.find(p=>p.id===get('product_id'));
+   if(!p)return showMessage('Produto não encontrado.',true);
+   const revision=Number(get('revision'));
+   let payload;
+   try{
+    if(action==='product_update'){
+     if(!['owner','manager'].includes(grant.role))throw Error('price_permission');
+     payload={product_id:p.id,expected_revision:revision,name:get('name'),category:get('category'),
+      unit:get('unit'),price_cents:toCents(get('price')),min_stock:Number(get('min_stock')),
+      active:values.has('active')};
+    }else if(action==='inventory_count'){
+     const counted=Number(get('counted_qty'));
+     if(!Number.isFinite(counted)||counted<0)throw Error('invalid_count');
+     payload={product_id:p.id,expected_revision:revision,counted_qty:counted,reason:get('reason')};
+    }else{
+     const delta=Number(get('delta'));
+     if(!Number.isFinite(delta)||delta===0)throw Error('invalid_adjustment');
+     payload={product_id:p.id,expected_revision:revision,delta,reason:get('reason'),
+      expires_on:get('expires_on')};
+    }
+   }catch(error){return showMessage('Reveja o formulário: '+error.message,true);}
+   busy=true;showMessage('A validar quantidades e permissões no Supabase…');
+   try{
+    const result=await client.inventoryAction(action,cashData(payload));
+    await refresh();render();showMessage('Inventário actualizado. Stock actual: '+String(result.stock||0));
+   }catch(error){showMessage('A alteração não foi confirmada. Actualize os dados antes de repetir. ('+error.message+')',true);}
+   finally{busy=false;}return;
+  }
   if(action==='return_confirm'){
    if(lockPending()||disconnected())return showMessage('A devolução exige ligação ao servidor.',true);
    if(!['owner','manager'].includes(grant.role))return showMessage('Sem permissão para devolver.',true);
