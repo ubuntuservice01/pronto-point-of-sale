@@ -44,11 +44,11 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<button class="shop-submit" type="submit" '+(!session||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[]}){
  const products=data?.products||[];
  const session=data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
- const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['team','Colaboradores']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],team:['owner']})[key].includes(grant.role));
+ const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['team','Colaboradores']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],team:['owner']})[key].includes(grant.role));
  const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'>'+name+'</button>').join('');
  const prodCards=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   .map(p=>'<article class="shop-product"><div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
@@ -57,12 +57,15 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
   body='<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><label class="shop-search"><span>Pesquisar por nome ou código</span>'+
    '<input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Pesquisar ou ler o código"></label>'+
    '<div id="shop-product-results" class="shop-products">'+(prodCards||'<p class="shop-help">Não há produtos encontrados.</p>')+'</div></section>'+
-   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue})+'</div>';
+   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue})+'</div>'+   (cart.length?'<div class="shop-hold-actions"><button type="button" data-shop-hold>Suspender esta venda</button><small>A venda em espera não reserva stock nem confirma pagamentos.</small></div>':'');
   if(pending)body+='<div class="shop-pending"><strong>Venda com confirmação pendente</strong><p>Não crie outra venda antes de verificar se esta foi concluída. Pode repetir o mesmo pedido sem duplicar o registo ou descartá-lo após conferência.</p><button type="button" data-shop-retry>Repetir o mesmo pedido</button><button type="button" data-shop-discard>Descartar pedido pendente</button></div>';
  }else if(view==='customers'||view==='debts'){
   body=renderCreditView({view,credit,role:grant.role,query:customerQuery,filter:debtFilter,session,selectedCustomerId});
  }else if(['suppliers','purchases','expenses'].includes(view)){
   body=renderFinanceView({view,finance,products,supplierId,lines:purchaseLines,role:grant.role,session});
+ }else if(view==='held'){
+  body='<section class="shop-box"><h3>Vendas em espera</h3><p class="shop-help">Os carrinhos ficam guardados na filial. Ao recuperar, o stock e os preços são revalidados no servidor.</p>'+
+   (heldSales.length?heldSales.map(h=>'<article class="credit-debt-item"><strong>'+esc(h.cart.length)+' artigo(s)</strong><small> · '+esc(String(h.createdAt||''))+'</small><div class="credit-debt-actions"><button type="button" data-shop-hold-resume="'+esc(h.id)+'">Retomar</button><button type="button" data-shop-hold-delete="'+esc(h.id)+'">Eliminar</button></div></article>').join(''):'<p class="shop-help">Não existem vendas suspensas nesta filial.</p>')+'</section>';
  }else if(view==='products'){
   body='<div class="shop-two">'+section('Novo produto','<form data-shop-form="product_create" class="shop-form">'+
    field('name','Nome do produto','','required maxlength="200"')+
@@ -83,7 +86,11 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
   body=section('Sessão de caixa',
    session?'<p>Caixa aberto em '+esc(safeDate(session.openedAt))+'. Fundo inicial: <strong>'+MONEY(session.openingCash)+'</strong>.</p>'+
    '<form data-shop-form="cash_close" class="shop-form">'+field('counted_cash','Dinheiro contado no caixa (MT)','','required type="number" min="0" step="0.01"')+
-   '<button class="shop-submit" type="submit">Fechar e reconciliar caixa</button></form>':
+   '<button class="shop-submit" type="submit">Fechar e reconciliar caixa</button></form>'+ 
+   '<form data-shop-form="cash_move" class="shop-form"><h4>Entrada / retirada de dinheiro</h4><label>Movimento<select name="direction"><option value="in">Entrada</option><option value="out">Retirada</option></select></label>'+
+   field('amount','Valor (MT)','','type="number" min="0.01" step="0.01" required')+
+   field('reason','Motivo','','minlength="3" maxlength="180" required')+
+   '<button class="shop-submit" type="submit">Registar movimento no caixa</button></form>':
    '<p>Não existe uma sessão de caixa aberta nesta filial para esta conta.</p>'+
    '<form data-shop-form="cash_open" class="shop-form">'+field('device_id','Identificação do terminal','CAIXA-01','required minlength="2" maxlength="100"')+
    field('opening_cash','Fundo inicial (MT)','0','required type="number" min="0" step="0.01"')+
