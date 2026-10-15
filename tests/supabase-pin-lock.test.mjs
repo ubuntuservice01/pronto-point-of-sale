@@ -103,4 +103,11 @@ test('Migrations enforce hashed PIN, 5-attempt rate limit, and owner-scoped invi
  assert.match(owner,/pronto_private\.member_role\(p_business\)='owner'/);
  assert.match(owner,/p_role not in \('manager','cashier','stock','finance'\)/);
  assert.match(owner,/global_admin_cannot_join_shop/);
+ const corrected=readFileSync(new URL('../supabase/migrations/20261015170000_owner_scope_explicit_deny.sql',import.meta.url),'utf8');
+ assert.match(corrected,/coalesce\(pronto_private\.member_role\(p_business\),'\'\)/);
+ assert.match(corrected,/coalesce\(pronto_private\.member_role\(p_business\)='owner',false\)/);
+ const edge=readFileSync(new URL('../supabase/functions/pronto-owner-invite/index.ts',import.meta.url),'utf8');
+ assert.ok(edge.indexOf('pronto_owner_invite_allowed')>0);
+ assert.ok(edge.indexOf('pronto_owner_invite_allowed')<edge.indexOf('/auth/v1/invite'));
+ assert.match(edge,/pronto_owner_assign_staff/);
 });
