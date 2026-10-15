@@ -193,8 +193,8 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
  }
  async function sessionPin(action,pin=null,currentPin=null){
   if(!['status','create','verify','change'].includes(action))throw Error('pin_invalid_action');
-  if(action!=='status'&&!(typeof pin==='string'&&/^\\d{5}$/.test(pin)))throw Error('pin_five_digits');
-  if(action==='change'&&!(typeof currentPin==='string'&&/^\\d{5}$/.test(currentPin)))throw Error('pin_five_digits');
+  if(action!=='status'&&!(typeof pin==='string'&&/^\d{5}$/.test(pin)))throw Error('pin_five_digits');
+  if(action==='change'&&!(typeof currentPin==='string'&&/^\d{5}$/.test(currentPin)))throw Error('pin_five_digits');
   const result=await call('/rest/v1/rpc/pronto_session_pin',{method:'POST',allowLocked:true,
    payload:{p_action:action,p_pin:pin,p_current_pin:currentPin}});
   if(!result||typeof result!=='object')throw Error('supabase_response');
