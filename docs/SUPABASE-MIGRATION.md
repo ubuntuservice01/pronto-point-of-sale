@@ -63,3 +63,17 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Antes de convidar comerciantes reais, configurar SMTP, domínio e URLs de redireccionamento no Supabase Auth.
 - O ambiente de ensaio utilizou BEGIN/ROLLBACK. Não foram criados comerciantes ou planos fictícios persistentes.
 - O frontend operacional de vendas ainda usa Node/SQLite. Estas operações comerciais de cadastro não activam a escrita de vendas e stock no PostgreSQL. Não anunciar migração financeira completa antes de implementar e testar as transacções de vendas, caixa, stock e dívidas.
+
+## Fase 3 — núcleo de loja Supabase em modo piloto (PostgreSQL)
+
+- A rota `/?mode=supabase` usa Supabase Auth; se a conta for o Super Administrador, abre o painel Ubuntu, e se for um membro com empresa/filial activa e licença válida, abre o **modo piloto de loja**, separado do POS legado.
+- Operações implementadas por RPC protegido: `product_create` com código por filial, `stock_receive` com lote, validade e custo, `cash_open`, `cash_close` e `sale_complete` com meios únicos ou repartidos.
+- A base calcula os valores a partir dos preços reais dos produtos, não confia nos subtotais do browser. Descontos e pagamentos são validados em cêntimos inteiros; quantidades por artigo têm até três casas decimais.
+- Uma venda só é confirmada com a sessão de caixa aberta pelo próprio operador. O registo de venda, artigos, pagamentos, lotes FEFO, baixa de stock e auditoria são efectuados na **mesma transacção PostgreSQL**.
+- Cada venda tem uma chave idempotente e hash do pedido. Reenvios idênticos devolvem a referência original, sem duplicar vendas. Se a aplicação ficar sem resposta, mantenha o mesmo pedido para repetir com segurança; não crie nova venda até confirmar o estado.
+- O operador confirma manualmente M-Pesa/e-Mola/transferência; ainda não existem webhooks de confirmação dos fornecedores.
+- O fecho de caixa reconcilia dinheiro inicial, recebimentos em dinheiro e movimentos do caixa. **Devoluções, dívidas e movimentos de caixa fora de vendas ainda não foram integrados**, pelo que a implementação financeira é parcial.
+- Segurança: `pronto_private.member_role` exige empresa activa, membro activo e subscrição válida. As funções com `SECURITY DEFINER` só devolvem dados da empresa/filial do funcionário autenticado; o cliente não dispõe de permissões directas INSERT/UPDATE/DELETE nas tabelas de stock e vendas.
+- Os ensaios reais foram executados com uma conta Auth/empresa temporárias dentro de `BEGIN; ... ROLLBACK;`, incluindo: código automático, recepção de lote, pagamento repartido dinheiro/e-Mola, idempotência, rejeição de sobre-venda e reconciliação do caixa. Nenhum artigo, comerciante ou venda fictícios ficaram guardados.
+- As contas reais de comerciantes, SMTP de convites, impressão e equipamento, fotografias em Supabase Storage, vendas offline com reconciliação, reservas/vendas em espera sincronizadas, gestão de dívidas, devoluções, relatórios avançados, documentos fiscais e migração de histórico **ainda não foram homologados**.
+- A **versão comercial anterior Node.js/SQLite e o modo demonstração não foram substituídos**. Não ligar directamente vendedores reais ao novo modo piloto sem ensaios de carga e de concorrência, backup/restauro, confirmação fiscal e testes E2E no navegador/dispositivos.
