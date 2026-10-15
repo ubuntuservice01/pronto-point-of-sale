@@ -182,7 +182,8 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   });
   const signed=result?.signedURL||result?.signedUrl;
   if(typeof signed!=='string')throw Error('photo_url_invalid');
-  const u=new URL(signed,apiURL.origin);
+  const normal=signed.startsWith('/object/sign/pronto-product-photos/')?'/storage/v1'+signed:signed;
+  const u=new URL(normal,apiURL.origin);
   if(u.origin!==apiURL.origin||
    !u.pathname.startsWith('/storage/v1/object/sign/pronto-product-photos/'+path))
    throw Error('photo_url_invalid');
