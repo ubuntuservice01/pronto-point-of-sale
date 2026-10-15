@@ -11,7 +11,7 @@ const selectRoles=()=>'<select name="role" required>'+roles.map(([v,name])=>opti
 const block=(title,note,fields,action,submit)=>'<section class="pronto-admin-panel pronto-admin-form-panel"><h3>'+esc(title)+'</h3><p>'+esc(note)+'</p>'+
  '<form data-provision-action="'+action+'" class="pronto-admin-form"><div class="pronto-admin-fields">'+fields+'</div>'+
  '<button type="submit" class="primary">'+esc(submit)+'</button></form></section>';
-const field=(label,name,type='text',extra='')=>'<label>'+esc(label)+'<input name="'+name+'" type="'+type+'" '+extra+' required></label>';
+const field=(label,name,type='text',extra='',required=true)=>'<label>'+esc(label)+'<input name="'+name+'" type="'+type+'" '+extra+(required?' required':'')+'></label>';
 const help='<p class="pronto-admin-note">Todas as alterações são verificadas e auditadas no Supabase. Estas acções não alteram vendas, stock ou movimentos financeiros.</p>';
 
 export function renderProvisioningForms(tab,data){
@@ -20,9 +20,9 @@ export function renderProvisioningForms(tab,data){
   return '<div class="pronto-admin-form-sections">'+block('Registar comerciante',
    'A empresa e a filial principal são criadas no Supabase. A loja começa suspensa até ter proprietário e licença válida.',
    field('Nome da empresa','name','text','minlength="2" maxlength="120"')+
-   field('Telefone de contacto','phone','tel','maxlength="60"')+
-   field('Localização / endereço','address','text','maxlength="250"')+
-   field('Nome da filial principal','branch_name','text','maxlength="120" placeholder="Principal"'),
+   field('Telefone de contacto','phone','tel','maxlength="60"',false)+
+   field('Localização / endereço','address','text','maxlength="250"',false)+
+   field('Nome da filial principal','branch_name','text','maxlength="120" placeholder="Principal"',false),
    'business_create','Registar empresa')+'</div>'+help;
  }
  if(tab==='plans'){
