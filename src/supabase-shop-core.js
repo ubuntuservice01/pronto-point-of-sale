@@ -43,7 +43,7 @@ export function cartTotal(cart,products,discountCents=0){
   if(q>p.stock)throw Error('stock_unavailable');
   subtotal+=Math.round(p.priceCents*q);
  }
- if(!Number.isSafeInteger(discountCents)||discountCents<0||discountCents>=subtotal)throw Error('discount_invalid');
+ if(!Number.isSafeInteger(discountCents)||discountCents<0||(subtotal>0&&discountCents>=subtotal))throw Error('discount_invalid');
  return {subtotal,total:subtotal-discountCents};
 }
 export function makeSaleRequest({businessId,branchId,sessionId,cart,products,discount='0',allocations,idempotencyKey,cashReceived='0'}){
