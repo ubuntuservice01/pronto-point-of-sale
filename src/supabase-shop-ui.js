@@ -44,7 +44,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<button class="shop-submit" type="submit" '+(!session||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null}){
  const products=data?.products||[];
  const session=data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
@@ -120,5 +120,6 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  (cart.length||pending?'<form data-shop-form="draft_save" class="shop-form"><label>Frase de recuperação (mínimo 12 caracteres)<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Guardar rascunho encriptado</button></form>':'')+
  (draftAvailable?'<form data-shop-form="draft_restore" class="shop-form"><label>Frase do rascunho guardado<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Recuperar rascunho</button></form><button type="button" data-shop-draft-clear class="shop-logout">Apagar rascunho do dispositivo</button>':'')+
  '<p class="shop-help">Se uma venda foi enviada e a resposta falhou, recupere o mesmo pedido e a mesma referência antes de reenviar. Não crie uma venda nova sem conferir os registos.</p></section>'+
+ (pendingFinance?'<div class="shop-pending"><strong>Operação financeira por confirmar</strong><p>Verifique o histórico no Supabase antes de tentar outra operação. Repetir o mesmo formulário reutiliza a chave original.</p><button type="button" data-finance-discard>Descartar referência local após conferir</button></div>':'')+
  '<p class="shop-footer">Piloto PostgreSQL: clientes, vendas a crédito e cobrança manual integrados. Devoluções, vendas offline sincronizadas e documentos fiscais ainda não estão homologados.</p></main></div>';
 }
