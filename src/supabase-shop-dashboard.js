@@ -1,5 +1,7 @@
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
-import {toCents,toQuantity,makeSaleRequest,esc} from './supabase-shop-core.js';
+import {toCents,toQuantity,makeSaleRequest,cartTotal,esc} from './supabase-shop-core.js';
+import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
+import {creditStatementHTML,creditWhatsAppURL} from './supabase-credit-ui.js';
 import {makeShopDraft,saveShopDraft,restoreShopDraft,hasShopDraft,clearShopDraft} from './supabase-shop-draft.js';
 
 // Explicit, isolated PostgreSQL checkout pilot. The existing SQLite POS is untouched.
@@ -9,9 +11,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  let grant=account.grants[0],branches=[],branchId='',data=null,cart=[],
   view=['owner','manager','cashier'].includes(account.grants[0].role)?'sell':
    account.grants[0].role==='stock'?'products':'history',
-  method='cash',discount='0',query='',notice='',busy=false,pending=null;
+  method='cash',discount='0',query='',notice='',busy=false,pending=null,
+  credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],team:['owner']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],team:['owner']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
@@ -26,16 +29,18 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope())});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue});
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
-   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';
+   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
+  credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
+  if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
  };
  const safeLoad=async(first=false)=>{
@@ -63,7 +68,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  };
  const updatePanel=()=>{
   const panel=root.querySelector('#shop-checkout-panel');
-  if(panel&&data)panel.outerHTML=shopPaymentPanel({method,cart,products:data.products,discount,session:session()});
+  if(panel&&data)panel.outerHTML=shopPaymentPanel({method,cart,products:data.products,discount,session:session(),role:grant.role,credit,selectedCustomerId,creditDue});
  };
  const cashData=fields=>({business_id:grant.id,branch_id:branchId,...fields});
  const processSale=async()=>{
@@ -71,7 +76,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(disconnected()){showMessage('Sem internet: a venda não foi concluída. Guarde o rascunho encriptado e volte a tentar depois de restabelecer a ligação.',true);return;}
   busy=true;showMessage('A verificar e registar a venda no servidor…');
   try{
-   const result=await client.merchantAction('sale_complete',pending);
+   const result=await client.merchantAction(pending.due_on?'credit_sale':'sale_complete',pending);
    const wasRepeated=result.duplicate===true;
    cart=[];pending=null;discount='0';method='cash';query='';
    try{await refresh();}catch{render();}
@@ -90,11 +95,16 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const result=await client.merchantAction(action,cashData(payload));
    await refresh();
    if(action==='product_create')view='products';
+   if(action==='customer_save')view='customers';
+   if(action==='debt_payment')view='debts';
    render();
    const summary=action==='product_create'?'Produto criado com código '+result.code:
     action==='stock_receive'?'Stock recebido e registado por lote.':
     action==='cash_open'?'Sessão de caixa aberta.':
     action==='cash_close'?'Caixa fechado. Esperado: '+(Number(result.expected_cents)/100).toFixed(2)+' MT; diferença: '+(Number(result.difference_cents)/100).toFixed(2)+' MT.':
+    action==='customer_save'?'Cliente guardado no Supabase.':
+    action==='credit_policy'?'Limite de crédito actualizado com auditoria.':
+    action==='debt_payment'?'Pagamento da dívida confirmado no Supabase.':
     'Operação realizada.';
    showMessage(summary);
   }catch(e){
