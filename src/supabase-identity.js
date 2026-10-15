@@ -10,6 +10,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
  if(apiURL.protocol!=='https:' || apiURL.hostname!=='xgtpvszwzvkwysrswkek.supabase.co' || apiURL.pathname!=='/') throw Error('supabase_project');
  if(typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(publishableKey)) throw Error('supabase_publishable_key');
  let session=null;
+ let sessionLocked=false;
  let refreshJob=null;
  const expiresAt=data=>Number.isFinite(Number(data?.expires_in))&&Number(data.expires_in)>0?Date.now()+Number(data.expires_in)*1000:0;
  async function ensureFresh(){
@@ -31,7 +32,8 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   await refreshJob;
  }
- async function call(endpoint, {method='GET', payload, authenticated=true}={}) {
+ async function call(endpoint, {method='GET', payload, authenticated=true,allowLocked=false}={}) {
+  if(authenticated&&sessionLocked&&!allowLocked)throw Error('pin_screen_locked');
   if(authenticated)await ensureFresh();
   const headers={apikey:publishableKey,Accept:'application/json'};
   if(payload!==undefined)headers['Content-Type']='application/json';
@@ -74,7 +76,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
  }
  async function signIn(email,password){
   if(!validEmail(email)||typeof password!=='string'||password.length<1||password.length>200)throw Error('supabase_invalid_credentials');
-  session=null;
+  session=null;sessionLocked=false;
   const result=await call('/auth/v1/token?grant_type=password',{authenticated:false,method:'POST',payload:{email,password}});
   if(typeof result.access_token!=='string'||!uuid(result.user?.id))throw Error('supabase_response');
   session={access_token:result.access_token,refresh_token:result.refresh_token||null,user:{id:result.user.id},expiresAt:expiresAt(result)};
@@ -93,6 +95,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   return call('/rest/v1/rpc/pronto_admin_mutation',{method:'POST',payload:{p_action:action,p_data:data}});
  }
  async function inviteMember({email,display_name,role,business_id}){
+  if(sessionLocked)throw Error('pin_screen_locked');
   if(!session)throw Error('supabase_unauthorized');
   await ensureFresh();
   const response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-admin-invite',{
@@ -165,11 +168,23 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   session=null;
   return true;
  }
+ async function sessionPin(action,pin=null,currentPin=null){
+  if(!['status','create','verify','change'].includes(action))throw Error('pin_invalid_action');
+  if(action!=='status'&&!(typeof pin==='string'&&/^\\d{5}$/.test(pin)))throw Error('pin_five_digits');
+  if(action==='change'&&!(typeof currentPin==='string'&&/^\\d{5}$/.test(currentPin)))throw Error('pin_five_digits');
+  const result=await call('/rest/v1/rpc/pronto_session_pin',{method:'POST',allowLocked:true,
+   payload:{p_action:action,p_pin:pin,p_current_pin:currentPin}});
+  if(!result||typeof result!=='object')throw Error('supabase_response');
+  if(action==='verify'&&result.ok===true)sessionLocked=false;
+  return result;
+ }
+ function lockScreen(){if(session)sessionLocked=true;}
+ function isScreenLocked(){return sessionLocked;}
  async function signOut(){
   if(session){
    try{await call('/auth/v1/logout',{method:'POST'});}catch{/* Clear local token even when service unavailable. */}
   }
-  session=null;
+  session=null;sessionLocked=false;
  }
- return {signIn,account,adminOverview,adminMutate,inviteMember,merchantBranches,merchantSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,merchantBranches,merchantSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
