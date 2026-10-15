@@ -56,11 +56,13 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   if(admin||account.grants.length){
    // A five-digit PIN protects an *already authenticated* Supabase session.
    // Every operator chooses their own PIN; it is never supplied by the merchant.
-   await mountProntoPinGate({
+   let gate;
+   const leave=()=>{gate?.cleanup();form();};
+   gate=await mountProntoPinGate({
     root,client,account,onLogout:form,
     open:()=>admin?
-     mountUbuntuAdminDashboard({root,client,account,onLogout:form}):
-     mountSupabaseMerchantPilot({root,client,account,onLogout:form})
+     mountUbuntuAdminDashboard({root,client,account,onLogout:leave}):
+     mountSupabaseMerchantPilot({root,client,account,onLogout:leave})
    });
    return;
   }
