@@ -136,3 +136,12 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - `pronto_inventory_snapshot`: lista de produtos, lotes e movimentos, alertas de produtos vencidos, validade próxima, stock baixo e sugestões de compras. A previsão usa vendas dos últimos 30 dias (consumo de 14 dias), stock disponível não vencido e stock mínimo. É uma estimativa e não é enviada ao fornecedor.
 - `src/supabase-inventory-ui.js`: separadores Inventário, Alertas e Lista de compras, com exportação CSV; nomes de produtos potencialmente maliciosos são neutralizados para prevenir injecção de fórmulas no Excel.
 - Ainda faltam: fotografias com Supabase Storage, importação CSV para base real, leitores físicos, etiquetas, devoluções a fornecedores, transferências entre filiais, variantes, conversão de unidades e homologação de operações concorrentes com vários caixas. Estes itens **não estão concluídos**.
+
+## Bloco 55–64 — Relatórios internos Supabase
+
+- RPC autenticado e somente leitura `public.pronto_reports_snapshot(p_business,p_branch,p_start,p_end)` com SECURITY INVOKER público e função interna SECURITY DEFINER. Permissão de acesso por negócio; caixas podem consultar apenas as suas vendas e sem consolidar filiais. Janela máxima de 366 dias, datas do fuso de Moçambique.
+- O painel permite escolher período, filial ou todas as filiais (proprietário, gerente e financeiro), e apresenta vendas, devoluções, recebimentos reais por meio, despesas, operadores, produtos, filiais e dívidas por receber.
+- **Importante**: valor das vendas a crédito integra o total vendido, mas não integra os recebimentos até ser pago. Recebimentos de dívidas e reembolsos são tratados separadamente para evitar confusão entre facturação e tesouraria.
+- O custo de mercadorias vendidas é calculado por movimentos FEFO e custo do lote. Quando algum custo falta, o relatório não inventa lucro: o valor fica indisponível. Mesmo com custo, lucro é ESTIMADO (não fiscal) e pode não incluir encargos indirectos ou impostos.
+- Há exportação CSV protegida contra injecção de fórmulas; o relatório não constitui documento fiscal, declaração tributária ou auditoria contabilística.
+- Migração `20261015205000_pronto_operating_reports.sql` aplicada. Testes reais de contas, várias lojas, operações simultâneas e legislação fiscal permanecem pendentes.

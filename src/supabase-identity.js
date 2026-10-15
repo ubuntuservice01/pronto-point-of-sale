@@ -7,6 +7,7 @@ import {normalizeCreditSnapshot} from './supabase-credit-ui.js';
 import {normalizeFinanceSnapshot} from './supabase-finance-ui.js';
 import {normalizeReturnSnapshot} from './supabase-returns-ui.js';
 import {normalizeInventorySnapshot} from './supabase-inventory-ui.js';
+import {normalizeReports} from './supabase-reports-ui.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
@@ -145,6 +146,12 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   if(!Array.isArray(items))throw Error('supabase_response');
   return items.filter(b=>uuid(b?.id)).map(b=>({id:b.id,name:String(b.name||'Filial')}));
  }
+ async function reportsSnapshot(businessId,branchId,from,to){
+  if(!uuid(businessId)||(branchId!==null&&!uuid(branchId))||!/^\d{4}-\d{2}-\d{2}$/.test(from||'')||!/^\d{4}-\d{2}-\d{2}$/.test(to||''))throw Error('reports_scope');
+  return normalizeReports(await call('/rest/v1/rpc/pronto_reports_snapshot',{
+   method:'POST',payload:{p_business:businessId,p_branch:branchId,p_start:from,p_end:to}
+  }));
+ }
  async function inventorySnapshot(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   return normalizeInventorySnapshot(await call('/rest/v1/rpc/pronto_inventory_snapshot',{
@@ -274,5 +281,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
