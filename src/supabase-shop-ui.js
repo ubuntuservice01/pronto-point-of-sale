@@ -1,4 +1,5 @@
 import {esc,MONEY,UNIT_OPTIONS,PAYMENT_METHODS,cartTotal,toCents} from './supabase-shop-core.js';
+import {renderCreditView,creditCheckoutFields} from './supabase-credit-ui.js';
 
 const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',mixed:'Repartido'};
 const safeDate=value=>{
@@ -16,13 +17,13 @@ const cartRow=(item,products)=>{
   '<input type="number" data-cart-qty="'+esc(p.id)+'" value="'+esc(item.quantity)+'" min="0.001" step="0.001" aria-label="Quantidade de '+esc(p.name)+'"><button type="button" data-qty="1" data-id="'+esc(p.id)+'" aria-label="Aumentar quantidade">+</button>'+
   '<button type="button" class="shop-clear-row" data-remove="'+esc(p.id)+'" aria-label="Remover produto">×</button></div></div>';
 };
-export function shopPaymentPanel({method,cart,products,discount='0',session,role='owner'}){
+export function shopPaymentPanel({method,cart,products,discount='0',session,role='owner',credit=null,selectedCustomerId='',creditDue=''}){
  let subtotal=0,total=0,err='';
  try{({subtotal,total}=cartTotal(cart,products,toCents(discount)))}catch(e){err=e.message;}
  const methods=['cash','mpesa','emola','transfer','mixed'];
  const buttons='<div class="shop-methods" role="group" aria-label="Forma de pagamento">'+methods.map(m=>
   '<button type="button" data-shop-method="'+m+'" aria-pressed="'+(method===m)+'" class="'+(method===m?'selected':'')+'">'+methodLabels[m]+'</button>').join('')+'</div>';
- const amounts=method==='mixed'?'<div class="shop-payment-grid">'+PAYMENT_METHODS.map(m=>
+ const amounts=method==='credit'?'<p class="shop-help">Venda a crédito: não recebe dinheiro neste momento; cria uma dívida e baixa o stock após confirmação.</p>':method==='mixed'?'<div class="shop-payment-grid">'+PAYMENT_METHODS.map(m=>
   field('pay_'+m,methodLabels[m]+' (MT)','0.00','type="number" min="0" step="0.01" inputmode="decimal"')).join('')+'</div>':
   '<p class="shop-help">Pagamento único: '+esc(methodLabels[method])+' · '+MONEY(total)+'.</p>';
  const cash=method==='cash'||method==='mixed'?
@@ -34,17 +35,19 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<div class="shop-totals shop-total"><span>Total</span><strong>'+MONEY(total)+'</strong></div>'+
   (err?'<p class="shop-error">'+esc(err)+'</p>':'')+
   '<h4>Forma de pagamento</h4>'+buttons+
-  '<form id="shop-sale-form">'+amounts+cash+
-  '<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>'+
+  '<form id="shop-sale-form">'+creditCheckoutFields({credit,selected:selectedCustomerId,method})+amounts+cash+
+  (method==='credit'?'<label>Prazo de pagamento<input type="date" id="shop-credit-due" name="credit_due" min="'+esc(credit?.today||'')+'" value="'+esc(creditDue)+'" required></label>':'')+
+  (method!=='credit'?'<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>':'')+
   '<p class="shop-help">Os pagamentos M-Pesa, e-Mola e transferência não são verificados automaticamente pela operadora.</p>'+
-  '<button class="shop-submit" type="submit" '+(!session||!cart.length||err?'disabled':'')+'>Concluir venda · '+MONEY(total)+'</button></form>',
+  (['owner','manager','cashier'].includes(role)?'<button type="button" class="shop-credit-toggle" data-shop-credit aria-pressed="'+(method==='credit')+'">'+(method==='credit'?'Voltar a pagamento imediato':'Vender a crédito')+'</button>':'')+
+  '<button class="shop-submit" type="submit" '+(!session||!cart.length||err||!credit?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue=''}){
  const products=data?.products||[];
  const session=data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
- const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['team','Colaboradores']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],team:['owner']})[key].includes(grant.role));
+ const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['team','Colaboradores']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],team:['owner']})[key].includes(grant.role));
  const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'>'+name+'</button>').join('');
  const prodCards=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   .map(p=>'<article class="shop-product"><div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
@@ -53,8 +56,10 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
   body='<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><label class="shop-search"><span>Pesquisar por nome ou código</span>'+
    '<input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Pesquisar ou ler o código"></label>'+
    '<div id="shop-product-results" class="shop-products">'+(prodCards||'<p class="shop-help">Não há produtos encontrados.</p>')+'</div></section>'+
-   shopPaymentPanel({method,cart,products,discount,session,role:grant.role})+'</div>';
+   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue})+'</div>';
   if(pending)body+='<div class="shop-pending"><strong>Venda com confirmação pendente</strong><p>Não crie outra venda antes de verificar se esta foi concluída. Pode repetir o mesmo pedido sem duplicar o registo ou descartá-lo após conferência.</p><button type="button" data-shop-retry>Repetir o mesmo pedido</button><button type="button" data-shop-discard>Descartar pedido pendente</button></div>';
+ }else if(view==='customers'||view==='debts'){
+  body=renderCreditView({view,credit,role:grant.role,query:customerQuery,filter:debtFilter,session,selectedCustomerId});
  }else if(view==='products'){
   body='<div class="shop-two">'+section('Novo produto','<form data-shop-form="product_create" class="shop-form">'+
    field('name','Nome do produto','','required maxlength="200"')+
@@ -112,5 +117,5 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  (cart.length||pending?'<form data-shop-form="draft_save" class="shop-form"><label>Frase de recuperação (mínimo 12 caracteres)<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Guardar rascunho encriptado</button></form>':'')+
  (draftAvailable?'<form data-shop-form="draft_restore" class="shop-form"><label>Frase do rascunho guardado<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Recuperar rascunho</button></form><button type="button" data-shop-draft-clear class="shop-logout">Apagar rascunho do dispositivo</button>':'')+
  '<p class="shop-help">Se uma venda foi enviada e a resposta falhou, recupere o mesmo pedido e a mesma referência antes de reenviar. Não crie uma venda nova sem conferir os registos.</p></section>'+
- '<p class="shop-footer">Piloto PostgreSQL: cadastro, stock e vendas presenciais. Gestão de dívidas, reembolsos, vendas offline e documentos fiscais continuam no sistema anterior até à migração.</p></main></div>';
+ '<p class="shop-footer">Piloto PostgreSQL: clientes, vendas a crédito e cobrança manual integrados. Devoluções, vendas offline sincronizadas e documentos fiscais ainda não estão homologados.</p></main></div>';
 }
