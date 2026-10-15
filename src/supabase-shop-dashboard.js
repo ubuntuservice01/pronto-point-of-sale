@@ -304,15 +304,56 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='return_confirm'){
+   if(lockPending()||disconnected())return showMessage('A devolução exige ligação ao servidor.',true);
+   if(!['owner','manager'].includes(grant.role))return showMessage('Sem permissão para devolver.',true);
+   const f=new FormData(form),str=k=>String(f.get(k)||'').trim();
+   let payload;
+   try{
+    const sale=returns?.sales.find(x=>x.id===str('sale_id')&&x.status==='completed');
+    if(!sale)throw Error('sale_unavailable');
+    const items=[];
+    for(let i=0;i<sale.items.length;i++){
+     const item=sale.items[i],val=str('qty_'+i);
+     if(!val||Number(val)===0)continue;
+     const qty=toQuantity(val,item.unit);
+     if(qty>item.qty-item.returned)throw Error('return_exceeds_quantity');
+     items.push({product_id:item.productId,quantity:qty,
+      resellable:f.has('resellable_'+i),expires_on:str('expiry_'+i)});
+    }
+    if(!items.length)throw Error('return_empty');
+    const method=str('method');
+    if(!f.has('confirmed')||(method!=='cash'&&!str('reference')))throw Error('refund_not_confirmed');
+    if(method==='cash'&&!session())throw Error('cash_not_open');
+    payload={sale_id:sale.id,session_id:method==='cash'?session().id:null,
+     method,reference:str('reference'),reason:str('reason'),
+     manually_confirmed:true,items,idempotency_key:crypto.randomUUID()};
+    if(pendingReturn){
+     if(pendingReturn.sale_id!==payload.sale_id)throw Error('return_pending');
+     payload=pendingReturn;
+    }else pendingReturn=payload;
+   }catch(error){return showMessage('Confira a devolução: '+String(error.message||''),true);}
+   busy=true;showMessage('A confirmar devolução e registar movimentos…');
+   try{
+    const result=await client.returnAction('return_confirm',cashData(payload));
+    pendingReturn=null;await refresh();render();
+    showMessage((result.duplicate?'Devolução já registada: ':'Devolução registada: ')+
+     (Number(result.amount_cents||0)/100).toFixed(2)+' MT. O reembolso digital, se aplicável, é manual.');
+   }catch(error){
+    showMessage('Devolução por confirmar. Verifique o histórico antes de repetir; o pedido mantém a mesma referência. ('+error.message+')',true);
+   }finally{busy=false;}
+   return;
+  }
   if(action==='cash_move'){
    if(lockPending()||disconnected())return showMessage('Sem ligação para registar movimento.',true);
    if(!session())return showMessage('Abra o caixa para registar o movimento.',true);
    const f=new FormData(form),direction=String(f.get('direction')||''),reason=String(f.get('reason')||'').trim();
-   let payload;try{payload={session_id:session().id,direction,reason,
-    amount_cents:toCents(f.get('amount')),idempotency_key:crypto.randomUUID()};}
+   let payload;try{payload=pendingCashMove||{session_id:session().id,direction,reason,
+    amount_cents:toCents(f.get('amount')),idempotency_key:crypto.randomUUID()};
+    pendingCashMove=payload;}
    catch(error){return showMessage('Verifique o valor e motivo: '+error.message,true);}
    busy=true;
-   try{await client.holdAction('cash_move',cashData(payload));await refresh();
+   try{await client.holdAction('cash_move',cashData(payload));pendingCashMove=null;await refresh();
     showMessage('Movimento de caixa registado e auditado.');}
    catch{showMessage('Movimento por confirmar: confira o caixa antes de repetir. Não lance novamente sem verificar.',true);}
    finally{busy=false;}
