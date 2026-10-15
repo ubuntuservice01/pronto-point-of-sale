@@ -109,6 +109,12 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   return result;
  }
+ async function merchantBranches(businessId){
+  if(!uuid(businessId))throw Error('shop_scope');
+  const items=await call('/rest/v1/pronto_branches?select=id,name&active=eq.true&business_id=eq.'+encodeURIComponent(businessId)+'&order=name.asc');
+  if(!Array.isArray(items))throw Error('supabase_response');
+  return items.filter(b=>uuid(b?.id)).map(b=>({id:b.id,name:String(b.name||'Filial')}));
+ }
  async function merchantSnapshot(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   const payload={p_business:businessId,p_branch:branchId};
@@ -127,5 +133,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;
  }
- return {signIn,account,adminOverview,adminMutate,inviteMember,merchantSnapshot,merchantAction,signOut};
+ return {signIn,account,adminOverview,adminMutate,inviteMember,merchantBranches,merchantSnapshot,merchantAction,signOut};
 }
