@@ -162,3 +162,11 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - A repetição com a mesma chave idempotente não cria produtos ou lotes duplicados. Falhas requerem confirmar a importação antes de enviar uma nova referência.
 - CSV existente suporta `nome;categoria;preco;unidade;stock;minimo;codigo;validade`. Preços são guardados em centavos inteiros e stock respeita a unidade.
 - Ainda faltam validações comerciais em equipamentos reais e importações em larga escala; esta funcionalidade não altera as regras fiscais.
+
+
+## Gestão de filiais pelo proprietário
+
+- `pronto_manage_branch`: criar, renomear, desactivar e reactivar filiais com papel **owner**, licença e isolamento de empresa.
+- Para impedir encerramentos acidentais, rejeita a desactivação da única filial activa, de qualquer filial com sessão de caixa aberta, stock positivo ou carrinhos suspensos.
+- É gestão de filiais **parcial**: a transferência de stock entre filiais, consolidação completa dos dados e parametrizações individuais continuam pendentes.
+- Testado em transacção com rollback; confirmar fluxo com proprietário autenticado no navegador antes de comercializar.
