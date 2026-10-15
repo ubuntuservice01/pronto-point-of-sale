@@ -12,9 +12,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   view=['owner','manager','cashier'].includes(account.grants[0].role)?'sell':
    account.grants[0].role==='stock'?'products':'history',
   method='cash',discount='0',query='',notice='',busy=false,pending=null,
-  credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null;
+  credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
+  finance=null,supplierId='',purchaseLines=1,pendingFinance=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],team:['owner']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],team:['owner']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
@@ -29,17 +30,18 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance});
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
-   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';
+   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
+  finance=typeof client.financeSnapshot==='function'?await client.financeSnapshot(grant.id,branchId):null;
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
  };
@@ -116,6 +118,19 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
+  if(el.hasAttribute('data-finance-supplier')){supplierId=el.dataset.financeSupplier;render();return;}
+  if(el.hasAttribute('data-finance-add-line')){
+   const form=root.querySelector('[data-shop-form="purchase_receive"]');
+   const values=form?Array.from(form.elements).filter(e=>e.name).map(e=>[e.name,e.value]):[];
+   purchaseLines=Math.min(15,purchaseLines+1);render();
+   const replacement=root.querySelector('[data-shop-form="purchase_receive"]');
+   for(const [name,value] of values){const field=Array.from(replacement?.elements||[]).find(e=>e.name===name);if(field)field.value=value;}
+   return;
+  }
+  if(el.hasAttribute('data-finance-discard')){
+   if(confirm('Já verificou se a operação foi registada no Supabase? Descartar uma tentativa NÃO reverte lançamentos existentes.')){pendingFinance=null;showMessage('Referência local descartada. Confirme o histórico antes de repetir.');}
+   return;
+  }
   if(el.hasAttribute('data-credit-customer')){selectedCustomerId=el.dataset.creditCustomer;render();return;}
   if(el.hasAttribute('data-credit-receipt')||el.hasAttribute('data-credit-statement')){
    if(!credit)return;
@@ -252,6 +267,66 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(['supplier_save','purchase_receive','purchase_payment','expense_add','expense_schedule_save'].includes(action)){
+   if(lockPending())return;
+   if(disconnected())return showMessage('Esta operação exige ligação ao Supabase. Não foi lançada.',true);
+   const f=new FormData(form),str=k=>String(f.get(k)||'').trim();
+   let payload;
+   try{
+    if(pendingFinance&&pendingFinance.action!==action)throw Error('pending_finance_operation');
+    if(action==='supplier_save'){
+     payload={supplier_id:str('supplier_id')||null,name:str('name'),phone:str('phone'),address:str('address')};
+     if(str('supplier_id'))payload.active=f.has('active');
+    }else if(action==='purchase_receive'){
+     const items=[];
+     for(let i=0;i<purchaseLines;i++){
+      const id=str('product_id_'+i),amount=str('quantity_'+i),cost=str('cost_'+i);
+      if(!id)continue;
+      const product=data.products.find(p=>p.id===id);
+      if(!product)throw Error('product_unavailable');
+      items.push({product_id:id,quantity:toQuantity(amount,product.unit),
+       unit_cost_cents:toCents(cost),lot_number:str('lot_'+i),expires_on:str('expiry_'+i)});
+     }
+     if(!items.length)throw Error('purchase_items_missing');
+     payload={supplier_id:str('supplier_id'),items,invoice_ref:str('invoice_ref'),
+      due_on:str('due_on'),idempotency_key:crypto.randomUUID()};
+    }else if(action==='purchase_payment'){
+     const p=finance?.purchases.find(x=>x.id===str('purchase_id'));
+     if(!p)throw Error('purchase_missing');
+     const amount=toCents(str('amount')),method=str('method'),reference=str('reference');
+     if(amount<=0||amount>p.balance||!f.has('confirmed')||(method!=='cash'&&!reference))throw Error('payment_invalid');
+     if(method==='cash'&&!session())throw Error('cash_not_open');
+     payload={purchase_id:p.id,amount_cents:amount,method,reference,
+      session_id:method==='cash'?session().id:null,manual_confirmed:true,idempotency_key:crypto.randomUUID()};
+    }else if(action==='expense_add'){
+     const amount=toCents(str('amount')),method=str('method'),reference=str('reference');
+     if(amount<=0||!f.has('confirmed')||(method!=='cash'&&!reference))throw Error('expense_invalid');
+     if(method==='cash'&&!session())throw Error('cash_not_open');
+     payload={label:str('label'),category:str('category'),amount_cents:amount,
+      method,reference,session_id:method==='cash'?session().id:null,
+      manual_confirmed:true,idempotency_key:crypto.randomUUID()};
+    }else{
+     payload={label:str('label'),category:str('category'),amount_cents:toCents(str('amount')),
+      repeat_months:Number(str('repeat_months')),next_due_on:str('next_due_on')};
+    }
+    if(pendingFinance)payload=pendingFinance.payload;
+    else if(['purchase_receive','purchase_payment','expense_add'].includes(action))
+     pendingFinance={action,payload};
+   }catch(error){return showMessage('Reveja o formulário ou a operação pendente: '+error.message,true);}
+   busy=true;showMessage('A registar operação no Supabase…');
+   try{
+    const result=await client.financeAction(action,{business_id:grant.id,branch_id:branchId,...payload});
+    if(pendingFinance?.action===action)pendingFinance=null;
+    await refresh();render();
+    showMessage(action==='purchase_receive'?'Compra registada e stock recebido: '+String(result.purchase_id||'').slice(0,8):
+     action==='purchase_payment'?'Pagamento ao fornecedor lançado.':
+     action==='expense_add'?'Despesa registada no livro e no caixa quando aplicável.':
+     action==='expense_schedule_save'?'Lembrete de despesa recorrente guardado.':'Fornecedor actualizado.');
+   }catch(error){
+    showMessage('A operação pode estar pendente ou foi rejeitada. Confira os registos antes de repetir. '+String(error.message||''),true);
+   }finally{busy=false;}
+   return;
+  }
   if(['customer_save','credit_policy','debt_payment'].includes(action)){
    if(lockPending())return;
    if(disconnected())return showMessage('Sem internet não é possível gerir clientes ou dívidas.',true);

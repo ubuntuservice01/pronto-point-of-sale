@@ -97,3 +97,14 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Cobranças requerem caixa aberto e confirmação manual dos recebimentos por dinheiro/M-Pesa/e-Mola/transferência. Não há confirmação por prestador financeiro.
 - O cliente mantém referência do pagamento com resposta incerta para evitar que nova tentativa gere cobrança com identificador diferente; verificar histórico antes de repetir.
 - O novo fluxo continua piloto enquanto faltarem testes de concorrência, equipamentos reais, restauro, dados reais e requisitos fiscais. Não anunciar facturação certificada.
+
+## Bloco de lançamento 11–22 — Fornecedores, compras e despesas
+
+- Migração: `20261015185000_pronto_finance_purchases_expenses.sql` aplicada ao Supabase `prontopos`.
+- Fornecedores: cadastro e edição protegidos por autorização por negócio; stock recebe compras completas com vários artigos, custo de lote e movimento auditado; a compra guarda saldo por pagar.
+- Pagamento a fornecedor: saldo reduzido atomicamente e com idempotência. Saídas em dinheiro são registadas no caixa aberto do próprio operador e conciliadas no fecho.
+- Despesas: categoria, descrição, montante e método de pagamento. Escrita protegida, confirmação manual, idempotência e baixa de caixa em dinheiro.
+- Recorrência: `pronto_expense_schedules` guarda **lembretes**, não efectua pagamentos automáticos. É necessário um agendador de produção e uma política de aprovação antes de marcar a automação financeira concluída.
+- Ecrãs Supabase implementados em `src/supabase-finance-ui.js` e acesso via Fornecedores, Compras e Despesas. Valores em centavos inteiros.
+- Ainda não estão concluídos: encomendas com aprovação/estado, devoluções a fornecedores, comprovativos via Storage, edição/anulação de despesas com contralançamento, cobranças automáticas e homologação de impostos.
+- Prova PostgreSQL com cliente Auth, produtos, fornecedor, compra, despesa, pagamento e fecho de caixa em `BEGIN ... ROLLBACK`, sem persistência de comerciantes ou transacções fictícias.
