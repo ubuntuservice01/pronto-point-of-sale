@@ -152,6 +152,36 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   if(el.hasAttribute('data-shop-credit')){if(lockPending())return;method=method==='credit'?'cash':'credit';updatePanel();return;}
   if(el.hasAttribute('data-shop-refresh'))return void safeLoad();
+  if(el.hasAttribute('data-shop-hold')){
+   if(lockPending()||!cart.length||disconnected())return showMessage('A venda em espera exige ligação; não foi guardada.',true);
+   busy=true;const holdId=holdIdToSave||crypto.randomUUID();holdIdToSave=holdId;
+   void(async()=>{
+    try{
+     await client.holdAction('hold_save',cashData({hold_id:holdId,cart,customer_id:selectedCustomerId||null}));
+     holdIdToSave=null;cart=[];selectedCustomerId='';discount='0';method='cash';view='held';
+     await refresh();showMessage('Venda suspensa na filial. O stock não foi reservado.');
+    }catch(error){showMessage('Sem confirmação do servidor. Verifique a lista antes de repetir com a mesma referência.',true);}
+    finally{busy=false;}
+   })();return;
+  }
+  if(el.hasAttribute('data-shop-hold-resume')){
+   if(pending)return void lockPending();
+   const held=heldSales.find(x=>x.id===el.dataset.shopHoldResume);if(!held)return;
+   if(cart.length&&!confirm('Substituir o carrinho actual por esta venda em espera?'))return;
+   cart=held.cart.map(x=>({productId:x.productId,quantity:x.quantity}));
+   selectedCustomerId=held.customerId||'';resumedHoldId=held.id;method='cash';discount='0';view='sell';render();
+   showMessage('Venda retomada. O stock e os preços serão verificados novamente ao concluir.');return;
+  }
+  if(el.hasAttribute('data-shop-hold-delete')){
+   if(!confirm('Eliminar este carrinho em espera? Não existe venda concluída a cancelar.'))return;
+   busy=true;void(async()=>{
+    try{await client.holdAction('hold_delete',cashData({hold_id:el.dataset.shopHoldDelete}));
+     await refresh();showMessage('Carrinho em espera eliminado.');}
+    catch{showMessage('Não foi possível remover o carrinho.',true);}
+    finally{busy=false;}
+   })();return;
+  }
+
   if(el.hasAttribute('data-shop-draft-clear')){
    if(confirm('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas no Supabase.')){
     clearShopDraft(localStorage,scope());render();showMessage('Rascunho local apagado.');
@@ -272,6 +302,20 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='cash_move'){
+   if(lockPending()||disconnected())return showMessage('Sem ligação para registar movimento.',true);
+   if(!session())return showMessage('Abra o caixa para registar o movimento.',true);
+   const f=new FormData(form),direction=String(f.get('direction')||''),reason=String(f.get('reason')||'').trim();
+   let payload;try{payload={session_id:session().id,direction,reason,
+    amount_cents:toCents(f.get('amount')),idempotency_key:crypto.randomUUID()};}
+   catch(error){return showMessage('Verifique o valor e motivo: '+error.message,true);}
+   busy=true;
+   try{await client.holdAction('cash_move',cashData(payload));await refresh();
+    showMessage('Movimento de caixa registado e auditado.');}
+   catch{showMessage('Movimento por confirmar: confira o caixa antes de repetir. Não lance novamente sem verificar.',true);}
+   finally{busy=false;}
+   return;
+  }
   if(['supplier_save','purchase_receive','purchase_payment','expense_add','expense_schedule_save'].includes(action)){
    if(lockPending())return;
    if(disconnected())return showMessage('Esta operação exige ligação ao Supabase. Não foi lançada.',true);
