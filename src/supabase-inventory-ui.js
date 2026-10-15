@@ -74,6 +74,14 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
    ' · '+qty(m.delta)+' · '+esc(m.kind)+' · '+esc(m.reason)+'</div>').join(''),
   'Inventário autorizado por filial. Todas as alterações ficam registadas.')+
   box(chosen?'Gerir '+chosen.name:'Seleccionar produto',chosen?
+   '<form data-shop-form="photo_upload" class="shop-form">'+
+    '<h4>Fotografia do produto</h4>'+
+    '<input type="hidden" name="product_id" value="'+esc(chosen.id)+'">'+
+    '<input type="hidden" name="revision" value="'+esc(chosen.revision)+'">'+
+    (chosen.photoPath?'<img class="shop-product-photo shop-photo-preview" data-shop-product-photo="'+esc(chosen.photoPath)+'" alt="Fotografia de '+esc(chosen.name)+'" loading="lazy">':'')+
+    '<label>Escolher imagem ou fotografar (JPEG, PNG ou WebP até 3 MB)'+
+    '<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" required></label>'+
+    '<button class="shop-submit" type="submit">Guardar fotografia</button></form>'+
    (['owner','manager'].includes(role)?
     '<form data-shop-form="product_update" class="shop-form"><input type="hidden" name="product_id" value="'+esc(chosen.id)+'">'+
     '<input type="hidden" name="revision" value="'+esc(chosen.revision)+'">'+
