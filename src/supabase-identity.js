@@ -112,6 +112,29 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   return result;
  }
+ async function inviteShopStaff({businessId,email,name,role}){
+  if(sessionLocked)throw Error('pin_screen_locked');
+  if(!session)throw Error('supabase_unauthorized');
+  if(!uuid(businessId)||!validEmail(email)||typeof name!=='string'||name.trim().length<2||
+   !['manager','cashier','stock','finance'].includes(role))throw Error('staff_invite_invalid');
+  await ensureFresh();
+  const response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-owner-invite',{
+   method:'POST',
+   headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,
+    Accept:'application/json','Content-Type':'application/json'},
+   cache:'no-store',credentials:'omit',redirect:'error',
+   body:JSON.stringify({business_id:businessId,email:email.trim().toLowerCase(),
+    display_name:name.trim(),role})
+  });
+  let result;try{result=await response.json();}catch{throw Error('staff_invite_unavailable');}
+  if(!response.ok){
+   if(response.status===401||response.status===403){session=null;throw Error('supabase_unauthorized');}
+   if(result?.error==='account_exists_use_existing_user')throw Error('staff_exists');
+   if(result?.error==='invited_but_membership_failed')throw Error('staff_invited_not_linked');
+   throw Error('staff_invite_unavailable');
+  }
+  return result;
+ }
  async function merchantBranches(businessId){
   if(!uuid(businessId))throw Error('shop_scope');
   const items=await call('/rest/v1/pronto_branches?select=id,name&active=eq.true&business_id=eq.'+encodeURIComponent(businessId)+'&order=name.asc');
@@ -186,5 +209,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,merchantBranches,merchantSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
