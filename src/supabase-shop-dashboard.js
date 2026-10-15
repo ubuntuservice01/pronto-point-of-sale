@@ -13,9 +13,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    account.grants[0].role==='stock'?'products':'history',
   method='cash',discount='0',query='',notice='',busy=false,pending=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
-  finance=null,supplierId='',purchaseLines=1,pendingFinance=null;
+  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],team:['owner']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],team:['owner']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
@@ -30,18 +30,20 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId});
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
-   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;
+   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;returns=null;selectedReturnSaleId='';
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
   finance=typeof client.financeSnapshot==='function'?await client.financeSnapshot(grant.id,branchId):null;
+  heldSales=typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?await client.holdList(grant.id,branchId):[];
+  returns=typeof client.returnSnapshot==='function'&&['owner','manager'].includes(grant.role)?await client.returnSnapshot(grant.id,branchId):null;
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
  };
@@ -80,6 +82,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   try{
    const result=await client.merchantAction(pending.due_on?'credit_sale':'sale_complete',pending);
    const wasRepeated=result.duplicate===true;
+   if(resumedHoldId&&typeof client.holdAction==='function'){
+    try{await client.holdAction('hold_delete',cashData({hold_id:resumedHoldId}));resumedHoldId=null;}
+    catch{/* Sale was committed; the held cart may require manual removal. */}
+   }
    cart=[];pending=null;discount='0';method='cash';query='';creditDue='';
    try{await refresh();}catch{render();}
    showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':result.debt_id?'Venda a crédito registada. ':'Venda concluída. ')+
@@ -147,6 +153,36 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   if(el.hasAttribute('data-shop-credit')){if(lockPending())return;method=method==='credit'?'cash':'credit';updatePanel();return;}
   if(el.hasAttribute('data-shop-refresh'))return void safeLoad();
+  if(el.hasAttribute('data-shop-hold')){
+   if(lockPending()||!cart.length||disconnected())return showMessage('A venda em espera exige ligação; não foi guardada.',true);
+   busy=true;const holdId=holdIdToSave||crypto.randomUUID();holdIdToSave=holdId;
+   void(async()=>{
+    try{
+     await client.holdAction('hold_save',cashData({hold_id:holdId,cart,customer_id:selectedCustomerId||null}));
+     holdIdToSave=null;cart=[];selectedCustomerId='';discount='0';method='cash';view='held';
+     await refresh();showMessage('Venda suspensa na filial. O stock não foi reservado.');
+    }catch(error){showMessage('Sem confirmação do servidor. Verifique a lista antes de repetir com a mesma referência.',true);}
+    finally{busy=false;}
+   })();return;
+  }
+  if(el.hasAttribute('data-shop-hold-resume')){
+   if(pending)return void lockPending();
+   const held=heldSales.find(x=>x.id===el.dataset.shopHoldResume);if(!held)return;
+   if(cart.length&&!confirm('Substituir o carrinho actual por esta venda em espera?'))return;
+   cart=held.cart.map(x=>({productId:x.productId,quantity:x.quantity}));
+   selectedCustomerId=held.customerId||'';resumedHoldId=held.id;method='cash';discount='0';view='sell';render();
+   showMessage('Venda retomada. O stock e os preços serão verificados novamente ao concluir.');return;
+  }
+  if(el.hasAttribute('data-shop-hold-delete')){
+   if(!confirm('Eliminar este carrinho em espera? Não existe venda concluída a cancelar.'))return;
+   busy=true;void(async()=>{
+    try{await client.holdAction('hold_delete',cashData({hold_id:el.dataset.shopHoldDelete}));
+     await refresh();showMessage('Carrinho em espera eliminado.');}
+    catch{showMessage('Não foi possível remover o carrinho.',true);}
+    finally{busy=false;}
+   })();return;
+  }
+
   if(el.hasAttribute('data-shop-draft-clear')){
    if(confirm('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas no Supabase.')){
     clearShopDraft(localStorage,scope());render();showMessage('Rascunho local apagado.');
@@ -200,6 +236,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.id==='shop-sale-customer'){if(lockPending())return;selectedCustomerId=el.value;updatePanel();return;}
   if(el.id==='shop-credit-due'){creditDue=el.value;return;}
   if(el.id==='shop-debt-filter'){debtFilter=el.value;render();return;}
+  if(el.id==='shop-return-sale'){selectedReturnSaleId=el.value;render();return;}
   if(el.name==='discount'){if(!lockPending())updatePanel();return;}
   if(el.hasAttribute('data-cart-qty')){
    if(lockPending())return;
@@ -267,6 +304,61 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='return_confirm'){
+   if(lockPending()||disconnected())return showMessage('A devolução exige ligação ao servidor.',true);
+   if(!['owner','manager'].includes(grant.role))return showMessage('Sem permissão para devolver.',true);
+   const f=new FormData(form),str=k=>String(f.get(k)||'').trim();
+   let payload;
+   try{
+    const sale=returns?.sales.find(x=>x.id===str('sale_id')&&x.status==='completed');
+    if(!sale)throw Error('sale_unavailable');
+    const items=[];
+    for(let i=0;i<sale.items.length;i++){
+     const item=sale.items[i],val=str('qty_'+i);
+     if(!val||Number(val)===0)continue;
+     const qty=toQuantity(val,item.unit);
+     if(qty>item.qty-item.returned)throw Error('return_exceeds_quantity');
+     items.push({product_id:item.productId,quantity:qty,
+      resellable:f.has('resellable_'+i),expires_on:str('expiry_'+i)});
+    }
+    if(!items.length)throw Error('return_empty');
+    const method=str('method');
+    if(!f.has('confirmed')||(method!=='cash'&&!str('reference')))throw Error('refund_not_confirmed');
+    if(method==='cash'&&!session())throw Error('cash_not_open');
+    payload={sale_id:sale.id,session_id:method==='cash'?session().id:null,
+     method,reference:str('reference'),reason:str('reason'),
+     manually_confirmed:true,items,idempotency_key:crypto.randomUUID()};
+    if(pendingReturn){
+     if(pendingReturn.sale_id!==payload.sale_id)throw Error('return_pending');
+     payload=pendingReturn;
+    }else pendingReturn=payload;
+   }catch(error){return showMessage('Confira a devolução: '+String(error.message||''),true);}
+   busy=true;showMessage('A confirmar devolução e registar movimentos…');
+   try{
+    const result=await client.returnAction('return_confirm',cashData(payload));
+    pendingReturn=null;await refresh();render();
+    showMessage((result.duplicate?'Devolução já registada: ':'Devolução registada: ')+
+     (Number(result.amount_cents||0)/100).toFixed(2)+' MT. O reembolso digital, se aplicável, é manual.');
+   }catch(error){
+    showMessage('Devolução por confirmar. Verifique o histórico antes de repetir; o pedido mantém a mesma referência. ('+error.message+')',true);
+   }finally{busy=false;}
+   return;
+  }
+  if(action==='cash_move'){
+   if(lockPending()||disconnected())return showMessage('Sem ligação para registar movimento.',true);
+   if(!session())return showMessage('Abra o caixa para registar o movimento.',true);
+   const f=new FormData(form),direction=String(f.get('direction')||''),reason=String(f.get('reason')||'').trim();
+   let payload;try{payload=pendingCashMove||{session_id:session().id,direction,reason,
+    amount_cents:toCents(f.get('amount')),idempotency_key:crypto.randomUUID()};
+    pendingCashMove=payload;}
+   catch(error){return showMessage('Verifique o valor e motivo: '+error.message,true);}
+   busy=true;
+   try{await client.holdAction('cash_move',cashData(payload));pendingCashMove=null;await refresh();
+    showMessage('Movimento de caixa registado e auditado.');}
+   catch{showMessage('Movimento por confirmar: confira o caixa antes de repetir. Não lance novamente sem verificar.',true);}
+   finally{busy=false;}
+   return;
+  }
   if(['supplier_save','purchase_receive','purchase_payment','expense_add','expense_schedule_save'].includes(action)){
    if(lockPending())return;
    if(disconnected())return showMessage('Esta operação exige ligação ao Supabase. Não foi lançada.',true);

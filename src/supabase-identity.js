@@ -5,6 +5,7 @@ import {normalizeAdminOverview} from './supabase-admin-model.js';
 import {normalizeMerchantSnapshot} from './supabase-shop-core.js';
 import {normalizeCreditSnapshot} from './supabase-credit-ui.js';
 import {normalizeFinanceSnapshot} from './supabase-finance-ui.js';
+import {normalizeReturnSnapshot} from './supabase-returns-ui.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
@@ -143,6 +144,34 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   if(!Array.isArray(items))throw Error('supabase_response');
   return items.filter(b=>uuid(b?.id)).map(b=>({id:b.id,name:String(b.name||'Filial')}));
  }
+ async function returnSnapshot(businessId,branchId){
+  if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
+  const value=await call('/rest/v1/rpc/pronto_return_snapshot',{
+   method:'POST',payload:{p_business:businessId,p_branch:branchId}
+  });
+  return normalizeReturnSnapshot(value);
+ }
+ async function returnAction(action,data){
+  if(action!=='return_confirm'||!data||typeof data!=='object'||Array.isArray(data))throw Error('return_action_invalid');
+  return call('/rest/v1/rpc/pronto_return_action',{
+   method:'POST',payload:{p_action:action,p_data:data}
+  });
+ }
+ async function holdList(businessId,branchId){
+  if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
+  const rows=await call('/rest/v1/rpc/pronto_hold_list',{method:'POST',
+   payload:{p_business:businessId,p_branch:branchId}});
+  if(!Array.isArray(rows))throw Error('supabase_response');
+  return rows.filter(x=>uuid(x?.id)&&Array.isArray(x.cart)).map(x=>({
+   id:x.id,cart:x.cart,customerId:x.customer_id,operatorId:x.operator_id,createdAt:x.created_at
+  }));
+ }
+ async function holdAction(action,data){
+  if(!['hold_save','hold_delete','cash_move'].includes(action)||!data||typeof data!=='object'||Array.isArray(data))
+   throw Error('hold_action_invalid');
+  return call('/rest/v1/rpc/pronto_hold_action',{method:'POST',
+   payload:{p_action:action,p_data:data}});
+ }
  async function financeSnapshot(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   const data=await call('/rest/v1/rpc/pronto_finance_snapshot',{
@@ -232,5 +261,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

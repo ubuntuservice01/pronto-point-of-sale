@@ -108,3 +108,23 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Ecrãs Supabase implementados em `src/supabase-finance-ui.js` e acesso via Fornecedores, Compras e Despesas. Valores em centavos inteiros.
 - Ainda não estão concluídos: encomendas com aprovação/estado, devoluções a fornecedores, comprovativos via Storage, edição/anulação de despesas com contralançamento, cobranças automáticas e homologação de impostos.
 - Prova PostgreSQL com cliente Auth, produtos, fornecedor, compra, despesa, pagamento e fecho de caixa em `BEGIN ... ROLLBACK`, sem persistência de comerciantes ou transacções fictícias.
+
+## Vendas em espera, movimentos de caixa e devoluções (23–30)
+
+- Vendas em espera multi-dispositivo por filial: `pronto_held_sales`, RPC `pronto_hold_action(hold_save/hold_delete)` e `pronto_hold_list`. Carrinhos pertencem ao operador ou podem ser recuperados por proprietário/gerente; não reservam stock nem validam preços para finalização.
+- O operador recupera um carrinho na aba «Vendas em espera». Após checkout o sistema procura eliminar o carrinho suspenso; se a eliminação falhar, a venda já concluída não pode ser repetida sem verificar o histórico.
+- Entradas/retiradas manuais de caixa: `cash_move` protege operador e caixa abertos, gera auditoria e chave de idempotência. São integradas no saldo de fecho do caixa.
+- Devoluções parciais ou integrais pagas: RPC protegida `pronto_return_action`, exclusivamente proprietário/gerente. Valida quantidades já devolvidas e compra original, bloqueia stock e venda, exige confirmação manual, usa UUID idempotente e cria registos em `pronto_return_headers` / `pronto_return_lines`.
+- Produtos em condições de revenda criam novos lotes e movimentos `refund`; produtos danificados não regressam ao stock. Reembolso em dinheiro lança movimento de saída de caixa. Digital exige referência e confirmação manual; **não envia reembolso à operadora**.
+- Reembolsos sobre vendas a crédito ficam bloqueados até existir reconciliação explícita do saldo da dívida. Nota de crédito/facturação fiscal ainda pendente.
+- Uma venda com artigos integralmente devolvidos muda de estado para `refunded`. O histórico não é apagado.
+- Ensaio SQL multioperação efectuado com `BEGIN/ROLLBACK`, sem registos de teste persistentes; foram validadas idempotência, stock e reconciliação do caixa.
+
+## Bloco 23–29 — Vendas suspensas, devoluções e movimentos de caixa
+
+- O Supabase contém RPCs autenticadas `pronto_hold_action`, `pronto_hold_list`, `pronto_return_action`, `pronto_return_snapshot`. Migrações versionadas 20261015193000–195000.
+- Vendas em espera guardam carrinho por empresa, filial e operador (proprietário e gerente podem consultar toda a filial); não reservam stock. Retomar repete verificação de stock e preços ao finalizar. O cancelamento não é uma anulação de venda paga.
+- Devoluções pagas: proprietário e gerente, quantidade parcial/integral validada face à venda e devoluções anteriores, limites financeiros, retorno ao stock **apenas se apto a revenda**, validação de lote e validade, razão e auditoria. Devoluções de vendas a crédito, notas fiscais e confirmação bancária continuam pendentes de homologação.
+- Reembolso digital não transfere fundos: exige confirmação manual da transferência antes do lançamento. Retorno em dinheiro exige caixa aberto do próprio operador e saldo suficiente.
+- `cash_move` regista entradas e saídas manuais no caixa, com motivo e UUID idempotente; não deve ser usado para duplicar despesas e pagamentos de compras já contabilizados.
+- Testes transaccionais no Supabase (BEGIN/ROLLBACK) confirmaram 2 devoluções até 100% da quantidade, reposição selectiva, repetição idempotente, retorno do fundo de caixa, suspender/retomar e movimentos de caixa. Testes reais com equipamentos e fiscalidade ainda pendentes.
