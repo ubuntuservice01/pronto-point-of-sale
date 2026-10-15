@@ -13,9 +13,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    account.grants[0].role==='stock'?'products':'history',
   method='cash',discount='0',query='',notice='',busy=false,pending=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
-  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null;
+  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],team:['owner']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],team:['owner']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
@@ -30,19 +30,20 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId});
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
-   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;
+   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;returns=null;selectedReturnSaleId='';
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
   finance=typeof client.financeSnapshot==='function'?await client.financeSnapshot(grant.id,branchId):null;
   heldSales=typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?await client.holdList(grant.id,branchId):[];
+  returns=typeof client.returnSnapshot==='function'&&['owner','manager'].includes(grant.role)?await client.returnSnapshot(grant.id,branchId):null;
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
  };
@@ -235,6 +236,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.id==='shop-sale-customer'){if(lockPending())return;selectedCustomerId=el.value;updatePanel();return;}
   if(el.id==='shop-credit-due'){creditDue=el.value;return;}
   if(el.id==='shop-debt-filter'){debtFilter=el.value;render();return;}
+  if(el.id==='shop-return-sale'){selectedReturnSaleId=el.value;render();return;}
   if(el.name==='discount'){if(!lockPending())updatePanel();return;}
   if(el.hasAttribute('data-cart-qty')){
    if(lockPending())return;
