@@ -5,19 +5,20 @@ const content=(form)=>'<section class="login-shell"><div class="login-brand"><im
 
 export function extractRecoveryFromHash(locationObj,historyObj){
  const params=new URLSearchParams((locationObj.hash||'').replace(/^#/,''));
- const token=params.get('type')==='recovery'?params.get('access_token'):null;
+ const kind=['recovery','invite'].includes(params.get('type'))?params.get('type'):null;
+ const token=kind?params.get('access_token'):null;
  const error=params.get('error')||null;
  if(params.has('access_token')||params.has('refresh_token')||error){
   // Prevent secrets from leaking into copied URLs, logs or future navigation.
   historyObj.replaceState(null,'',locationObj.pathname+locationObj.search);
  }
- return {token,error};
+ return {token,error,kind};
 }
-export function mountPasswordRecovery({root,client,token,onBack}){
+export function mountPasswordRecovery({root,client,token,onBack,kind='recovery'}){
  const back=()=>onBack();
  if(token){
-  root.innerHTML=content('<h2>Definir nova palavra-passe</h2>'+
-   '<p>Introduza uma palavra-passe forte para a sua conta Supabase.</p>'+
+  root.innerHTML=content('<h2>'+(kind==='invite'?'Activar conta de colaborador':'Definir nova palavra-passe')+'</h2>'+
+   '<p>'+(kind==='invite'?'Confirme a sua identidade através do convite e defina a palavra-passe inicial. Depois poderá criar o PIN pessoal de cinco dígitos.':'Introduza uma palavra-passe forte para a sua conta Supabase.')+'</p>'+
    '<form id="recovery-confirm-form">'+
    '<label>Nova palavra-passe<input type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>'+
    '<label>Confirmar palavra-passe<input type="password" name="confirm" minlength="12" maxlength="128" autocomplete="new-password" required></label>'+

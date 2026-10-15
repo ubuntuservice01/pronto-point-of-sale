@@ -44,7 +44,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  const products=data?.products||[];
  const session=data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
- const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance']})[key].includes(grant.role));
+ const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['team','Colaboradores']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],team:['owner']})[key].includes(grant.role));
  const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'>'+name+'</button>').join('');
  const prodCards=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   .map(p=>'<article class="shop-product"><div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
@@ -81,6 +81,17 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    field('opening_cash','Fundo inicial (MT)','0','required type="number" min="0" step="0.01"')+
    '<button class="shop-submit" type="submit">Abrir caixa</button></form>',
    'Cada operador abre e fecha a sua própria sessão. O fecho compara o dinheiro contado com o dinheiro esperado.');
+ }else if(view==='team'&&grant.role==='owner'){
+  body=section('Convidar colaboradores',
+   '<form data-shop-form="team_invite" class="shop-form">'+
+   field('name','Nome completo','','required minlength="2" maxlength="120"')+
+   field('email','Email do colaborador','','type="email" required maxlength="254"')+
+   '<label>Função<select name="role" required>'+
+   '<option value="cashier">Caixa / Vendedor</option><option value="manager">Gerente</option>'+
+   '<option value="stock">Stock</option><option value="finance">Financeiro</option></select></label>'+
+   '<button type="submit" class="shop-submit">Enviar convite ao colaborador</button></form>'+
+   '<p class="shop-help">Cada colaborador aceita o convite, inicia sessão na sua conta e define o próprio PIN de cinco dígitos. O proprietário não recebe nem conhece esse PIN.</p>',
+   'Apenas o proprietário pode convidar funcionários; esta página não cria novos proprietários.');
  }else{
   body=section('Vendas registadas nesta filial',
    '<div class="shop-history">'+(data?.sales.length?data.sales.map(s=>

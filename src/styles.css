@@ -885,3 +885,47 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
 .shop-draft-section .shop-help{line-height:1.6}
 #recovery-message:not(:empty){padding:11px;border-radius:8px;color:#28594e;background:#ebf6f2;font-size:12px}
 #recovery-request-form button:disabled,#recovery-confirm-form button:disabled{opacity:.6;cursor:wait}
+
+
+/* PIN screen: fully obscures merchant/admin data when a session is locked. */
+.pronto-pin-backdrop{
+ position:fixed;inset:0;z-index:2147483000;background:linear-gradient(145deg,#055844,#0b836b 58%,#0b594f);
+ color:#1b3742;display:grid;place-items:center;padding:20px;overflow-y:auto;
+}
+.pronto-pin-panel{width:min(100%,370px);background:white;border-radius:21px;
+ box-shadow:0 28px 90px #002b2455;padding:26px;display:grid;gap:12px;text-align:center}
+.pronto-pin-brand{display:flex;justify-content:center;align-items:center;gap:9px;color:#06775f}
+.pronto-pin-brand img{width:32px;height:32px}
+.pronto-pin-brand strong{font-size:20px;letter-spacing:-.5px}
+.pronto-pin-lock-icon{display:grid;place-items:center;margin:7px auto 0;
+ width:62px;height:62px;background:#e4f5ec;border-radius:50%;font-size:25px}
+.pronto-pin-panel h2{margin:4px 0 0;font-size:23px;color:#183c45}
+.pronto-pin-intro{font-size:13px;line-height:1.5;color:#617987;margin:0}
+.pronto-pin-account{font-size:12px;font-weight:700;overflow-wrap:anywhere;margin:0}
+#pronto-pin-form{display:grid;gap:11px}
+#pronto-pin-form label{display:grid;gap:6px;text-align:left;font-size:12px;font-weight:700;color:#56717e}
+#pronto-pin-form input{box-sizing:border-box;border:1px solid #bcdbce;border-radius:10px;
+ background:#fff;font-size:19px;min-height:48px;letter-spacing:6px;text-align:center;width:100%}
+#pronto-pin-form input:focus-visible{outline:3px solid #8bd4bd;outline-offset:2px}
+.pronto-pin-dots{display:flex;align-items:center;justify-content:center;gap:12px;margin:8px auto 0}
+.pronto-pin-dots span{display:block;width:17px;height:17px;border:2px solid #afd7c8;border-radius:50%;background:transparent}
+.pronto-pin-dots span.entered{background:#087f69;border-color:#087f69}
+.pronto-pin-input-label{position:absolute!important;left:-10000px;width:1px;height:1px;overflow:hidden}
+.pronto-pin-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pronto-pin-keypad button{border:1px solid #d9e9e2;background:#f8fbfa;border-radius:10px;
+ min-height:47px;font-size:19px;font-weight:700;color:#244b50}
+.pronto-pin-keypad button:active{background:#d6f1e5}
+.pronto-pin-primary{width:100%;background:#087f69;color:#fff;border:0;border-radius:10px;
+ min-height:45px;font-size:14px;font-weight:750}
+.pronto-pin-primary:disabled{opacity:.55}
+.pronto-pin-message{min-height:17px;margin:0;color:#a04c27;font-size:12px;line-height:1.45}
+.pronto-pin-message:empty{display:block}
+.pronto-pin-exit{border:0;background:none;color:#087f69;text-decoration:underline;font-size:12px}
+.pronto-pin-panel small{font-size:10px;color:#82939a;line-height:1.4}
+.pronto-pin-controls{position:fixed;bottom:18px;right:16px;z-index:100;
+ display:flex;gap:6px;background:#fff;border:1px solid #cadfd6;
+ padding:5px;border-radius:12px;box-shadow:0 5px 20px #051c1b30}
+.pronto-pin-controls button{font-size:11px;font-weight:750;color:#086b58;
+ background:#e9f5ef;border:0;padding:10px 12px;border-radius:8px}
+.pronto-pin-controls button:focus-visible{outline:2px solid #087f69}
+@media(max-width:540px){.pronto-pin-panel{padding:20px}.pronto-pin-controls{bottom:10px;right:10px;left:auto}.pronto-pin-controls button{padding:9px}}
