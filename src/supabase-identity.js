@@ -148,7 +148,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   return normalizeMerchantSnapshot(result);
  }
  async function merchantAction(action,data){
-  if(!['product_create','stock_receive','cash_open','cash_close','sale_complete'].includes(action))
+  if(!['product_create','stock_receive','cash_open','cash_close','sale_complete','customer_save','credit_policy','credit_sale','debt_payment'].includes(action))
    throw Error('shop_action_invalid');
   if(!data||typeof data!=='object'||Array.isArray(data))throw Error('shop_action_invalid');
   return call('/rest/v1/rpc/pronto_merchant_action',{method:'POST',payload:{p_action:action,p_data:data}});
