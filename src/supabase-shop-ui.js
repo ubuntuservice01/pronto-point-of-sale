@@ -13,7 +13,7 @@ const cartRow=(item,products)=>{
  if(!p)return '<p class="shop-error">Produto indisponível. Retire-o do carrinho.</p>';
  return '<div class="shop-cart-row"><div><strong>'+esc(p.name)+'</strong><small>'+esc(p.code)+' · '+MONEY(p.priceCents)+' / '+esc(p.unit)+'</small></div>'+
   '<div class="shop-cart-qty"><button type="button" data-qty="-1" data-id="'+esc(p.id)+'" aria-label="Reduzir quantidade">−</button>'+
-  '<span>'+esc(item.quantity)+'</span><button type="button" data-qty="1" data-id="'+esc(p.id)+'" aria-label="Aumentar quantidade">+</button>'+
+  '<input type="number" data-cart-qty="'+esc(p.id)+'" value="'+esc(item.quantity)+'" min="0.001" step="0.001" aria-label="Quantidade de '+esc(p.name)+'"><button type="button" data-qty="1" data-id="'+esc(p.id)+'" aria-label="Aumentar quantidade">+</button>'+
   '<button type="button" class="shop-clear-row" data-remove="'+esc(p.id)+'" aria-label="Remover produto">×</button></div></div>';
 };
 export function shopPaymentPanel({method,cart,products,discount='0',session}){
