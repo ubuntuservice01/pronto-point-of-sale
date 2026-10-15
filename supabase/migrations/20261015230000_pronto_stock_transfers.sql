@@ -53,7 +53,7 @@ declare
  v_line record;v_target_product record;v_item jsonb;
  v_product_id uuid;v_quantity numeric(16,3);v_remaining numeric(16,3);
  v_take numeric(16,3);v_lines int:=0;v_requested int:=0;v_source_code text;
- v_seen uuid[]:='{}'::uuid[];v_dest uuid;v_result jsonb;
+ v_seen uuid[]:='{}'::uuid[];v_dest uuid;v_new_batch uuid;v_result jsonb;
 begin
  if v_actor is null or p_data is null or pg_catalog.jsonb_typeof(p_data)<>'object'
   or pg_catalog.pg_column_size(p_data)>32768 then
@@ -193,20 +193,14 @@ begin
     where transfer_id=v_transfer order by id loop
     insert into public.pronto_batches(business_id,product_id,lot_number,expires_on,qty,unit_cost_cents)
      values(v_business,v_line.target_product_id,v_line.lot_number,
-      v_line.expires_on,v_line.quantity,v_line.unit_cost_cents);
-    -- Need destination batch ID for transparent FEFO movements.
-    declare v_new_batch uuid;
-    begin
-     select id into v_new_batch from public.pronto_batches
-      where business_id=v_business and product_id=v_line.target_product_id
-      order by received_at desc,id desc limit 1;
-     update public.pronto_products set stock=stock+v_line.quantity,revision=revision+1
-      where id=v_line.target_product_id and business_id=v_business and branch_id=v_target;
-     insert into public.pronto_stock_movements
-      (business_id,product_id,batch_id,actor_id,kind,qty_delta,reference_id,reason)
-      values(v_business,v_line.target_product_id,v_new_batch,v_actor,'transfer',
-       v_line.quantity,v_transfer,'Recepção da filial '||v_source::text);
-    end;
+      v_line.expires_on,v_line.quantity,v_line.unit_cost_cents)
+     returning id into v_new_batch;
+    update public.pronto_products set stock=stock+v_line.quantity,revision=revision+1
+     where id=v_line.target_product_id and business_id=v_business and branch_id=v_target;
+    insert into public.pronto_stock_movements
+     (business_id,product_id,batch_id,actor_id,kind,qty_delta,reference_id,reason)
+     values(v_business,v_line.target_product_id,v_new_batch,v_actor,'transfer',
+      v_line.quantity,v_transfer,'Recepção da filial '||v_source::text);
    end loop;
    update public.pronto_stock_transfers set status='received',
     received_by=v_actor,received_at=now() where id=v_transfer;
