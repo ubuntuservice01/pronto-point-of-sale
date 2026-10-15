@@ -128,3 +128,11 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Reembolso digital não transfere fundos: exige confirmação manual da transferência antes do lançamento. Retorno em dinheiro exige caixa aberto do próprio operador e saldo suficiente.
 - `cash_move` regista entradas e saídas manuais no caixa, com motivo e UUID idempotente; não deve ser usado para duplicar despesas e pagamentos de compras já contabilizados.
 - Testes transaccionais no Supabase (BEGIN/ROLLBACK) confirmaram 2 devoluções até 100% da quantidade, reposição selectiva, repetição idempotente, retorno do fundo de caixa, suspender/retomar e movimentos de caixa. Testes reais com equipamentos e fiscalidade ainda pendentes.
+
+## Inventário, alertas e reposição de stock (bloco 36–54 parcial)
+
+- Migrações `20261015201000_pronto_inventory_actions.sql` e `20261015201200_pronto_inventory_lot_prefix_fix.sql` aplicadas. A última corrige a concatenação do identificador de lote de ajuste.
+- `pronto_inventory_action`: edição de produto com controlo de revisão (`expected_revision`); contagem física; ajustes positivos e negativos por lote, com motivo e movimento de stock auditado. É proibido alterar a unidade se já existir stock ou histórico de vendas; preços exigem proprietário/gerente.
+- `pronto_inventory_snapshot`: lista de produtos, lotes e movimentos, alertas de produtos vencidos, validade próxima, stock baixo e sugestões de compras. A previsão usa vendas dos últimos 30 dias (consumo de 14 dias), stock disponível não vencido e stock mínimo. É uma estimativa e não é enviada ao fornecedor.
+- `src/supabase-inventory-ui.js`: separadores Inventário, Alertas e Lista de compras, com exportação CSV; nomes de produtos potencialmente maliciosos são neutralizados para prevenir injecção de fórmulas no Excel.
+- Ainda faltam: fotografias com Supabase Storage, importação CSV para base real, leitores físicos, etiquetas, devoluções a fornecedores, transferências entre filiais, variantes, conversão de unidades e homologação de operações concorrentes com vários caixas. Estes itens **não estão concluídos**.
