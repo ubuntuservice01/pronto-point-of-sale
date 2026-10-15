@@ -2,6 +2,7 @@ import {prontoSupabaseConfig} from './pronto-supabase-config.js';
 import {createProntoIdentity} from './supabase-identity.js';
 import {mountUbuntuAdminDashboard} from './supabase-admin-dashboard.js';
 import {mountSupabaseMerchantPilot} from './supabase-shop-dashboard.js';
+import {mountProntoPinGate} from './supabase-pin-lock.js';
 import {extractRecoveryFromHash,mountPasswordRecovery} from './supabase-recovery-ui.js';
 
 // A read-only identity test; the operational POS remains on the existing server.
@@ -18,7 +19,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
  };
  const form=()=>{
   shell('<h2>Verificar identidade e permissões</h2>'+
-  '<p>Esta área testa o acesso por empresa e perfil. <strong>Não permite registar vendas nem alterar stock.</strong></p>'+
+  '<p>Entre com a sua conta Supabase. Depois, utilize o seu PIN pessoal de 5 dígitos para desbloquear o Pronto POS.</p>'+
   '<form id="pronto-auth-check-form">'+
    '<label>Email da conta Supabase<input type="email" name="email" autocomplete="username" maxlength="254" required></label>'+
    '<label>Palavra-passe<input type="password" name="password" autocomplete="current-password" maxlength="200" required></label>'+
@@ -52,12 +53,15 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
  };
  const ready=async account=>{
   const admin=account.ubuntuAdmin===true;
-  if(admin){
-   await mountUbuntuAdminDashboard({root,client,account,onLogout:form});
-   return;
-  }
-  if(account.grants.length){
-   await mountSupabaseMerchantPilot({root,client,account,onLogout:form});
+  if(admin||account.grants.length){
+   // A five-digit PIN protects an *already authenticated* Supabase session.
+   // Every operator chooses their own PIN; it is never supplied by the merchant.
+   await mountProntoPinGate({
+    root,client,account,onLogout:form,
+    open:()=>admin?
+     mountUbuntuAdminDashboard({root,client,account,onLogout:form}):
+     mountSupabaseMerchantPilot({root,client,account,onLogout:form})
+   });
    return;
   }
   const grants=account.grants.length?
