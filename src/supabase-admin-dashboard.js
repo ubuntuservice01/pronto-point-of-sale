@@ -2,8 +2,8 @@ import {renderUbuntuAdminShell,renderUbuntuAdminTab} from './supabase-admin-ui.j
 import {renderProvisioningForms} from './supabase-admin-forms.js';
 import {ADMIN_TABS} from './supabase-admin-model.js';
 
-export function prepareAdminProvisioning(form){
- const fd=new FormData(form);
+export function prepareAdminProvisioning(form,FormDataImpl=FormData){
+ const fd=new FormDataImpl(form);
  const action=form.dataset.provisionAction;
  const value=k=>String(fd.get(k)||'').trim();
  if(action==='business_create')return {action,data:{
@@ -11,8 +11,9 @@ export function prepareAdminProvisioning(form){
  }};
  if(action==='plan_create'){
   const raw=value('price_mzn');
-  if(!/^\d+(?:[.,]\d{1,2})?$/.test(raw))throw Error('invalid_price');
-  const cents=Math.round(Number(raw.replace(',','.'))*100);
+  const normalized=raw.replace(/\.(?=\d{3}(?:[.,]|$))/g,'').replace(',','.');
+  if(!/^\d+(?:\.\d{1,2})?$/.test(normalized))throw Error('invalid_price');
+  const cents=Math.round(Number(normalized)*100);
   const duration=Number(value('duration_days'));
   if(!Number.isSafeInteger(cents)||cents<0||!Number.isSafeInteger(duration)||duration<1||duration>3660)throw Error('invalid_price');
   return {action,data:{name:value('name'),price_cents:cents,duration_days:duration}};
