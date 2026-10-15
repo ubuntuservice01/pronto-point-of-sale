@@ -30,10 +30,21 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el){el.textContent=text;el.classList.toggle('shop-error',warning);}
  };
  const session=()=>data?.sessions.find(s=>s.operatorId===account.userId)||null;
+ const photoCache=new Map();
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
    draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope});
+  for(const img of root.querySelectorAll('[data-shop-product-photo]')){
+   const path=img.dataset.shopProductPhoto;
+   if(!path||!client.productPhotoUrl)continue;
+   const cached=photoCache.get(path);
+   if(cached&&cached.expiresAt>Date.now()){img.src=cached.url;continue;}
+   void client.productPhotoUrl(path).then(url=>{
+    photoCache.set(path,{url,expiresAt:Date.now()+230000});
+    if(img.isConnected&&!signal.aborted)img.src=url;
+   }).catch(()=>{if(img.isConnected)img.alt='Fotografia indisponível';});
+  }
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
@@ -353,6 +364,19 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='photo_upload'){
+   if(pending||pendingFinance||disconnected())return showMessage('Conclua operações pendentes e ligue-se à internet antes de enviar fotografias.',true);
+   if(!['owner','manager','stock'].includes(grant.role))return showMessage('Sem permissão para alterar fotografias.',true);
+   const f=new FormData(form),file=f.get('photo'),productId=String(f.get('product_id')||''),
+    expectedRevision=Number(f.get('revision'));
+   if(!inventory?.products.some(p=>p.id===productId))return showMessage('Produto não encontrado.',true);
+   busy=true;showMessage('A enviar fotografia de forma privada ao Supabase…');
+   try{
+    await client.uploadProductPhoto({businessId:grant.id,branchId,productId,expectedRevision,file});
+    photoCache.clear();await refresh();render();showMessage('Fotografia guardada. A imagem só está disponível aos utilizadores autorizados.');
+   }catch(error){showMessage('Não foi possível guardar a fotografia. Verifique formato, tamanho e versão do produto. ('+error.message+')',true);}
+   finally{busy=false;}return;
+  }
   if(['product_update','inventory_adjust','inventory_count'].includes(action)){
    if(disconnected()||pending||pendingFinance||pendingPayment)return showMessage('Conclua primeiro as operações pendentes e confirme a ligação.',true);
    const values=new FormData(form),get=k=>String(values.get(k)||'').trim();
