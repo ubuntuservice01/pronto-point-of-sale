@@ -61,6 +61,16 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    showMessage('Não foi possível carregar dados da loja. Confirme a licença e a ligação à internet.',true);
   }finally{busy=false;}
  };
+ const loadReports=async()=>{
+  if(disconnected())return showMessage('Sem internet, não é possível actualizar relatórios.',true);
+  if(busy)return;
+  busy=true;showMessage('A consultar relatórios do Supabase…');
+  try{
+   report=await client.reportsSnapshot(grant.id,reportScope==='all'?null:branchId,reportFrom,reportTo);
+   render();showMessage('Relatório actualizado. Os valores são operacionais e não substituem documentos fiscais.');
+  }catch(error){report=null;render();showMessage('Não foi possível obter o relatório. Verifique as datas e permissões. ('+error.message+')',true);}
+  finally{busy=false;}
+ };
  const lockPending=()=>{if(!pending)return false;showMessage('Existe uma venda por confirmar. Reenvie o mesmo pedido ou confira a venda antes de descartá-lo.',true);return true;};
  const add=(id,delta=1)=>{
   if(lockPending())return;
@@ -157,6 +167,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   if(el.hasAttribute('data-shop-credit')){if(lockPending())return;method=method==='credit'?'cash':'credit';updatePanel();return;}
   if(el.hasAttribute('data-shop-refresh'))return void safeLoad();
+  if(el.hasAttribute('data-report-export')){
+   if(!report)return;
+   const blob=new Blob([reportsCSV(report)],{type:'text/csv;charset=utf-8'});
+   const url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='relatorio-pronto-pos.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);return;
+  }
   if(el.hasAttribute('data-inventory-select')){selectedProductId=el.dataset.inventorySelect;render();return;}
   if(el.hasAttribute('data-inventory-export')){
    if(!inventory)return;
@@ -209,7 +225,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    cart=cart.filter(x=>x.productId!==el.dataset.remove);render();return;
   }
   if(el.hasAttribute('data-qty'))return void add(el.dataset.id,Number(el.dataset.qty));
-  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;notice='';render();return;}
+  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;notice='';render();if(view==='reports')void loadReports();return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
   if(el.hasAttribute('data-shop-discard')){
@@ -253,7 +269,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.id==='shop-branch-select'){
    if(pending)return showMessage('Resolva a venda pendente antes de mudar de filial.',true);
    if(!branches.some(b=>b.id===el.value))return;
-   branchId=el.value;cart=[];method='cash';discount='0';query='';void safeLoad();return;
+   branchId=el.value;cart=[];method='cash';discount='0';query='';report=null;void safeLoad();return;
   }
   if(el.id==='shop-sale-customer'){if(lockPending())return;selectedCustomerId=el.value;updatePanel();return;}
   if(el.id==='shop-credit-due'){creditDue=el.value;return;}
@@ -284,6 +300,16 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const form=event.target;
   if(!(form instanceof HTMLFormElement)||busy)return;
   event.preventDefault();
+  if(form.id==='shop-reports-form'){
+   const fields=new FormData(form);
+   const from=String(fields.get('from')||''),to=String(fields.get('to')||'');
+   const scope=String(fields.get('scope')||'branch');
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||
+    from>to||scope==='all'&&!['owner','manager','finance'].includes(grant.role))
+     return showMessage('Datas ou abrangência inválidas.',true);
+   reportFrom=from;reportTo=to;reportScope=scope==='all'?'all':'branch';
+   void loadReports();return;
+  }
   if(form.id==='shop-sale-form'){
    if(lockPending())return;
    const shift=session();
