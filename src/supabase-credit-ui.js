@@ -51,8 +51,7 @@ export function creditCheckoutFields({credit,selected='',today='',method='cash'}
  const credits=customer?'<p class="shop-help">Limite: '+money(customer.creditLimit)+
   ' · Em dívida: '+money(outstanding)+(customer.creditBlocked?' · Crédito bloqueado':'')+'</p>':'';
  return customerPicker(credit,selected)+credits+
-  (method==='credit'?'<label>Data para pagamento<input name="credit_due" id="shop-credit-due" type="date" required min="'+esc(today||credit.today)+'"></label>'+
-    '<p class="shop-help">A venda cria uma dívida no servidor. Só é confirmada depois da verificação do limite e do stock.</p>':'');
+  (method==='credit'?'<p class="shop-help">A venda a crédito cria uma dívida no servidor, sujeita ao limite do cliente e à disponibilidade do stock.</p>':'');
 }
 export function renderCreditView({view,credit,role,query='',filter='open',session=null,selectedCustomerId=''}){
  if(!credit)return panel('Clientes e dívidas','<p>A consultar informações no Supabase…</p>');
