@@ -161,6 +161,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     const card=button.closest('.shop-product');
     if(p&&card)card.hidden=!(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase());
    });
+  }else if(el.id==='shop-customer-search'){
+   customerQuery=el.value;
+   const visible=searchCustomers(credit?.customers||[],customerQuery).map(c=>c.id);
+   root.querySelectorAll('[data-credit-customer]').forEach(btn=>{btn.hidden=!visible.includes(btn.dataset.creditCustomer);});
   }else if(el.name==='discount'){
    discount=el.value;
   }
@@ -248,6 +252,41 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(['customer_save','credit_policy','debt_payment'].includes(action)){
+   if(lockPending())return;
+   if(disconnected())return showMessage('Sem internet não é possível gerir clientes ou dívidas.',true);
+   const values=new FormData(form);
+   const value=k=>String(values.get(k)||'').trim();
+   let payload;
+   try{
+    if(action==='customer_save'){
+     payload={customer_id:value('customer_id')||null,name:value('name'),phone:value('phone'),note:value('note')};
+     if(value('customer_id'))payload.active=values.has('active');
+    }else if(action==='credit_policy'){
+     payload={customer_id:value('customer_id'),credit_limit_cents:toCents(value('credit_limit')),
+      credit_blocked:values.has('credit_blocked'),expected_revision:Number(value('expected_revision')),reason:value('reason')};
+    }else{
+     if(!session())throw Error('cash_not_open');
+     const debt=credit?.debts.find(d=>d.id===value('debt_id'));
+     if(!debt)throw Error('debt_not_found');
+     if(pendingPayment&&pendingPayment.debt_id!==debt.id)throw Error('pending_collection');
+     payload=pendingPayment||makeDebtPaymentRequest({businessId:grant.id,branchId,sessionId:session().id,
+      debt,amount:value('amount'),method:value('method'),reference:value('reference'),
+      confirmed:values.has('confirmed'),idempotencyKey:crypto.randomUUID()});
+     pendingPayment=payload;
+    }
+   }catch(error){return showMessage('Verifique os dados da operação: '+error.message,true);}
+   busy=true;showMessage('A guardar no Supabase…');
+   try{
+    const result=await client.merchantAction(action,{business_id:grant.id,branch_id:branchId,...payload});
+    if(action==='debt_payment')pendingPayment=null;
+    await refresh();if(action==='customer_save')selectedCustomerId=result.customer_id;
+    render();showMessage(action==='debt_payment'?'Cobrança registada e reconciliada com o caixa.':'Dados actualizados no Supabase.');
+   }catch(error){
+    showMessage(action==='debt_payment'?'Cobrança por confirmar. Não altere o pedido nem o repita com outra referência; confira o histórico ou reenvie o mesmo pedido.':'O servidor rejeitou a operação: '+error.message,true);
+   }finally{busy=false;}
+   return;
+  }
   if(action==='team_invite'){
    if(grant.role!=='owner')return showMessage('Apenas o proprietário pode convidar colaboradores.',true);
    if(disconnected())return showMessage('Sem internet não é possível enviar convites.',true);
