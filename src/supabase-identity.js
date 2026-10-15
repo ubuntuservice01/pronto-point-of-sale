@@ -8,6 +8,7 @@ import {normalizeFinanceSnapshot} from './supabase-finance-ui.js';
 import {normalizeReturnSnapshot} from './supabase-returns-ui.js';
 import {normalizeInventorySnapshot} from './supabase-inventory-ui.js';
 import {normalizeReports} from './supabase-reports-ui.js';
+import {normalizeTransferSnapshot} from './supabase-transfers-ui.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
@@ -256,6 +257,20 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   const result=await call('/rest/v1/rpc/pronto_merchant_snapshot',{method:'POST',payload});
   return normalizeMerchantSnapshot(result);
  }
+ async function transferSnapshot(businessId){
+  if(!uuid(businessId))throw Error('shop_scope');
+  const value=await call('/rest/v1/rpc/pronto_transfer_snapshot',{
+   method:'POST',payload:{p_business:businessId}
+  });
+  return normalizeTransferSnapshot(value);
+ }
+ async function transferAction(action,data){
+  if(!['send','receive','cancel'].includes(action)||
+   !data||typeof data!=='object'||Array.isArray(data))throw Error('transfer_action_invalid');
+  return call('/rest/v1/rpc/pronto_transfer_action',{
+   method:'POST',payload:{p_action:action,p_data:data}
+  });
+ }
  async function manageBranch(action,data){
   if(!['list','create','rename','deactivate','reactivate'].includes(action)||!data||typeof data!=='object'||Array.isArray(data))throw Error('branch_action_invalid');
   return call('/rest/v1/rpc/pronto_manage_branch',{method:'POST',payload:{p_action:action,p_data:data}});
@@ -327,5 +342,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
