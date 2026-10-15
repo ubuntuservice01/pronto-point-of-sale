@@ -147,7 +147,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   return items.filter(b=>uuid(b?.id)).map(b=>({id:b.id,name:String(b.name||'Filial')}));
  }
  async function reportsSnapshot(businessId,branchId,from,to){
-  if(!uuid(businessId)||(branchId!==null&&!uuid(branchId))||!/^\\d{4}-\\d{2}-\\d{2}$/.test(from||'')||!/^\\d{4}-\\d{2}-\\d{2}$/.test(to||''))throw Error('reports_scope');
+  if(!uuid(businessId)||(branchId!==null&&!uuid(branchId))||!/^\d{4}-\d{2}-\d{2}$/.test(from||'')||!/^\d{4}-\d{2}-\d{2}$/.test(to||''))throw Error('reports_scope');
   return normalizeReports(await call('/rest/v1/rpc/pronto_reports_snapshot',{
    method:'POST',payload:{p_business:businessId,p_branch:branchId,p_start:from,p_end:to}
   }));
