@@ -106,5 +106,5 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
 export function shoppingListCSV(inventory){
  const rows=[['Produto','Disponível','Vendido_30_dias','Quantidade_sugerida']];
  for(const x of inventoryAlerts(inventory).suggestions)rows.push([x.name,String(x.available),String(x.sold30),String(x.suggested)]);
- return '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+ return '\uFEFF'+rows.map(row=>row.map(value=>{const raw=String(value);const safe=/^[\s]*[=+@\-\t\r]/.test(raw)?"'"+raw:raw;return '"'+safe.replace(/"/g,'""')+'"';}).join(';')).join('\r\n');
 }
