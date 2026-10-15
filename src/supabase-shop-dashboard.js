@@ -1,12 +1,18 @@
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
 import {toCents,toQuantity,makeSaleRequest,esc} from './supabase-shop-core.js';
+import {makeShopDraft,saveShopDraft,restoreShopDraft,hasShopDraft,clearShopDraft} from './supabase-shop-draft.js';
 
 // Explicit, isolated PostgreSQL checkout pilot. The existing SQLite POS is untouched.
 export async function mountSupabaseMerchantPilot({root,client,account,onLogout}){
  if(!account?.grants?.length||account.ubuntuAdmin)throw Error('shop_access_required');
  const aborter=new AbortController(),signal=aborter.signal;
  let grant=account.grants[0],branches=[],branchId='',data=null,cart=[],
-  view='sell',method='cash',discount='0',query='',notice='',busy=false,pending=null;
+  view=['owner','manager','cashier'].includes(account.grants[0].role)?'sell':
+   account.grants[0].role==='stock'?'products':'history',
+  method='cash',discount='0',query='',notice='',busy=false,pending=null;
+ const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance']})[target]?.includes(grant.role)===true;
+ const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
   try{await client.signOut();}finally{onLogout();}
@@ -19,13 +25,15 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const session=()=>data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const render=()=>{
   if(!data)return;
-  root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending});
+  root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
+   draftAvailable:hasShopDraft(localStorage,scope())});
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
    branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';
+   view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   render();
@@ -60,12 +68,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const cashData=fields=>({business_id:grant.id,branch_id:branchId,...fields});
  const processSale=async()=>{
   if(!pending)return;
+  if(disconnected()){showMessage('Sem internet: a venda não foi concluída. Guarde o rascunho encriptado e volte a tentar depois de restabelecer a ligação.',true);return;}
   busy=true;showMessage('A verificar e registar a venda no servidor…');
   try{
    const result=await client.merchantAction('sale_complete',pending);
    const wasRepeated=result.duplicate===true;
    cart=[];pending=null;discount='0';method='cash';query='';
-   await refresh();
+   try{await refresh();}catch{render();}
    showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':'Venda concluída. ')+
     'Referência: '+String(result.sale_id||'').slice(0,8)+'.');
   }catch(e){
@@ -75,6 +84,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  };
  const execute=async(action,payload)=>{
   if(busy)return;
+  if(disconnected())return showMessage('Sem ligação à internet. Esta operação não foi enviada ao Supabase.',true);
   busy=true;showMessage('A registar informação no Supabase…');
   try{
    const result=await client.merchantAction(action,cashData(payload));
@@ -97,13 +107,18 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
   if(el.hasAttribute('data-shop-refresh'))return void safeLoad();
+  if(el.hasAttribute('data-shop-draft-clear')){
+   if(confirm('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas no Supabase.')){
+    clearShopDraft(localStorage,scope());render();showMessage('Rascunho local apagado.');
+   }return;
+  }
   if(el.hasAttribute('data-shop-add'))return void add(el.dataset.shopAdd);
   if(el.hasAttribute('data-remove')){
    if(lockPending())return;
    cart=cart.filter(x=>x.productId!==el.dataset.remove);render();return;
   }
   if(el.hasAttribute('data-qty'))return void add(el.dataset.id,Number(el.dataset.qty));
-  if(el.hasAttribute('data-shop-view')){view=el.dataset.shopView;notice='';render();return;}
+  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;notice='';render();return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
   if(el.hasAttribute('data-shop-discard')){
@@ -168,7 +183,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!shift)return showMessage('Abra a sua sessão de caixa para vender.',true);
    try{
     const f=new FormData(form);
-    const disc=root.querySelector('[name="discount"]')?.value||'0';
+    const disc=grant.role==='cashier'?'0':root.querySelector('[name="discount"]')?.value||'0';
     const tempTotal=(()=>{const byId=new Map(data.products.map(p=>[p.id,p]));
       return cart.reduce((s,l)=>s+Math.round(byId.get(l.productId).priceCents*l.quantity),0)-toCents(disc);})();
     const totalText=(tempTotal/100).toFixed(2);
@@ -191,9 +206,35 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }
    return;
   }
-  if(pending)return void lockPending();
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='draft_save'||action==='draft_restore'){
+   const password=String(new FormData(form).get('passphrase')||'');
+   if(password.length<12)return showMessage('A frase de recuperação deve ter pelo menos 12 caracteres.',true);
+   busy=true;
+   try{
+    if(action==='draft_save'){
+     if(!cart.length&&!pending)throw Error('draft_payload');
+     const draft=makeShopDraft({scope:scope(),cart,method,discount,pending});
+     await saveShopDraft(localStorage,scope(),password,draft);
+     render();showMessage('Rascunho encriptado guardado neste dispositivo. Não foi registada nenhuma venda.');
+    }else{
+     if(pending)throw Error('pending_checkout');
+     if(cart.length&&!confirm('O carrinho actual será substituído pelo rascunho. Continuar?'))return;
+     const restored=await restoreShopDraft(localStorage,scope(),password);
+     cart=restored.cart.map(item=>({...item}));
+     method=restored.method;discount=restored.discount;pending=restored.pending;
+     view='sell';render();
+     showMessage(pending?'Pedido pendente recuperado com a mesma chave. Confira no histórico e use «Repetir o mesmo pedido»; não crie outra venda.':
+      'Carrinho recuperado. O stock e os preços serão novamente verificados ao concluir.');
+    }
+   }catch(e){showMessage(e.message==='pending_checkout'?'Resolva o pedido pendente antes de recuperar outro.':
+    'Não foi possível guardar ou recuperar o rascunho. Confirme a frase, o dispositivo e a loja.',true);
+   }finally{busy=false;}
+   return;
+  }
+  if(pending)return void lockPending();
+  if(disconnected())return showMessage('Sem ligação: não é possível abrir/fechar o caixa ou alterar stock. Guarde um rascunho e aguarde a ligação.',true);
   const f=new FormData(form);
   try{
    let payload;
