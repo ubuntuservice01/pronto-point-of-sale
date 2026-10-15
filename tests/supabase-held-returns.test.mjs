@@ -24,7 +24,7 @@ test('Refund forms show sold/returned quantities, cash/digital means and manual 
  assert.ok(html.includes('M-Pesa'));
  assert.ok(html.includes('Arroz &lt;especial&gt;'));
  assert.ok(!html.includes('<especial>'));
- assert.match(html,/não emite nota de crédito fiscal/i);
+ assert.match(html,/nem emite nota de crédito fiscal/i);
 });
 test('Held-sale, cashier movement and refund RPC require signed-in user and exact action allowlists',async()=>{
  const calls=[];const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
