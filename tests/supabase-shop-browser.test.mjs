@@ -25,14 +25,14 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
  let browser,debug,opened=false;
  try{
   await new Promise(ok=>srv.listen(0,'127.0.0.1',ok));opened=true;
-  const url='http://127.0.0.1:'+srv.address().port+'/?mode=supabase',debugPort=await port();
+  const url='http://127.0.0.1:'+srv.address().port+'/tests/fixtures/supabase-merchant.html',debugPort=await port();
   browser=spawn(binary,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-background-networking','--no-first-run','--no-default-browser-check','--user-data-dir='+profile,'--remote-debugging-port='+debugPort,'--window-size=1440,1000',url],{stdio:'ignore'});
   let endpoint;
   for(let i=0;i<95;i++){
    if(browser.exitCode!==null)throw Error('Chrome exited');
    try{
     const pages=await(await fetch('http://127.0.0.1:'+debugPort+'/json/list')).json();
-    endpoint=pages.find(p=>p.type==='page'&&p.url.includes('mode=supabase'))?.webSocketDebuggerUrl;
+    endpoint=pages.find(p=>p.type==='page'&&p.url.includes('/tests/fixtures/supabase-merchant.html'))?.webSocketDebuggerUrl;
     if(endpoint)break;
    }catch{}await wait(180);
   }
@@ -52,7 +52,7 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
    'const p="33333333-3333-4333-8333-333333333333";',
    'const s="44444444-4444-4444-8444-444444444444";',
    'window.__merchantTest={calls:[],stock:5};',
-   'for(let i=0;i<100&&!document.querySelector("#pronto-auth-check-form");i++)await new Promise(r=>setTimeout(r,80));',
+   'for(let i=0;i<100&&!document.getElementById("app");i++)await new Promise(r=>setTimeout(r,80));',
    'const root=document.getElementById("app");if(!root)throw Error("app container missing");root.replaceChildren();',
    'const client={',
    'async merchantBranches(){return [{id:b,name:"Principal"}];},',
