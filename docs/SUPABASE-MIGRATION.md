@@ -181,3 +181,11 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - A lista mostra 100 transferências recentes por empresa. Entradas em trânsito não podem ser vendidas no destino até recepção; não existe venda, recibo ou pagamento associado.
 - Limite por expedição: 40 artigos distintos no servidor; interface até 10 linhas. A expedição é atómica, não possui confirmações parciais de entrega e não permite alteração após receber. Conferir quantidades reais antes da confirmação.
 - Testado no PostgreSQL usando `BEGIN/ROLLBACK`, com envio, recepção, anulação, falhas de acesso entre empresas, stock e idempotência. Ainda requer ensaio com várias filiais e dispositivos reais antes de lançamento.
+
+## Gestão dos colaboradores (perfis e suspensão)
+
+- A migração `20261015233000_pronto_owner_manage_staff.sql` permite ao proprietário consultar nome, email, função e estado dos seus colaboradores activos/inactivos.
+- Apenas o proprietário altera as funções `manager`, `cashier`, `stock` e `finance`. Nunca promove um colaborador a proprietário e nunca pode suspender o próprio proprietário.
+- Suspensão e reactivação são operações no Supabase, auditadas e validadas em cada RPC/RLS por associação activa. Sessões Auth do colaborador podem continuar emitidas; a revogação aplicada é das permissões da empresa, não uma revogação universal do token.
+- Após a alteração de função ou reactivação, o colaborador deve terminar a sessão e voltar a entrar para actualizar os menus. PINs e palavras-passe não são expostos ao proprietário.
+- Falta homologação com funcionários reais e tratamento especializado de caixas abertos por operadores suspensos; a gestão de sessões de dispositivos permanece parcialmente pendente.

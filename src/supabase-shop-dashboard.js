@@ -18,7 +18,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
@@ -36,7 +36,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
    if(!path||!client.productPhotoUrl)continue;
@@ -57,6 +57,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   branchManagement=grant.role==='owner'?await client.manageBranch('list',{business_id:grant.id}):null;
+  staffManagement=grant.role==='owner'?await client.ownerStaffSnapshot(grant.id):null;
   transfers=['owner','manager','stock','finance'].includes(grant.role)?await client.transferSnapshot(grant.id):null;
   credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
   finance=typeof client.financeSnapshot==='function'?await client.financeSnapshot(grant.id,branchId):null;
@@ -153,6 +154,24 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
+  if(el.hasAttribute('data-staff-suspend')||el.hasAttribute('data-staff-reactivate')){
+   if(grant.role!=='owner'||disconnected())return showMessage('A alteração exige permissão de proprietário e ligação activa.',true);
+   const mode=el.hasAttribute('data-staff-suspend')?'suspend':'reactivate';
+   const target=mode==='suspend'?el.dataset.staffSuspend:el.dataset.staffReactivate;
+   const user=staffManagement?.staff.find(p=>p.id===target);
+   if(!user||!confirm((mode==='suspend'?'Suspender':'Reactivar')+' a conta de '+user.name+
+     '? As permissões no servidor mudam imediatamente.'))return;
+   busy=true;showMessage('A actualizar permissões do colaborador…');
+   void(async()=>{
+    try{
+     await client.ownerStaffAction(mode,{business_id:grant.id,user_id:target});
+     await refresh();
+     showMessage(mode==='suspend'?'Acesso ao negócio suspenso no servidor.':
+      'Acesso reactivado. O colaborador deverá voltar a entrar para actualizar a interface.');
+    }catch(error){showMessage('Não foi possível alterar o acesso. ('+error.message+')',true);}
+    finally{busy=false;}
+   })();return;
+  }
   if(el.hasAttribute('data-transfer-add')){
    const form=root.querySelector('[data-shop-form="transfer_send"]');
    const values=form?Array.from(form.elements).filter(x=>x.name).map(x=>[x.name,x.value]):[];
@@ -425,6 +444,21 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     branches=await client.merchantBranches(grant.id);
     await refresh();showMessage('Filial actualizada com sucesso.');
    }catch(e){showMessage('Falha na gestão da filial: '+e.message,true);}
+   finally{busy=false;}
+   return;
+  }
+  if(action==='staff_role_change'){
+   if(grant.role!=='owner'||disconnected())return showMessage('Apenas o proprietário pode alterar funções online.',true);
+   const fields=new FormData(form),id=String(fields.get('user_id')||''),role=String(fields.get('role')||'');
+   const employee=staffManagement?.staff.find(x=>x.id===id);
+   if(!employee||!['manager','cashier','stock','finance'].includes(role))
+    return showMessage('Funcionário ou função inválidos.',true);
+   if(!confirm('Alterar a função de '+employee.name+' para '+role+'?'))return;
+   busy=true;showMessage('A actualizar a função no Supabase…');
+   try{
+    await client.ownerStaffAction('role_change',{business_id:grant.id,user_id:id,role});
+    await refresh();showMessage('Função alterada no servidor. O colaborador deverá entrar novamente para actualizar o menu.');
+   }catch(error){showMessage('Não foi possível alterar a função. ('+error.message+')',true);}
    finally{busy=false;}
    return;
   }
