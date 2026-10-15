@@ -4,6 +4,7 @@ const validEmail = value => typeof value === 'string' && value.length > 3 && val
 import {normalizeAdminOverview} from './supabase-admin-model.js';
 import {normalizeMerchantSnapshot} from './supabase-shop-core.js';
 import {normalizeCreditSnapshot} from './supabase-credit-ui.js';
+import {normalizeFinanceSnapshot} from './supabase-finance-ui.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
@@ -142,6 +143,20 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   if(!Array.isArray(items))throw Error('supabase_response');
   return items.filter(b=>uuid(b?.id)).map(b=>({id:b.id,name:String(b.name||'Filial')}));
  }
+ async function financeSnapshot(businessId,branchId){
+  if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
+  const data=await call('/rest/v1/rpc/pronto_finance_snapshot',{
+   method:'POST',payload:{p_business:businessId,p_branch:branchId}
+  });
+  return normalizeFinanceSnapshot(data);
+ }
+ async function financeAction(action,data){
+  if(!['supplier_save','purchase_receive','purchase_payment','expense_add','expense_schedule_save'].includes(action))throw Error('finance_action_invalid');
+  if(!data||typeof data!=='object'||Array.isArray(data))throw Error('finance_action_invalid');
+  return call('/rest/v1/rpc/pronto_finance_action',{
+   method:'POST',payload:{p_action:action,p_data:data}
+  });
+ }
  async function creditSnapshot(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   const data=await call('/rest/v1/rpc/pronto_credit_snapshot',{
@@ -217,5 +232,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
