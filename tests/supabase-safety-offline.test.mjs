@@ -96,3 +96,19 @@ test('Cashier sees neither stock administration nor discount control; stock user
  assert.ok(!stock.includes('data-shop-view="history"'));
  assert.match(shopPaymentPanel({method:'cash',cart:base.cart,products:state.products,role:'cashier',session:state.sessions[0]}),/disabled/);
 });
+
+test('Offline drafts reject duplicate articles, invalid quantities and malformed pending payment instructions',()=>{
+ const base=draft();
+ assert.throws(()=>makeShopDraft({scope,cart:[{productId:P,quantity:1},{productId:P,quantity:2}],
+  method:'cash',discount:'0',pending:null}),/draft_payload/);
+ assert.throws(()=>makeShopDraft({scope,cart:[{productId:P,quantity:1.2345}],
+  method:'cash',discount:'0',pending:null}),/draft_payload/);
+ assert.throws(()=>makeShopDraft({scope,cart:base.cart,method:'mixed',discount:'0',
+  pending:{...pending,items:[]}}),/draft_payload/);
+ assert.throws(()=>makeShopDraft({scope,cart:base.cart,method:'mixed',discount:'0',
+  pending:{...pending,allocations:[pending.allocations[0],pending.allocations[0]]}}),/draft_payload/);
+ assert.throws(()=>makeShopDraft({scope,cart:base.cart,method:'mixed',discount:'0',
+  pending:{...pending,cash_received_cents:1000}}),/draft_payload/);
+ assert.throws(()=>makeShopDraft({scope,cart:base.cart,method:'mixed',discount:'0',
+  pending:{...pending,items:[pending.items[0],pending.items[0]]}}),/draft_payload/);
+});
