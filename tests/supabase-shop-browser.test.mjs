@@ -41,10 +41,27 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
   await debug.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await debug.send('Runtime.enable');
   async function js(expression){
-   const response=await debug.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
-   if(response.exceptionDetails)throw Error(JSON.stringify(response.exceptionDetails));
-   return response.result.value;
+   for(let attempt=0;attempt<12;attempt++){
+    try{
+     const response=await debug.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
+     if(response.exceptionDetails)throw Error(JSON.stringify(response.exceptionDetails));
+     return response.result.value;
+    }catch(error){
+     if(attempt===11||!/Execution context was destroyed|Cannot find context/i.test(String(error)))throw error;
+     await wait(140);
+    }
+   }
   }
+  // Chrome may announce its DevTools page while the initial navigation is
+  // still replacing the execution context. Wait before injecting test code.
+  let loaded=false;
+  for(let i=0;i<80;i++){
+   try{loaded=await js('document.readyState==="complete" && !!document.getElementById("app")');}
+   catch(error){if(!/Execution context was destroyed/i.test(String(error)))throw error;}
+   if(loaded)break;
+   await wait(100);
+  }
+  assert.equal(loaded,true,'Chrome app did not finish initial navigation');
   const init=[
    '(async()=>{',
    'const u="11111111-1111-4111-8111-111111111111";',
