@@ -3,6 +3,7 @@
 const validEmail = value => typeof value === 'string' && value.length > 3 && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 import {normalizeAdminOverview} from './supabase-admin-model.js';
 import {normalizeMerchantSnapshot} from './supabase-shop-core.js';
+import {normalizeCreditSnapshot} from './supabase-credit-ui.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
@@ -141,6 +142,13 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   if(!Array.isArray(items))throw Error('supabase_response');
   return items.filter(b=>uuid(b?.id)).map(b=>({id:b.id,name:String(b.name||'Filial')}));
  }
+ async function creditSnapshot(businessId,branchId){
+  if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
+  const data=await call('/rest/v1/rpc/pronto_credit_snapshot',{
+   method:'POST',payload:{p_business:businessId,p_branch:branchId}
+  });
+  return normalizeCreditSnapshot(data);
+ }
  async function merchantSnapshot(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   const payload={p_business:businessId,p_branch:branchId};
@@ -209,5 +217,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

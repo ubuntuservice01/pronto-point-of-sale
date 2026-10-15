@@ -1,5 +1,7 @@
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
-import {toCents,toQuantity,makeSaleRequest,esc} from './supabase-shop-core.js';
+import {toCents,toQuantity,makeSaleRequest,cartTotal,esc} from './supabase-shop-core.js';
+import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
+import {creditStatementHTML,creditWhatsAppURL} from './supabase-credit-ui.js';
 import {makeShopDraft,saveShopDraft,restoreShopDraft,hasShopDraft,clearShopDraft} from './supabase-shop-draft.js';
 
 // Explicit, isolated PostgreSQL checkout pilot. The existing SQLite POS is untouched.
@@ -9,9 +11,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  let grant=account.grants[0],branches=[],branchId='',data=null,cart=[],
   view=['owner','manager','cashier'].includes(account.grants[0].role)?'sell':
    account.grants[0].role==='stock'?'products':'history',
-  method='cash',discount='0',query='',notice='',busy=false,pending=null;
+  method='cash',discount='0',query='',notice='',busy=false,pending=null,
+  credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],team:['owner']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],team:['owner']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
@@ -26,16 +29,18 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope())});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue});
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
-   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';
+   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
+  credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
+  if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
  };
  const safeLoad=async(first=false)=>{
@@ -63,7 +68,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  };
  const updatePanel=()=>{
   const panel=root.querySelector('#shop-checkout-panel');
-  if(panel&&data)panel.outerHTML=shopPaymentPanel({method,cart,products:data.products,discount,session:session()});
+  if(panel&&data)panel.outerHTML=shopPaymentPanel({method,cart,products:data.products,discount,session:session(),role:grant.role,credit,selectedCustomerId,creditDue});
  };
  const cashData=fields=>({business_id:grant.id,branch_id:branchId,...fields});
  const processSale=async()=>{
@@ -71,11 +76,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(disconnected()){showMessage('Sem internet: a venda não foi concluída. Guarde o rascunho encriptado e volte a tentar depois de restabelecer a ligação.',true);return;}
   busy=true;showMessage('A verificar e registar a venda no servidor…');
   try{
-   const result=await client.merchantAction('sale_complete',pending);
+   const result=await client.merchantAction(pending.due_on?'credit_sale':'sale_complete',pending);
    const wasRepeated=result.duplicate===true;
-   cart=[];pending=null;discount='0';method='cash';query='';
+   cart=[];pending=null;discount='0';method='cash';query='';creditDue='';
    try{await refresh();}catch{render();}
-   showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':'Venda concluída. ')+
+   showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':result.debt_id?'Venda a crédito registada. ':'Venda concluída. ')+
     'Referência: '+String(result.sale_id||'').slice(0,8)+'.');
   }catch(e){
    showMessage('Venda ainda sem confirmação. Verifique a sessão e clique em «Repetir o mesmo pedido» para evitar duplicações. ('+String(e.message||'erro')+')',true);
@@ -90,11 +95,16 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const result=await client.merchantAction(action,cashData(payload));
    await refresh();
    if(action==='product_create')view='products';
+   if(action==='customer_save')view='customers';
+   if(action==='debt_payment')view='debts';
    render();
    const summary=action==='product_create'?'Produto criado com código '+result.code:
     action==='stock_receive'?'Stock recebido e registado por lote.':
     action==='cash_open'?'Sessão de caixa aberta.':
     action==='cash_close'?'Caixa fechado. Esperado: '+(Number(result.expected_cents)/100).toFixed(2)+' MT; diferença: '+(Number(result.difference_cents)/100).toFixed(2)+' MT.':
+    action==='customer_save'?'Cliente guardado no Supabase.':
+    action==='credit_policy'?'Limite de crédito actualizado com auditoria.':
+    action==='debt_payment'?'Pagamento da dívida confirmado no Supabase.':
     'Operação realizada.';
    showMessage(summary);
   }catch(e){
@@ -106,6 +116,21 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
+  if(el.hasAttribute('data-credit-customer')){selectedCustomerId=el.dataset.creditCustomer;render();return;}
+  if(el.hasAttribute('data-credit-receipt')||el.hasAttribute('data-credit-statement')){
+   if(!credit)return;
+   try{const debtId=el.dataset.creditReceipt;
+    const customerId=debtId?credit.debts.find(d=>d.id===debtId)?.customerId:el.dataset.creditStatement;
+    const html=creditStatementHTML(credit,customerId,{debtId});
+    const win=window.open('','_blank');if(!win){showMessage('Autorize a janela de impressão.',true);return;}
+    win.document.write(html);win.document.close();win.focus();win.print();
+   }catch{showMessage('Não foi possível gerar o extracto.',true);}return;
+  }
+  if(el.hasAttribute('data-credit-whatsapp')){
+   try{window.open(creditWhatsAppURL(credit,el.dataset.creditWhatsapp),'_blank','noopener,noreferrer');}
+   catch{showMessage('Verifique o telefone do cliente.',true);}return;
+  }
+  if(el.hasAttribute('data-shop-credit')){if(lockPending())return;method=method==='credit'?'cash':'credit';updatePanel();return;}
   if(el.hasAttribute('data-shop-refresh'))return void safeLoad();
   if(el.hasAttribute('data-shop-draft-clear')){
    if(confirm('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas no Supabase.')){
@@ -136,6 +161,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     const card=button.closest('.shop-product');
     if(p&&card)card.hidden=!(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase());
    });
+  }else if(el.id==='shop-customer-search'){
+   customerQuery=el.value;
+   const visible=searchCustomers(credit?.customers||[],customerQuery).map(c=>c.id);
+   root.querySelectorAll('[data-credit-customer]').forEach(btn=>{btn.hidden=!visible.includes(btn.dataset.creditCustomer);});
   }else if(el.name==='discount'){
    discount=el.value;
   }
@@ -153,6 +182,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!branches.some(b=>b.id===el.value))return;
    branchId=el.value;cart=[];method='cash';discount='0';query='';void safeLoad();return;
   }
+  if(el.id==='shop-sale-customer'){if(lockPending())return;selectedCustomerId=el.value;updatePanel();return;}
+  if(el.id==='shop-credit-due'){creditDue=el.value;return;}
+  if(el.id==='shop-debt-filter'){debtFilter=el.value;render();return;}
   if(el.name==='discount'){if(!lockPending())updatePanel();return;}
   if(el.hasAttribute('data-cart-qty')){
    if(lockPending())return;
@@ -187,13 +219,25 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     const tempTotal=(()=>{const byId=new Map(data.products.map(p=>[p.id,p]));
       return cart.reduce((s,l)=>s+Math.round(byId.get(l.productId).priceCents*l.quantity),0)-toCents(disc);})();
     const totalText=(tempTotal/100).toFixed(2);
+    const idem=crypto.randomUUID();
+    if(method==='credit'){
+     const customer=credit?.customers.find(c=>c.id===selectedCustomerId&&c.active);
+     if(!customer)throw Error('debt_customer_required');
+     const outstanding=credit.debts.filter(d=>d.customerId===customer.id&&d.balance>0).reduce((n,d)=>n+d.balance,0);
+     creditDue=String(f.get('credit_due')||creditDue);
+     pending=makeCreditSaleRequest({businessId:grant.id,branchId,sessionId:shift.id,
+      cart,customer,dueOn:creditDue,today:credit.today,outstanding,total:tempTotal,
+      discount:disc,idempotencyKey:idem});
+     await processSale();return;
+    }
     const allocations=method==='mixed'?['cash','mpesa','emola','transfer'].map(m=>({
      method:m,amount:String(f.get('pay_'+m)||'0')
     })).filter(p=>toCents(p.amount)>0):[{method,amount:totalText}];
     if(allocations.some(x=>x.method!=='cash')&&f.get('confirmed')!=='yes')throw Error('digital_unconfirmed');
     pending=makeSaleRequest({businessId:grant.id,branchId,sessionId:shift.id,
-     cart,products:data.products,discount:disc,allocations,idempotencyKey:crypto.randomUUID(),
+     cart,products:data.products,discount:disc,allocations,idempotencyKey:idem,
      cashReceived:String(f.get('cash_received')||'0')});
+    if(selectedCustomerId)pending.customer_id=selectedCustomerId;
     await processSale();
    }catch(e){
     pending=null;
@@ -208,6 +252,41 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(['customer_save','credit_policy','debt_payment'].includes(action)){
+   if(lockPending())return;
+   if(disconnected())return showMessage('Sem internet não é possível gerir clientes ou dívidas.',true);
+   const values=new FormData(form);
+   const value=k=>String(values.get(k)||'').trim();
+   let payload;
+   try{
+    if(action==='customer_save'){
+     payload={customer_id:value('customer_id')||null,name:value('name'),phone:value('phone'),note:value('note')};
+     if(value('customer_id'))payload.active=values.has('active');
+    }else if(action==='credit_policy'){
+     payload={customer_id:value('customer_id'),credit_limit_cents:toCents(value('credit_limit')),
+      credit_blocked:values.has('credit_blocked'),expected_revision:Number(value('expected_revision')),reason:value('reason')};
+    }else{
+     if(!session())throw Error('cash_not_open');
+     const debt=credit?.debts.find(d=>d.id===value('debt_id'));
+     if(!debt)throw Error('debt_not_found');
+     if(pendingPayment&&pendingPayment.debt_id!==debt.id)throw Error('pending_collection');
+     payload=pendingPayment||makeDebtPaymentRequest({businessId:grant.id,branchId,sessionId:session().id,
+      debt,amount:value('amount'),method:value('method'),reference:value('reference'),
+      confirmed:values.has('confirmed'),idempotencyKey:crypto.randomUUID()});
+     pendingPayment=payload;
+    }
+   }catch(error){return showMessage('Verifique os dados da operação: '+error.message,true);}
+   busy=true;showMessage('A guardar no Supabase…');
+   try{
+    const result=await client.merchantAction(action,{business_id:grant.id,branch_id:branchId,...payload});
+    if(action==='debt_payment')pendingPayment=null;
+    await refresh();if(action==='customer_save')selectedCustomerId=result.customer_id;
+    render();showMessage(action==='debt_payment'?'Cobrança registada e reconciliada com o caixa.':'Dados actualizados no Supabase.');
+   }catch(error){
+    showMessage(action==='debt_payment'?'Cobrança por confirmar. Não altere o pedido nem o repita com outra referência; confira o histórico ou reenvie o mesmo pedido.':'O servidor rejeitou a operação: '+error.message,true);
+   }finally{busy=false;}
+   return;
+  }
   if(action==='team_invite'){
    if(grant.role!=='owner')return showMessage('Apenas o proprietário pode convidar colaboradores.',true);
    if(disconnected())return showMessage('Sem internet não é possível enviar convites.',true);
