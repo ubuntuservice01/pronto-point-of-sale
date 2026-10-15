@@ -11,7 +11,7 @@ const badge=s=>'<span class="pronto-admin-chip pronto-admin-'+esc(s)+'">'+esc(st
 const empty=(title,help)=>'<div class="pronto-admin-empty"><strong>'+esc(title)+'</strong><p>'+esc(help)+'</p></div>';
 const sub='Nesta fase, os dados apresentados são lidos do Supabase. O cadastro, a edição e a suspensão serão activados apenas após a conclusão da API administrativa segura.';
 const tabs=[
- ['overview','Visão geral','layout-dashboard'],['businesses','Comerciantes','store'],
+ ['overview','Visão geral','layout-dashboard'],['businesses','Comerciantes','store'],['members','Utilizadores','users'],
  ['licenses','Licenças','shield-check'],['plans','Planos','package'],['security','Segurança','lock-keyhole']
 ];
 
@@ -57,6 +57,7 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date()}={}){
    empty('Nenhum comerciante encontrado',query?'Experimente outro nome, contacto ou código.':'O cadastro de comerciantes será activado na fase seguinte.'))+
    '<p class="pronto-admin-note">'+esc(sub)+'</p></section>';
  }
+ if(key==='members')return title('Utilizadores e perfis','Convidar proprietários e operadores, ou associar contas já existentes no Supabase.');
  if(key==='licenses'){
   return title('Licenças e subscrições','Situação de licenças atribuídas aos comerciantes, em modo de consulta.')+
    '<section class="pronto-admin-panel"><h3>Licenças por empresa</h3>'+
