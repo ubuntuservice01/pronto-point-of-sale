@@ -215,6 +215,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    try{
     if(action==='draft_save'){
      if(!cart.length&&!pending)throw Error('draft_payload');
+     if(hasShopDraft(localStorage,scope())&&!confirm('Já existe um rascunho nesta loja e neste dispositivo. Deseja substituí-lo?'))return;
      const draft=makeShopDraft({scope:scope(),cart,method,discount,pending});
      await saveShopDraft(localStorage,scope(),password,draft);
      render();showMessage('Rascunho encriptado guardado neste dispositivo. Não foi registada nenhuma venda.');
@@ -254,6 +255,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    await execute(action,payload);
   }catch(e){showMessage('Confira os dados introduzidos. '+String(e.message||''),true);}
  },{signal});
+ window.addEventListener('offline',()=>showMessage('Sem internet: as vendas não podem ser concluídas. Guarde um rascunho encriptado e recupere-o depois de entrar novamente com ligação.',true),{signal});
+ window.addEventListener('online',()=>showMessage('Ligação restabelecida. Confira o stock actualizado antes de concluir.'),{signal});
  root.innerHTML='<main class="shop-loading">A consultar filiais e permissões reais no Supabase…</main>';
  await safeLoad(true);
 }
