@@ -10,7 +10,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
  if(!root)throw Error('auth_root');
  const client=createProntoIdentity(prontoSupabaseConfig);
  const recovery=extractRecoveryFromHash(location,history);
- const beginRecovery=token=>mountPasswordRecovery({root,client,token,onBack:form});
+ const beginRecovery=(token,kind='recovery')=>mountPasswordRecovery({root,client,token,kind,onBack:form});
  const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
  })[char]);
@@ -82,6 +82,6 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    await client.signOut();form();
   };
  };
- if(recovery.token)beginRecovery(recovery.token);
+ if(recovery.token)beginRecovery(recovery.token,recovery.kind);
  else form();
 }
