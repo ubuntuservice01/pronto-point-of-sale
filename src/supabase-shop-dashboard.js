@@ -17,9 +17,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    account.grants[0].role==='stock'?'products':'history',
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
-  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null;
+  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
+  transfers=null,transferLineCount=1,pendingTransfer=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],branches:['owner']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
@@ -35,7 +36,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
    if(!path||!client.productPhotoUrl)continue;
@@ -56,6 +57,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   branchManagement=grant.role==='owner'?await client.manageBranch('list',{business_id:grant.id}):null;
+  transfers=['owner','manager','stock','finance'].includes(grant.role)?await client.transferSnapshot(grant.id):null;
   credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
   finance=typeof client.financeSnapshot==='function'?await client.financeSnapshot(grant.id,branchId):null;
   heldSales=typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?await client.holdList(grant.id,branchId):[];
@@ -151,6 +153,40 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
+  if(el.hasAttribute('data-transfer-add')){
+   const form=root.querySelector('[data-shop-form="transfer_send"]');
+   const values=form?Array.from(form.elements).filter(x=>x.name).map(x=>[x.name,x.value]):[];
+   transferLineCount=Math.min(10,transferLineCount+1);render();
+   const next=root.querySelector('[data-shop-form="transfer_send"]');
+   for(const [name,value] of values){
+    const field=Array.from(next?.elements||[]).find(x=>x.name===name);
+    if(field)field.value=value;
+   }
+   return;
+  }
+  if(el.hasAttribute('data-transfer-clear')){
+   if(confirm('Já verificou no histórico se esta expedição foi registada?')){
+    pendingTransfer=null;render();
+    showMessage('Referência local descartada. A operação já registada no servidor permanece.');
+   }
+   return;
+  }
+  if(el.hasAttribute('data-transfer-receive')||el.hasAttribute('data-transfer-cancel')){
+   if(!['owner','manager','stock'].includes(grant.role)||disconnected())return showMessage('Esta acção exige ligação e permissão de gestão de stock.',true);
+   const mode=el.hasAttribute('data-transfer-receive')?'receive':'cancel';
+   const transferId=mode==='receive'?el.dataset.transferReceive:el.dataset.transferCancel;
+   if(!confirm(mode==='receive'?'Confirma a recepção física dos artigos nesta filial?':'Confirma o cancelamento antes da recepção e a reposição dos lotes na origem?'))return;
+   busy=true;showMessage('A actualizar o movimento no servidor…');
+   void(async()=>{
+    try{
+     const result=await client.transferAction(mode,{business_id:grant.id,transfer_id:transferId});
+     await refresh();
+     showMessage((result.duplicate?'Operação já confirmada. ':mode==='receive'?'Stock recebido na filial de destino. ':'Stock devolvido à filial de origem. ')+
+      'Ref. '+String(transferId).slice(0,8)+'.');
+    }catch(error){showMessage('O movimento não foi confirmado. Actualize a lista e verifique o estado antes de repetir. ('+error.message+')',true);}
+    finally{busy=false;}
+   })();return;
+  }
   if(el.hasAttribute('data-finance-supplier')){supplierId=el.dataset.financeSupplier;render();return;}
   if(el.hasAttribute('data-finance-add-line')){
    const form=root.querySelector('[data-shop-form="purchase_receive"]');
@@ -390,6 +426,42 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     await refresh();showMessage('Filial actualizada com sucesso.');
    }catch(e){showMessage('Falha na gestão da filial: '+e.message,true);}
    finally{busy=false;}
+   return;
+  }
+  if(action==='transfer_send'){
+   if(!['owner','manager','stock'].includes(grant.role)||disconnected())return showMessage('Esta operação exige ligação e autorização.',true);
+   if(pending)return void lockPending();
+   const fields=new FormData(form);
+   if(!fields.has('confirmed'))return showMessage('Confirme as quantidades antes de expedir.',true);
+   let payload;
+   try{
+    if(!pendingTransfer){
+     const target=String(fields.get('target_branch_id')||''),reason=String(fields.get('reason')||'').trim();
+     if(!branches.some(b=>b.id===target&&target!==branchId)||reason.length<3||reason.length>250)throw Error('transfer_scope');
+     const items=[],seen=new Set();
+     for(let i=0;i<transferLineCount;i++){
+      const id=String(fields.get('product_id_'+i)||''),amount=String(fields.get('quantity_'+i)||'');
+      const product=data.products.find(p=>p.id===id);
+      if(!product||seen.has(id))throw Error('transfer_product_invalid');
+      const quantity=toQuantity(amount,product.unit);
+      if(quantity<=0)throw Error('transfer_quantity');
+      items.push({product_id:id,quantity});seen.add(id);
+     }
+     if(!items.length)throw Error('transfer_empty');
+     payload={business_id:grant.id,source_branch_id:branchId,target_branch_id:target,
+      reason,items,idempotency_key:crypto.randomUUID()};
+     pendingTransfer=payload;
+    }else payload=pendingTransfer;
+   }catch(error){return showMessage('Dados de transferência inválidos: '+error.message,true);}
+   busy=true;showMessage('A confirmar expedição e debitar o stock na origem…');
+   try{
+    const result=await client.transferAction('send',payload);
+    pendingTransfer=null;transferLineCount=1;await refresh();view='transfers';render();
+    showMessage((result.duplicate?'Transferência já registada. ':'Transferência expedida. ')+
+     'Aguardamos confirmação de recepção na outra filial.');
+   }catch(error){
+    render();showMessage('A expedição pode estar registada. Consulte o histórico antes de repetir; a mesma referência será reutilizada. ('+error.message+')',true);
+   }finally{busy=false;}
    return;
   }
   if(action==='csv_import'){
