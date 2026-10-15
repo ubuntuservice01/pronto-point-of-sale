@@ -85,6 +85,11 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    field('code','Código de fábrica (opcional)','','maxlength="80" placeholder="Será gerado se vazio"')+
    field('min_stock','Stock mínimo','0','type="number" min="0" step="0.001"')+
    '<button type="submit" class="shop-submit">Cadastrar produto</button></form>','Código interno único, gerado automaticamente quando não houver código de fábrica.')+
+   section('Importar produtos por CSV','Até 100 artigos por ficheiro. Colunas obrigatórias: nome;categoria;preco. O stock inicial é opcional. Reveja os dados antes de confirmar.',
+   '<form data-shop-form="csv_import" class="shop-form">'+
+   '<label>Ficheiro CSV (até 100 produtos)<input type="file" name="csv_file" accept=".csv,text/csv,text/plain" required></label>'+
+   '<label><input type="checkbox" name="confirm_import" required> Confirmei os preços, códigos e quantidades do ficheiro</label>'+
+   '<button class="shop-submit" type="submit">Validar e importar produtos</button></form>')+
    section('Receber stock','<form data-shop-form="stock_receive" class="shop-form">'+
    '<label>Produto<select name="product_id" required><option value="">Seleccione o artigo</option>'+options(products)+'</select></label>'+
    field('quantity','Quantidade','','required type="number" min="0.001" step="0.001"')+

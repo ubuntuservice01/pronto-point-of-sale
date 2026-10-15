@@ -6,6 +6,7 @@ import {shoppingListCSV} from './supabase-inventory-ui.js';
 import {reportsCSV} from './supabase-reports-ui.js';
 const maputoDate=(time=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'}).format(time);
 import {makeShopDraft,saveShopDraft,restoreShopDraft,hasShopDraft,clearShopDraft} from './supabase-shop-draft.js';
+import {parseProductCSV} from './product-import.js';
 
 // Explicit, isolated PostgreSQL checkout pilot. The existing SQLite POS is untouched.
 export async function mountSupabaseMerchantPilot({root,client,account,onLogout}){
@@ -14,7 +15,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  let grant=account.grants[0],branches=[],branchId='',data=null,cart=[],
   view=['owner','manager','cashier'].includes(account.grants[0].role)?'sell':
    account.grants[0].role==='stock'?'products':'history',
-  method='cash',discount='0',query='',notice='',busy=false,pending=null,
+  method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch';
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
@@ -364,6 +365,39 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='csv_import'){
+   if(!['owner','manager','stock'].includes(grant.role))return showMessage('Sem permissão para importar artigos.',true);
+   if(disconnected())return showMessage('Importação necessita de ligação ao Supabase.',true);
+   if(pending)return void lockPending();
+   const input=new FormData(form),file=input.get('csv_file');
+   if(!input.has('confirm_import'))return showMessage('Confirme os dados antes da importação.',true);
+   busy=true;
+   try{
+    let payload=pendingCSV;
+    if(!payload){
+     if(!file||typeof file.text!=='function'||file.size>300000)throw Error('csv_size');
+     const content=await file.text();
+     const parsed=parseProductCSV(content,(data?.products||[]).map(p=>p.code));
+     if(parsed.errors.length)throw Error('Linhas inválidas: '+parsed.errors.slice(0,12).join(', '));
+     if(parsed.products.length>100)throw Error('csv_rows_max_100');
+     payload={business_id:grant.id,branch_id:branchId,idempotency_key:crypto.randomUUID(),
+      items:parsed.products.map(p=>({name:p.name,category:p.category,code:p.code,unit:p.unit,
+       price_cents:p.price,min_stock:p.min,stock:p.stock,
+       expires_on:p.expiryDate||null,unit_cost_cents:null,lot_number:null}))};
+     pendingCSV=payload;
+    }
+    showMessage('A importar '+payload.items.length+' artigo(s) numa única transacção…');
+    const result=await client.importProductsCSV(payload);
+    pendingCSV=null;await refresh();view='products';render();
+    showMessage((result.duplicate?'Importação já realizada. ':'Importação concluída. ')+
+     result.imported_count+' artigo(s) registados.');
+   }catch(error){
+    showMessage('Importação não confirmada: '+String(error.message||'erro')+
+     '. Se o pedido já foi enviado, mantenha a mesma referência antes de tentar novamente.',true);
+   }finally{busy=false;}
+   return;
+  }
+
   if(action==='photo_upload'){
    if(pending||pendingFinance||disconnected())return showMessage('Conclua operações pendentes e ligue-se à internet antes de enviar fotografias.',true);
    if(!['owner','manager','stock'].includes(grant.role))return showMessage('Sem permissão para alterar fotografias.',true);

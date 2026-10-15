@@ -256,6 +256,11 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   const result=await call('/rest/v1/rpc/pronto_merchant_snapshot',{method:'POST',payload});
   return normalizeMerchantSnapshot(result);
  }
+ async function importProductsCSV(data){
+  if(!data||typeof data!=='object'||Array.isArray(data)||!Array.isArray(data.items)||data.items.length>100)
+   throw Error('csv_import_invalid');
+  return call('/rest/v1/rpc/pronto_import_products_csv',{method:'POST',payload:{p_data:data}});
+ }
  async function merchantAction(action,data){
   if(!['product_create','stock_receive','cash_open','cash_close','sale_complete','customer_save','credit_policy','credit_sale','debt_payment'].includes(action))
    throw Error('shop_action_invalid');
@@ -318,5 +323,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

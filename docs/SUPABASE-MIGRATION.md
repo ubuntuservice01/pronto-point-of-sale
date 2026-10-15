@@ -153,3 +153,12 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - O formulário do inventário permite escolher ficheiro ou fotografar no telemóvel (`capture=environment`). Depois do envio, a função `pronto_photo_attach` confirma a existência do objecto no bucket e a pertença ao produto e regista a alteração no histórico com controlo de revisão.
 - As imagens no catálogo são obtidas com URLs assinadas e temporárias (300 segundos), sem expor o bucket publicamente. A aplicação usa cache temporária dos links. Upload parcial pode deixar ficheiro órfão se a associação de produto falhar; prever limpeza operacional de ficheiros órfãos.
 - Testar na produção com operadores reais, iOS/Android, suporte a câmara e internet lenta; não há scanner OCR nem tratamento de imagens em segundo plano.
+
+
+## Importação de produtos por CSV (2026-10-15)
+
+- Ecrã no módulo **Produtos e stock**, até 100 linhas por ficheiro, com confirmação antes de importar.
+- RPC protegida `pronto_import_products_csv`: proprietário, gerente ou stock; cria produtos e stock inicial na mesma transacção, sem sucesso parcial.
+- A repetição com a mesma chave idempotente não cria produtos ou lotes duplicados. Falhas requerem confirmar a importação antes de enviar uma nova referência.
+- CSV existente suporta `nome;categoria;preco;unidade;stock;minimo;codigo;validade`. Preços são guardados em centavos inteiros e stock respeita a unidade.
+- Ainda faltam validações comerciais em equipamentos reais e importações em larga escala; esta funcionalidade não altera as regras fiscais.
