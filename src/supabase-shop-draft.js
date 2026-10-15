@@ -25,8 +25,12 @@ export function validateDraftContent(data,scope){
  if(!data||data.version!==1||data.userId!==s.userId||data.businessId!==s.businessId||data.branchId!==s.branchId)throw Error('draft_scope');
  if(!Array.isArray(data.cart)||data.cart.length>100||typeof data.method!=='string')throw Error('draft_payload');
  if(!['cash','mpesa','emola','transfer','mixed'].includes(data.method))throw Error('draft_payload');
+ const seen=new Set();
  for(const line of data.cart){
-  if(!idRE.test(line?.productId)||!Number.isFinite(line.quantity)||line.quantity<=0||line.quantity>1000000)throw Error('draft_payload');
+  if(!idRE.test(line?.productId)||seen.has(line.productId)||
+   !Number.isFinite(line.quantity)||line.quantity<=0||line.quantity>1000000||
+   Math.abs(line.quantity*1000-Math.round(line.quantity*1000))>0.00001)throw Error('draft_payload');
+  seen.add(line.productId);
  }
  if(typeof data.discount!=='string'||data.discount.length>30)throw Error('draft_payload');
  if(data.pending!==null&&data.pending!==undefined){
@@ -34,8 +38,19 @@ export function validateDraftContent(data,scope){
   if(!p||p.business_id!==s.businessId||p.branch_id!==s.branchId||
    !idRE.test(p.idempotency_key)||!idRE.test(p.session_id)||
    !Array.isArray(p.items)||!Array.isArray(p.allocations)||
+   p.items.length<1||p.items.length>100||
    p.allocations.length<1||p.allocations.length>4||
-   !p.allocations.every(x=>methods.includes(x.method)&&Number.isSafeInteger(x.amount_cents)&&x.amount_cents>0))
+   !Number.isSafeInteger(p.discount_cents)||p.discount_cents<0||
+   !Number.isSafeInteger(p.cash_received_cents)||p.cash_received_cents<0||
+   !p.items.every(item=>idRE.test(item?.product_id)&&Number.isFinite(item.quantity)&&
+    item.quantity>0&&item.quantity<=1000000&&
+    Math.abs(item.quantity*1000-Math.round(item.quantity*1000))<0.00001)||
+   new Set(p.items.map(x=>x.product_id)).size!==p.items.length||
+   !p.allocations.every(x=>methods.includes(x.method)&&
+    Number.isSafeInteger(x.amount_cents)&&x.amount_cents>0&&
+    (x.reference===undefined||typeof x.reference==='string'&&x.reference.length<=128))||
+   new Set(p.allocations.map(x=>x.method)).size!==p.allocations.length||
+   (p.allocations.find(x=>x.method==='cash')?.amount_cents||0)>p.cash_received_cents)
    throw Error('draft_payload');
  }
  return data;
