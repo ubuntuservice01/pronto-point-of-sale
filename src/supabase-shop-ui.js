@@ -40,7 +40,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   (method!=='credit'?'<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>':'')+
   '<p class="shop-help">Os pagamentos M-Pesa, e-Mola e transferência não são verificados automaticamente pela operadora.</p>'+
   (['owner','manager','cashier'].includes(role)?'<button type="button" class="shop-credit-toggle" data-shop-credit aria-pressed="'+(method==='credit')+'">'+(method==='credit'?'Voltar a pagamento imediato':'Vender a crédito')+'</button>':'')+
-  '<button class="shop-submit" type="submit" '+(!session||!cart.length||err||!credit?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
+  '<button class="shop-submit" type="submit" '+(!session||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
 export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue=''}){
