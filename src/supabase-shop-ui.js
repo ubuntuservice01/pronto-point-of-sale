@@ -4,6 +4,7 @@ import {renderFinanceView} from './supabase-finance-ui.js';
 import {renderReturnView} from './supabase-returns-ui.js';
 import {renderInventoryView} from './supabase-inventory-ui.js';
 import {renderReportsView} from './supabase-reports-ui.js';
+import {renderTransfersView} from './supabase-transfers-ui.js';
 
 const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',mixed:'Repartido'};
 const safeDate=value=>{
@@ -47,11 +48,11 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<button class="shop-submit" type="submit" '+(!session||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null}){
  const products=data?.products||[];
  const session=data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
- const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['branches','Filiais']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],branches:['owner']})[key].includes(grant.role));
+ const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
  const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'>'+name+'</button>').join('');
  const prodCards=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   .map(p=>'<article class="shop-product">'+(p.photoPath?'<img class="shop-product-photo" data-shop-product-photo="'+esc(p.photoPath)+'" alt="Fotografia de '+esc(p.name)+'" loading="lazy">':'')+'<div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
@@ -76,6 +77,9 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  }else if(view==='reports'){
   body=renderReportsView({report,from:reportFrom,to:reportTo,scope:reportScope,
    allAllowed:['owner','manager','finance'].includes(grant.role)});
+ }else if(view==='transfers'){
+  body=renderTransfersView({snapshot:transfers,branches,branchId,products,
+   role:grant.role,lineCount:transferLineCount,pendingTransfer});
  }else if(view==='branches'&&grant.role==='owner'){
   const items=branchManagement?.branches||[];
   body=section('Gestão de filiais',
