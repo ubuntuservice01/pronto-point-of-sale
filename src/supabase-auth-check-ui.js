@@ -2,11 +2,14 @@ import {prontoSupabaseConfig} from './pronto-supabase-config.js';
 import {createProntoIdentity} from './supabase-identity.js';
 import {mountUbuntuAdminDashboard} from './supabase-admin-dashboard.js';
 import {mountSupabaseMerchantPilot} from './supabase-shop-dashboard.js';
+import {extractRecoveryFromHash,mountPasswordRecovery} from './supabase-recovery-ui.js';
 
 // A read-only identity test; the operational POS remains on the existing server.
 export function startSupabaseIdentityCheck(root=document.querySelector('#app')) {
  if(!root)throw Error('auth_root');
  const client=createProntoIdentity(prontoSupabaseConfig);
+ const recovery=extractRecoveryFromHash(location,history);
+ const beginRecovery=token=>mountPasswordRecovery({root,client,token,onBack:form});
  const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
  })[char]);
@@ -23,7 +26,9 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<button class="primary full" type="submit">Entrar e verificar acesso</button>'+
   '</form>'+
   '<p class="form-hint">As credenciais não são guardadas neste navegador. Apenas contas previamente criadas pela Ubuntu Service podem ser verificadas.</p>'+
+  '<button type="button" class="secondary full" id="recovery-request">Esqueceu-se da palavra-passe?</button>'+
   '<a class="demo-link" href="/?demo=1">Voltar à demonstração</a>');
+  root.querySelector('#recovery-request').onclick=()=>beginRecovery(null);
   const node=root.querySelector('#pronto-auth-check-form');
   node.addEventListener('submit',async event=>{
    event.preventDefault();
@@ -71,5 +76,6 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    await client.signOut();form();
   };
  };
- form();
+ if(recovery.token)beginRecovery(recovery.token);
+ else form();
 }

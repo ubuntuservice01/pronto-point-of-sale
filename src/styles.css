@@ -876,3 +876,12 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
 .shop-loading{margin:15vh auto;max-width:510px;text-align:center;font-weight:650;color:#087f69}
 @media(max-width:950px){.shop-sales-grid{grid-template-columns:1fr}.shop-sales-grid>.shop-box:nth-child(2){position:static}}
 @media(max-width:660px){.shop-header{gap:8px;flex-wrap:wrap}.shop-account{order:3;text-align:left;width:100%}.shop-toolbar label{min-width:140px;flex:1}.shop-cash-indicator{margin-left:0}.shop-products{grid-template-columns:1fr}.shop-two{grid-template-columns:1fr}.shop-box{padding:15px}.shop-nav button{padding:10px 13px;font-size:12px}.shop-cart-row{flex-wrap:wrap}}
+
+/* Fase 4: protected recovery forms with clear mobile affordances. */
+.shop-draft-section{margin-top:20px;border-color:#d4e6dc;background:#fff}
+.shop-draft-section .shop-form{max-width:550px;margin:13px 0 20px}
+.shop-draft-section .shop-logout{margin-top:8px}
+.shop-draft-section h3{color:#176a55}
+.shop-draft-section .shop-help{line-height:1.6}
+#recovery-message:not(:empty){padding:11px;border-radius:8px;color:#28594e;background:#ebf6f2;font-size:12px}
+#recovery-request-form button:disabled,#recovery-confirm-form button:disabled{opacity:.6;cursor:wait}

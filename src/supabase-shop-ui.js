@@ -16,7 +16,7 @@ const cartRow=(item,products)=>{
   '<input type="number" data-cart-qty="'+esc(p.id)+'" value="'+esc(item.quantity)+'" min="0.001" step="0.001" aria-label="Quantidade de '+esc(p.name)+'"><button type="button" data-qty="1" data-id="'+esc(p.id)+'" aria-label="Aumentar quantidade">+</button>'+
   '<button type="button" class="shop-clear-row" data-remove="'+esc(p.id)+'" aria-label="Remover produto">×</button></div></div>';
 };
-export function shopPaymentPanel({method,cart,products,discount='0',session}){
+export function shopPaymentPanel({method,cart,products,discount='0',session,role='owner'}){
  let subtotal=0,total=0,err='';
  try{({subtotal,total}=cartTotal(cart,products,toCents(discount)))}catch(e){err=e.message;}
  const methods=['cash','mpesa','emola','transfer','mixed'];
@@ -30,7 +30,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session}){
  return '<div id="shop-checkout-panel">'+
   section('A sua venda','<div class="shop-cart-list">'+(cart.length?cart.map(x=>cartRow(x,products)).join(''):'<p class="shop-help">Seleccione um produto à esquerda.</p>')+'</div>'+
   '<div class="shop-totals"><span>Subtotal</span><strong>'+MONEY(subtotal)+'</strong></div>'+
-  field('discount','Desconto (MT)',discount,'type="number" min="0" step="0.01" inputmode="decimal"')+
+  field('discount',role==='cashier'?'Desconto (requer gerente)':'Desconto (MT)',discount,'type="number" min="0" step="0.01" inputmode="decimal"'+(role==='cashier'?' disabled':''))+
   '<div class="shop-totals shop-total"><span>Total</span><strong>'+MONEY(total)+'</strong></div>'+
   (err?'<p class="shop-error">'+esc(err)+'</p>':'')+
   '<h4>Forma de pagamento</h4>'+buttons+
@@ -40,11 +40,11 @@ export function shopPaymentPanel({method,cart,products,discount='0',session}){
   '<button class="shop-submit" type="submit" '+(!session||!cart.length||err?'disabled':'')+'>Concluir venda · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false}){
  const products=data?.products||[];
  const session=data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
- const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes']];
+ const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance']})[key].includes(grant.role));
  const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'>'+name+'</button>').join('');
  const prodCards=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   .map(p=>'<article class="shop-product"><div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
@@ -53,7 +53,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
   body='<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><label class="shop-search"><span>Pesquisar por nome ou código</span>'+
    '<input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Pesquisar ou ler o código"></label>'+
    '<div id="shop-product-results" class="shop-products">'+(prodCards||'<p class="shop-help">Não há produtos encontrados.</p>')+'</div></section>'+
-   shopPaymentPanel({method,cart,products,discount,session})+'</div>';
+   shopPaymentPanel({method,cart,products,discount,session,role:grant.role})+'</div>';
   if(pending)body+='<div class="shop-pending"><strong>Venda com confirmação pendente</strong><p>Não crie outra venda antes de verificar se esta foi concluída. Pode repetir o mesmo pedido sem duplicar o registo ou descartá-lo após conferência.</p><button type="button" data-shop-retry>Repetir o mesmo pedido</button><button type="button" data-shop-discard>Descartar pedido pendente</button></div>';
  }else if(view==='products'){
   body='<div class="shop-two">'+section('Novo produto','<form data-shop-form="product_create" class="shop-form">'+
@@ -97,5 +97,9 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  '<nav class="shop-nav">'+menu+'</nav>'+
  '<main class="shop-main"><div id="shop-message" role="status" aria-live="polite">'+esc(feedback||'')+'</div>'+
  '<h2>'+esc(branch?.name||'Loja')+'</h2>'+body+
+ '<section class="shop-box shop-draft-section"><h3>Recuperação de carrinhos</h3><p class="shop-help">Pode guardar o carrinho encriptado neste dispositivo. Sem internet, não é possível finalizar nem cobrar uma venda pelo Supabase. Não há sincronização automática.</p>'+
+ (cart.length||pending?'<form data-shop-form="draft_save" class="shop-form"><label>Frase de recuperação (mínimo 12 caracteres)<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Guardar rascunho encriptado</button></form>':'')+
+ (draftAvailable?'<form data-shop-form="draft_restore" class="shop-form"><label>Frase do rascunho guardado<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Recuperar rascunho</button></form><button type="button" data-shop-draft-clear class="shop-logout">Apagar rascunho do dispositivo</button>':'')+
+ '<p class="shop-help">Se uma venda foi enviada e a resposta falhou, recupere o mesmo pedido e a mesma referência antes de reenviar. Não crie uma venda nova sem conferir os registos.</p></section>'+
  '<p class="shop-footer">Piloto PostgreSQL: cadastro, stock e vendas presenciais. Gestão de dívidas, reembolsos, vendas offline e documentos fiscais continuam no sistema anterior até à migração.</p></main></div>';
 }
