@@ -267,6 +267,66 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(['supplier_save','purchase_receive','purchase_payment','expense_add','expense_schedule_save'].includes(action)){
+   if(lockPending())return;
+   if(disconnected())return showMessage('Esta operação exige ligação ao Supabase. Não foi lançada.',true);
+   const f=new FormData(form),str=k=>String(f.get(k)||'').trim();
+   let payload;
+   try{
+    if(pendingFinance&&pendingFinance.action!==action)throw Error('pending_finance_operation');
+    if(action==='supplier_save'){
+     payload={supplier_id:str('supplier_id')||null,name:str('name'),phone:str('phone'),address:str('address')};
+     if(str('supplier_id'))payload.active=f.has('active');
+    }else if(action==='purchase_receive'){
+     const items=[];
+     for(let i=0;i<purchaseLines;i++){
+      const id=str('product_id_'+i),amount=str('quantity_'+i),cost=str('cost_'+i);
+      if(!id)continue;
+      const product=data.products.find(p=>p.id===id);
+      if(!product)throw Error('product_unavailable');
+      items.push({product_id:id,quantity:toQuantity(amount,product.unit),
+       unit_cost_cents:toCents(cost),lot_number:str('lot_'+i),expires_on:str('expiry_'+i)});
+     }
+     if(!items.length)throw Error('purchase_items_missing');
+     payload={supplier_id:str('supplier_id'),items,invoice_ref:str('invoice_ref'),
+      due_on:str('due_on'),idempotency_key:crypto.randomUUID()};
+    }else if(action==='purchase_payment'){
+     const p=finance?.purchases.find(x=>x.id===str('purchase_id'));
+     if(!p)throw Error('purchase_missing');
+     const amount=toCents(str('amount')),method=str('method'),reference=str('reference');
+     if(amount<=0||amount>p.balance||!f.has('confirmed')||(method!=='cash'&&!reference))throw Error('payment_invalid');
+     if(method==='cash'&&!session())throw Error('cash_not_open');
+     payload={purchase_id:p.id,amount_cents:amount,method,reference,
+      session_id:method==='cash'?session().id:null,manual_confirmed:true,idempotency_key:crypto.randomUUID()};
+    }else if(action==='expense_add'){
+     const amount=toCents(str('amount')),method=str('method'),reference=str('reference');
+     if(amount<=0||!f.has('confirmed')||(method!=='cash'&&!reference))throw Error('expense_invalid');
+     if(method==='cash'&&!session())throw Error('cash_not_open');
+     payload={label:str('label'),category:str('category'),amount_cents:amount,
+      method,reference,session_id:method==='cash'?session().id:null,
+      manual_confirmed:true,idempotency_key:crypto.randomUUID()};
+    }else{
+     payload={label:str('label'),category:str('category'),amount_cents:toCents(str('amount')),
+      repeat_months:Number(str('repeat_months')),next_due_on:str('next_due_on')};
+    }
+    if(pendingFinance)payload=pendingFinance.payload;
+    else if(['purchase_receive','purchase_payment','expense_add'].includes(action))
+     pendingFinance={action,payload};
+   }catch(error){return showMessage('Reveja o formulário ou a operação pendente: '+error.message,true);}
+   busy=true;showMessage('A registar operação no Supabase…');
+   try{
+    const result=await client.financeAction(action,{business_id:grant.id,branch_id:branchId,...payload});
+    if(pendingFinance?.action===action)pendingFinance=null;
+    await refresh();render();
+    showMessage(action==='purchase_receive'?'Compra registada e stock recebido: '+String(result.purchase_id||'').slice(0,8):
+     action==='purchase_payment'?'Pagamento ao fornecedor lançado.':
+     action==='expense_add'?'Despesa registada no livro e no caixa quando aplicável.':
+     action==='expense_schedule_save'?'Lembrete de despesa recorrente guardado.':'Fornecedor actualizado.');
+   }catch(error){
+    showMessage('A operação pode estar pendente ou foi rejeitada. Confira os registos antes de repetir. '+String(error.message||''),true);
+   }finally{busy=false;}
+   return;
+  }
   if(['customer_save','credit_policy','debt_payment'].includes(action)){
    if(lockPending())return;
    if(disconnected())return showMessage('Sem internet não é possível gerir clientes ou dívidas.',true);
