@@ -13,9 +13,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    account.grants[0].role==='stock'?'products':'history',
   method='cash',discount='0',query='',notice='',busy=false,pending=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
-  finance=null,supplierId='',purchaseLines=1,pendingFinance=null;
+  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],team:['owner']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],team:['owner']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
@@ -30,18 +30,19 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales});
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
-   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;
+   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
   finance=typeof client.financeSnapshot==='function'?await client.financeSnapshot(grant.id,branchId):null;
+  heldSales=typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?await client.holdList(grant.id,branchId):[];
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
  };
@@ -80,6 +81,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   try{
    const result=await client.merchantAction(pending.due_on?'credit_sale':'sale_complete',pending);
    const wasRepeated=result.duplicate===true;
+   if(resumedHoldId&&typeof client.holdAction==='function'){
+    try{await client.holdAction('hold_delete',cashData({hold_id:resumedHoldId}));resumedHoldId=null;}
+    catch{/* Sale was committed; the held cart may require manual removal. */}
+   }
    cart=[];pending=null;discount='0';method='cash';query='';creditDue='';
    try{await refresh();}catch{render();}
    showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':result.debt_id?'Venda a crédito registada. ':'Venda concluída. ')+
