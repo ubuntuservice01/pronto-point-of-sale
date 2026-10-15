@@ -145,3 +145,11 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - O custo de mercadorias vendidas é calculado por movimentos FEFO e custo do lote. Quando algum custo falta, o relatório não inventa lucro: o valor fica indisponível. Mesmo com custo, lucro é ESTIMADO (não fiscal) e pode não incluir encargos indirectos ou impostos.
 - Há exportação CSV protegida contra injecção de fórmulas; o relatório não constitui documento fiscal, declaração tributária ou auditoria contabilística.
 - Migração `20261015205000_pronto_operating_reports.sql` aplicada. Testes reais de contas, várias lojas, operações simultâneas e legislação fiscal permanecem pendentes.
+
+## Fotografias reais dos produtos — Storage privado
+
+- Migração `20261015212000_pronto_product_photos.sql`: bucket **privado** `pronto-product-photos` com máximo 3 MB e JPEG, PNG, WebP. Não há URL público de bucket.
+- Políticas RLS do Storage validam identificadores UUID de empresa, filial, artigo e ficheiro; leitura permitida aos membros autenticados autorizados da empresa, upload apenas a proprietário, gerente e stock. Nem operadores de outras empresas nem visitantes anónimos devem obter fotografias.
+- O formulário do inventário permite escolher ficheiro ou fotografar no telemóvel (`capture=environment`). Depois do envio, a função `pronto_photo_attach` confirma a existência do objecto no bucket e a pertença ao produto e regista a alteração no histórico com controlo de revisão.
+- As imagens no catálogo são obtidas com URLs assinadas e temporárias (300 segundos), sem expor o bucket publicamente. A aplicação usa cache temporária dos links. Upload parcial pode deixar ficheiro órfão se a associação de produto falhar; prever limpeza operacional de ficheiros órfãos.
+- Testar na produção com operadores reais, iOS/Android, suporte a câmara e internet lenta; não há scanner OCR nem tratamento de imagens em segundo plano.
