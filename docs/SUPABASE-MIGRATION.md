@@ -170,3 +170,14 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Para impedir encerramentos acidentais, rejeita a desactivação da única filial activa, de qualquer filial com sessão de caixa aberta, stock positivo ou carrinhos suspensos.
 - É gestão de filiais **parcial**: a transferência de stock entre filiais, consolidação completa dos dados e parametrizações individuais continuam pendentes.
 - Testado em transacção com rollback; confirmar fluxo com proprietário autenticado no navegador antes de comercializar.
+
+## Transferências de stock entre filiais — 15/10/2026
+
+- Migrações `20261015230000_pronto_stock_transfers.sql` e `20261015230500_pronto_branch_pending_transfer_guard.sql` aplicadas ao mesmo projecto Supabase `prontopos`.
+- **Expedir:** proprietário, gerente ou responsável de stock confirma destino, quantidades e motivo; RPC autenticada valida filiais da mesma empresa, existência dos produtos e lotes não vencidos. Debita os lotes FEFO na origem numa só transacção, lança movimentos negativos e cria `in_transit`.
+- **Receber:** a filial de destino confirma a recepção física. O servidor localiza o SKU pelo código e, caso não exista, cria artigo equivalente no destino. Se o mesmo código pertencer a um artigo incompatível, recusa tudo; caso contrário cria lotes com custos/validades preservados e movimentos positivos.
+- **Cancelar:** apenas uma transferência ainda em trânsito pode ser anulada. O stock volta aos lotes originais, com auditoria. Recebimento e cancelamento posteriores são operações idempotentes ou recusadas quando há conflito.
+- Filiais com stock em trânsito (na origem ou destino) não podem ser desactivadas. A conta `finance` pode consultar mas não movimentar.
+- A lista mostra 100 transferências recentes por empresa. Entradas em trânsito não podem ser vendidas no destino até recepção; não existe venda, recibo ou pagamento associado.
+- Limite por expedição: 40 artigos distintos no servidor; interface até 10 linhas. A expedição é atómica, não possui confirmações parciais de entrega e não permite alteração após receber. Conferir quantidades reais antes da confirmação.
+- Testado no PostgreSQL usando `BEGIN/ROLLBACK`, com envio, recepção, anulação, falhas de acesso entre empresas, stock e idempotência. Ainda requer ensaio com várias filiais e dispositivos reais antes de lançamento.
