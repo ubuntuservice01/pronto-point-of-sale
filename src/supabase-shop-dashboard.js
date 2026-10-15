@@ -78,9 +78,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   try{
    const result=await client.merchantAction(pending.due_on?'credit_sale':'sale_complete',pending);
    const wasRepeated=result.duplicate===true;
-   cart=[];pending=null;discount='0';method='cash';query='';
+   cart=[];pending=null;discount='0';method='cash';query='';creditDue='';
    try{await refresh();}catch{render();}
-   showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':'Venda concluída. ')+
+   showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':result.debt_id?'Venda a crédito registada. ':'Venda concluída. ')+
     'Referência: '+String(result.sale_id||'').slice(0,8)+'.');
   }catch(e){
    showMessage('Venda ainda sem confirmação. Verifique a sessão e clique em «Repetir o mesmo pedido» para evitar duplicações. ('+String(e.message||'erro')+')',true);
@@ -116,6 +116,21 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
+  if(el.hasAttribute('data-credit-customer')){selectedCustomerId=el.dataset.creditCustomer;render();return;}
+  if(el.hasAttribute('data-credit-receipt')||el.hasAttribute('data-credit-statement')){
+   if(!credit)return;
+   try{const debtId=el.dataset.creditReceipt;
+    const customerId=debtId?credit.debts.find(d=>d.id===debtId)?.customerId:el.dataset.creditStatement;
+    const html=creditStatementHTML(credit,customerId,{debtId});
+    const win=window.open('','_blank');if(!win){showMessage('Autorize a janela de impressão.',true);return;}
+    win.document.write(html);win.document.close();win.focus();win.print();
+   }catch{showMessage('Não foi possível gerar o extracto.',true);}return;
+  }
+  if(el.hasAttribute('data-credit-whatsapp')){
+   try{window.open(creditWhatsAppURL(credit,el.dataset.creditWhatsapp),'_blank','noopener,noreferrer');}
+   catch{showMessage('Verifique o telefone do cliente.',true);}return;
+  }
+  if(el.hasAttribute('data-shop-credit')){if(lockPending())return;method=method==='credit'?'cash':'credit';updatePanel();return;}
   if(el.hasAttribute('data-shop-refresh'))return void safeLoad();
   if(el.hasAttribute('data-shop-draft-clear')){
    if(confirm('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas no Supabase.')){
@@ -163,6 +178,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!branches.some(b=>b.id===el.value))return;
    branchId=el.value;cart=[];method='cash';discount='0';query='';void safeLoad();return;
   }
+  if(el.id==='shop-sale-customer'){if(lockPending())return;selectedCustomerId=el.value;updatePanel();return;}
+  if(el.id==='shop-credit-due'){creditDue=el.value;return;}
+  if(el.id==='shop-debt-filter'){debtFilter=el.value;render();return;}
   if(el.name==='discount'){if(!lockPending())updatePanel();return;}
   if(el.hasAttribute('data-cart-qty')){
    if(lockPending())return;
@@ -197,13 +215,25 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     const tempTotal=(()=>{const byId=new Map(data.products.map(p=>[p.id,p]));
       return cart.reduce((s,l)=>s+Math.round(byId.get(l.productId).priceCents*l.quantity),0)-toCents(disc);})();
     const totalText=(tempTotal/100).toFixed(2);
+    const idem=crypto.randomUUID();
+    if(method==='credit'){
+     const customer=credit?.customers.find(c=>c.id===selectedCustomerId&&c.active);
+     if(!customer)throw Error('debt_customer_required');
+     const outstanding=credit.debts.filter(d=>d.customerId===customer.id&&d.balance>0).reduce((n,d)=>n+d.balance,0);
+     creditDue=String(f.get('credit_due')||creditDue);
+     pending=makeCreditSaleRequest({businessId:grant.id,branchId,sessionId:shift.id,
+      cart,customer,dueOn:creditDue,today:credit.today,outstanding,total:tempTotal,
+      discount:disc,idempotencyKey:idem});
+     await processSale();return;
+    }
     const allocations=method==='mixed'?['cash','mpesa','emola','transfer'].map(m=>({
      method:m,amount:String(f.get('pay_'+m)||'0')
     })).filter(p=>toCents(p.amount)>0):[{method,amount:totalText}];
     if(allocations.some(x=>x.method!=='cash')&&f.get('confirmed')!=='yes')throw Error('digital_unconfirmed');
     pending=makeSaleRequest({businessId:grant.id,branchId,sessionId:shift.id,
-     cart,products:data.products,discount:disc,allocations,idempotencyKey:crypto.randomUUID(),
+     cart,products:data.products,discount:disc,allocations,idempotencyKey:idem,
      cashReceived:String(f.get('cash_received')||'0')});
+    if(selectedCustomerId)pending.customer_id=selectedCustomerId;
     await processSale();
    }catch(e){
     pending=null;
