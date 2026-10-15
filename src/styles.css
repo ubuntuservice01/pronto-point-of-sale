@@ -795,3 +795,84 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
 .pronto-admin-check span{font-size:12px;color:#627789}
 @media(max-width:900px){.pronto-admin-shell{grid-template-columns:210px minmax(0,1fr)}.pronto-admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pronto-admin-topbar{flex-wrap:wrap}}
 @media(max-width:620px){.pronto-admin-shell{display:block}.pronto-admin-sidebar{position:static;height:auto;padding:12px;gap:8px}.pronto-admin-brand{padding:3px 8px}.pronto-admin-user{margin-bottom:0}.pronto-admin-nav{display:flex;overflow-x:auto;gap:5px;padding:0 2px}.pronto-admin-nav button{white-space:nowrap;width:auto;font-size:12px;padding:11px}.pronto-admin-sidebar-bottom{display:flex;align-items:center;justify-content:space-between;padding:0 4px}.pronto-admin-sidebar-bottom button{width:auto}.pronto-admin-topbar{min-height:auto;padding:18px}.pronto-admin-topbar h1{font-size:20px}.pronto-admin-main{padding:18px}.pronto-admin-stats{gap:10px}.pronto-admin-stat{padding:16px}.pronto-admin-stat strong{font-size:24px}.pronto-admin-grid{grid-template-columns:1fr}.pronto-admin-panel{padding:16px}.pronto-admin-live{font-size:10px}}
+
+
+/* Supabase Merchant PostgreSQL pilot: intentionally separate from legacy POS. */
+.shop-shell{min-height:100dvh;background:#f5f9f7;color:#193947}
+.shop-shell [hidden]{display:none!important}
+.shop-header{display:flex;align-items:center;gap:20px;justify-content:space-between;background:#fff;border-bottom:1px solid #dceae5;padding:15px clamp(14px,3vw,38px)}
+.shop-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.shop-brand img{width:42px;height:42px}
+.shop-brand strong{display:block;font-size:21px;color:#087e68;letter-spacing:-.5px}
+.shop-brand small,.shop-account small{display:block;font-size:11px;color:#69828c}
+.shop-account{text-align:right;min-width:0}
+.shop-account strong{display:block;font-size:13px}
+.shop-account small{overflow-wrap:anywhere}
+.shop-logout{border:1px solid #bfd4ca;border-radius:10px;background:#fff;padding:10px 16px;font-weight:700}
+.shop-toolbar{padding:11px clamp(14px,3vw,38px);background:#fff;display:flex;gap:12px;align-items:end;flex-wrap:wrap;border-bottom:1px solid #dceae5}
+.shop-toolbar label{font-size:11px;color:#657d82;display:grid;gap:4px;min-width:180px}
+.shop-toolbar select{padding:10px;border-radius:10px;border:1px solid #d1e2dc;background:#fff;font-weight:650;font-size:13px}
+.shop-toolbar>button{padding:11px 15px;background:#ecf5f1;border:1px solid #bdd9cf;border-radius:9px;font-weight:650}
+.shop-cash-indicator{margin-left:auto;border-radius:25px;background:#e2f5ee;color:#087e68;padding:11px 12px;font-size:12px;font-weight:750}
+.shop-nav{display:flex;gap:7px;padding:14px clamp(14px,3vw,38px);overflow-x:auto;background:#f4f8f6}
+.shop-nav button{white-space:nowrap;border:1px solid #d6e6df;padding:12px 19px;border-radius:11px;background:#fff;font-size:13px;font-weight:700}
+.shop-nav button[aria-current=page]{background:#087f69;color:white;border-color:#087f69}
+.shop-main{padding:13px clamp(14px,3vw,38px) 55px;max-width:1550px;margin:auto}
+.shop-main>h2{font-size:23px;margin-bottom:15px}
+#shop-message:not(:empty){padding:12px 15px;border-radius:10px;background:#e9f4ef;color:#087f69;font-weight:650;font-size:13px;margin-bottom:13px}
+#shop-message.shop-error{background:#fff0e8;color:#aa491d}
+.shop-box{background:#fff;border:1px solid #dfebe6;border-radius:16px;padding:20px;min-width:0;box-shadow:0 5px 21px #16392d09}
+.shop-box h3{margin:0 0 13px;font-size:17px}
+.shop-box h4{font-size:13px;margin:18px 0 10px}
+.shop-sales-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(310px,.9fr);gap:20px;align-items:start}
+.shop-sales-grid>.shop-box:nth-child(2){position:sticky;top:12px}
+.shop-help{font-size:12px;color:#71858a;line-height:1.5}
+.shop-search{display:grid;gap:6px;font-size:12px;font-weight:650;margin:5px 0 19px}
+.shop-search input{font-size:15px;border:1px solid #bcd7cd;border-radius:11px;padding:14px;background:#fff}
+.shop-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.shop-product{background:#f9fcfa;border:1px solid #e0ebe6;padding:15px;border-radius:12px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.shop-product div{min-width:0;display:grid;gap:5px}
+.shop-product strong{font-size:14px}
+.shop-product small{font-size:11px;color:#6f8187;overflow-wrap:anywhere}
+.shop-product span{font-size:13px;font-weight:700;color:#087f69}
+.shop-product .shop-low{color:#b8610d}
+.shop-product button{border:0;background:#087f69;color:white;width:40px;min-width:40px;height:40px;border-radius:12px;font-size:23px;font-weight:700}
+.shop-product button:disabled{background:#b9c9c5}
+.shop-cart-list{margin:16px 0}
+.shop-cart-row{padding:12px 0;border-bottom:1px solid #e6eeea;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.shop-cart-row>div:first-child{display:grid;gap:3px;min-width:0}
+.shop-cart-row strong{font-size:13px}
+.shop-cart-row small{font-size:11px;color:#788992}
+.shop-cart-qty{display:flex;gap:3px;align-items:center}
+.shop-cart-qty button{width:29px;height:30px;padding:0;border:0;border-radius:7px;background:#eef6f1;color:#087f69;font-size:16px;font-weight:700}
+.shop-cart-qty input{width:63px;max-width:80px;border:1px solid #cbded6;border-radius:6px;height:30px;text-align:center;font-size:12px;padding:2px}
+.shop-cart-qty .shop-clear-row{background:#fff0eb;color:#b05128}
+.shop-totals{display:flex;justify-content:space-between;gap:8px;margin:15px 0;font-size:13px}
+.shop-totals strong{font-size:19px}
+.shop-total{border-top:1px solid #e3eae6;padding-top:13px}
+.shop-total strong{font-size:24px;color:#087f69}
+.shop-box label:not(.shop-confirm){display:grid;gap:6px;font-size:12px;font-weight:650;margin:12px 0}
+.shop-box input:not([type=checkbox]),.shop-box select{border:1px solid #cbded6;border-radius:9px;padding:11px 12px;background:#fff;font-size:13px;min-width:0;width:100%}
+.shop-methods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.shop-methods button{min-height:45px;border:1px solid #cde1d8;background:#fff;color:#087f69;border-radius:11px;font-size:13px;font-weight:750}
+.shop-methods button[aria-pressed=true]{background:#087f69;color:#fff;border-color:#087f69}
+.shop-confirm{display:flex;gap:9px;align-items:start;font-size:12px;color:#5e7780;margin:14px 0}
+.shop-confirm input{width:auto!important;margin:2px 0 0}
+.shop-submit{width:100%;background:#087f69;color:#fff;border:0;border-radius:10px;font-size:14px;min-height:47px;font-weight:750;margin-top:13px}
+.shop-submit:disabled{background:#a4c4b8;cursor:not-allowed}
+.shop-payment-grid,.shop-form,.shop-two{display:grid;gap:10px}
+.shop-payment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.shop-two{grid-template-columns:repeat(2,minmax(0,1fr));gap:19px;align-items:start}
+.shop-form{gap:7px}
+.shop-history{display:grid;gap:10px}
+.shop-history>div{display:flex;gap:12px;align-items:center;justify-content:space-between;border-bottom:1px solid #e8f0ec;padding:11px 0}
+.shop-history strong{color:#087f69}
+.shop-history small,.shop-history span{font-size:11px;color:#70818b}
+.shop-pending{border:2px solid #d39148;background:#fffaf3;padding:17px;border-radius:12px;margin:15px 0}
+.shop-pending p{font-size:12px}
+.shop-pending button{padding:10px;background:#fff;border:1px solid #e1c49e;border-radius:8px;margin:5px 8px 0 0;font-weight:650}
+.shop-error{color:#a94c23;font-size:12px}
+.shop-footer{margin:22px 0;font-size:12px;color:#84918f}
+.shop-loading{margin:15vh auto;max-width:510px;text-align:center;font-weight:650;color:#087f69}
+@media(max-width:950px){.shop-sales-grid{grid-template-columns:1fr}.shop-sales-grid>.shop-box:nth-child(2){position:static}}
+@media(max-width:660px){.shop-header{gap:8px;flex-wrap:wrap}.shop-account{order:3;text-align:left;width:100%}.shop-toolbar label{min-width:140px;flex:1}.shop-cash-indicator{margin-left:0}.shop-products{grid-template-columns:1fr}.shop-two{grid-template-columns:1fr}.shop-box{padding:15px}.shop-nav button{padding:10px 13px;font-size:12px}.shop-cart-row{flex-wrap:wrap}}

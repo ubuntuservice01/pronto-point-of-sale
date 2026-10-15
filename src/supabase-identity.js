@@ -2,6 +2,7 @@
 // Keeps tokens in memory; pages must be re-authenticated on reload.
 const validEmail = value => typeof value === 'string' && value.length > 3 && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 import {normalizeAdminOverview} from './supabase-admin-model.js';
+import {normalizeMerchantSnapshot} from './supabase-shop-core.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
@@ -108,11 +109,29 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   return result;
  }
+ async function merchantBranches(businessId){
+  if(!uuid(businessId))throw Error('shop_scope');
+  const items=await call('/rest/v1/pronto_branches?select=id,name&active=eq.true&business_id=eq.'+encodeURIComponent(businessId)+'&order=name.asc');
+  if(!Array.isArray(items))throw Error('supabase_response');
+  return items.filter(b=>uuid(b?.id)).map(b=>({id:b.id,name:String(b.name||'Filial')}));
+ }
+ async function merchantSnapshot(businessId,branchId){
+  if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
+  const payload={p_business:businessId,p_branch:branchId};
+  const result=await call('/rest/v1/rpc/pronto_merchant_snapshot',{method:'POST',payload});
+  return normalizeMerchantSnapshot(result);
+ }
+ async function merchantAction(action,data){
+  if(!['product_create','stock_receive','cash_open','cash_close','sale_complete'].includes(action))
+   throw Error('shop_action_invalid');
+  if(!data||typeof data!=='object'||Array.isArray(data))throw Error('shop_action_invalid');
+  return call('/rest/v1/rpc/pronto_merchant_action',{method:'POST',payload:{p_action:action,p_data:data}});
+ }
  async function signOut(){
   if(session){
    try{await call('/auth/v1/logout',{method:'POST'});}catch{/* Clear local token even when service unavailable. */}
   }
   session=null;
  }
- return {signIn,account,adminOverview,adminMutate,inviteMember,signOut};
+ return {signIn,account,adminOverview,adminMutate,inviteMember,merchantBranches,merchantSnapshot,merchantAction,signOut};
 }
