@@ -36,11 +36,11 @@ begin
  if p_action='status' then
   return pg_catalog.jsonb_build_object('configured',found,
    'retry_after_seconds',case when found and v_record.blocked_until>now()
-     then pg_catalog.ceil(pg_catalog.extract(epoch from (v_record.blocked_until-now())))::integer else 0 end);
+     then pg_catalog.ceil(extract(epoch from (v_record.blocked_until-now())))::integer else 0 end);
  end if;
  if found and v_record.blocked_until>now() then
   return pg_catalog.jsonb_build_object('ok',false,'reason','temporarily_blocked',
-   'retry_after_seconds',pg_catalog.ceil(pg_catalog.extract(epoch from(v_record.blocked_until-now())))::integer);
+   'retry_after_seconds',pg_catalog.ceil(extract(epoch from (v_record.blocked_until-now())))::integer);
  end if;
 
  if p_action='create' then
