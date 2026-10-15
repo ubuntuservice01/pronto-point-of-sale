@@ -152,6 +152,42 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
    method:'POST',payload:{p_business:businessId,p_branch:branchId,p_start:from,p_end:to}
   }));
  }
+ async function uploadProductPhoto({businessId,branchId,productId,expectedRevision,file}){
+  if(sessionLocked)throw Error('pin_screen_locked');
+  if(!session)throw Error('supabase_unauthorized');
+  if(!uuid(businessId)||!uuid(branchId)||!uuid(productId)||!Number.isInteger(expectedRevision)
+   ||expectedRevision<0||!file||typeof file.size!=='number'||file.size<1||file.size>3145728)
+   throw Error('photo_invalid');
+  const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+  const ext=types[file.type];if(!ext)throw Error('photo_mime');
+  await ensureFresh();
+  const path=[businessId,branchId,productId,crypto.randomUUID()+'.'+ext].join('/');
+  const response=await fetchImpl(apiURL.origin+'/storage/v1/object/pronto-product-photos/'+path,{
+   method:'POST',headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,
+    'Content-Type':file.type,'x-upsert':'false'},
+   cache:'no-store',credentials:'omit',redirect:'error',body:file
+  });
+  if(!response.ok)throw Error('photo_upload_failed');
+  // The DB verifies the uploaded object really belongs to the current business and product.
+  return call('/rest/v1/rpc/pronto_photo_attach',{method:'POST',
+   payload:{p_data:{business_id:businessId,branch_id:branchId,product_id:productId,
+    photo_path:path,expected_revision:expectedRevision}}});
+ }
+ async function productPhotoUrl(path){
+  if(typeof path!=='string'||path.length>240||
+   !/^[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(jpg|png|webp)$/i.test(path))
+   throw Error('photo_path');
+  const result=await call('/storage/v1/object/sign/pronto-product-photos/'+path,{
+   method:'POST',payload:{expiresIn:300}
+  });
+  const signed=result?.signedURL||result?.signedUrl;
+  if(typeof signed!=='string')throw Error('photo_url_invalid');
+  const u=new URL(signed,apiURL.origin);
+  if(u.origin!==apiURL.origin||
+   !u.pathname.startsWith('/storage/v1/object/sign/pronto-product-photos/'+path))
+   throw Error('photo_url_invalid');
+  return u.href;
+ }
  async function inventorySnapshot(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   return normalizeInventorySnapshot(await call('/rest/v1/rpc/pronto_inventory_snapshot',{
@@ -281,5 +317,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
