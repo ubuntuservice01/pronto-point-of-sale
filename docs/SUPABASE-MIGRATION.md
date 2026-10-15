@@ -50,3 +50,16 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Não alterar o modo de demonstração nem o modo Node/SQLite. O cadastro real, alterações, suspensão e atribuição de planos continuam **indisponíveis** até implementação da API transaccional segura com auditoria.
 - Estado inicial esperado no Supabase: **zero** comerciantes, **zero** planos. Estes são dados reais; não preencher com exemplos fictícios.
 - Testes de browser/móvel e login com palavra-passe da conta real dependem da validação do próprio administrador. Os testes automatizados cobrem o cliente com respostas simuladas; a criação de comerciantes reais e as operações de caixa ainda não foram homologadas.
+
+## Fase 2 — provisionamento comercial no Supabase
+
+- O Super Administrador pode criar comerciantes, planos, licenças e associações de proprietários e operadores em `/?mode=supabase`.
+- Todas as alterações passam pelo RPC `public.pronto_admin_mutation`, que exige o UID autorizado, valida os dados, executa cada acção numa transacção e regista auditoria em `pronto_private.admin_actions` e `public.pronto_audit_events` quando há empresa associada.
+- Cada empresa e filial principal começam suspensas. O acesso só é permitido quando existir um proprietário activo, uma licença válida e a empresa tiver sido activada. A função `pronto_private.member_role` exige empresa e licença activas.
+- A Edge Function `pronto-admin-invite` exige JWT válido, verifica Supabase Auth e o papel global Ubuntu antes de usar a API Admin para enviar um convite. A chave administrativa vive apenas no servidor Supabase.
+- Quando o convite é enviado mas a associação falha, recuperar o UID em Supabase Authentication → Users e usar o formulário de associação da conta existente. Não reenviar convites repetidamente.
+- Os perfis permitidos são owner, manager, cashier, stock e finance. A conta global Ubuntu Super Admin não pode ser colocada como funcionário de loja.
+- A licença é um registo de autorização de serviço, não é uma cobrança M-Pesa/e-Mola.
+- Antes de convidar comerciantes reais, configurar SMTP, domínio e URLs de redireccionamento no Supabase Auth.
+- O ambiente de ensaio utilizou BEGIN/ROLLBACK. Não foram criados comerciantes ou planos fictícios persistentes.
+- O frontend operacional de vendas ainda usa Node/SQLite. Estas operações comerciais de cadastro não activam a escrita de vendas e stock no PostgreSQL. Não anunciar migração financeira completa antes de implementar e testar as transacções de vendas, caixa, stock e dívidas.

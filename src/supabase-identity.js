@@ -85,11 +85,34 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   const result=await call('/rest/v1/rpc/pronto_admin_overview',{method:'POST',payload:{}});
   return normalizeAdminOverview(result);
  }
+ async function adminMutate(action,data){
+  if(!session)throw Error('supabase_unauthorized');
+  const allowed=['plan_create','business_create','member_assign','member_deactivate','license_assign','license_renew','license_cancel','business_suspend','business_activate'];
+  if(!allowed.includes(action)||!data||typeof data!=='object'||Array.isArray(data))throw Error('admin_invalid_action');
+  return call('/rest/v1/rpc/pronto_admin_mutation',{method:'POST',payload:{p_action:action,p_data:data}});
+ }
+ async function inviteMember({email,display_name,role,business_id}){
+  if(!session)throw Error('supabase_unauthorized');
+  await ensureFresh();
+  const response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-admin-invite',{
+   method:'POST',headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,Accept:'application/json','Content-Type':'application/json'},
+   cache:'no-store',credentials:'omit',redirect:'error',
+   body:JSON.stringify({email,display_name,role,business_id})
+  });
+  let result;try{result=await response.json();}catch{throw Error('invitation_unavailable');}
+  if(!response.ok){
+   const allowed=['account_exists_use_existing_user','invitation_created_check_auth_dashboard','invited_but_membership_failed','admin_required','invalid_input'];
+   if(response.status===401||response.status===403){session=null;throw Error('supabase_unauthorized');}
+   if(allowed.includes(result?.error))throw Error(result.error+(result.user_id?':'+result.user_id:''));
+   throw Error('invitation_unavailable');
+  }
+  return result;
+ }
  async function signOut(){
   if(session){
    try{await call('/auth/v1/logout',{method:'POST'});}catch{/* Clear local token even when service unavailable. */}
   }
   session=null;
  }
- return {signIn,account,adminOverview,signOut};
+ return {signIn,account,adminOverview,adminMutate,inviteMember,signOut};
 }

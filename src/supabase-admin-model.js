@@ -3,7 +3,7 @@ const uuid = value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{
 const safeText=(value,max=200)=>typeof value==='string'?value.slice(0,max):'';
 const nonNegativeInteger=value=>Number.isSafeInteger(value)&&value>=0?value:0;
 const validDate=value=>typeof value==='string'&&Number.isFinite(new Date(value).getTime());
-export const ADMIN_TABS=['overview','businesses','licenses','plans','security'];
+export const ADMIN_TABS=['overview','businesses','members','licenses','plans','security'];
 
 export function normalizeAdminOverview(raw){
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||!Array.isArray(raw.businesses)||!Array.isArray(raw.plans))throw Error('supabase_response');
@@ -14,7 +14,11 @@ export function normalizeAdminOverview(raw){
   branches:nonNegativeInteger(Number(b.branches)),operators:nonNegativeInteger(Number(b.operators)),
   planName:safeText(b.plan_name,120),planId:uuid(b.plan_id)?b.plan_id:null,
   expiresAt:validDate(b.expires_at)?b.expires_at:null,
-  licenseCancelled:b.license_cancelled===true
+  licenseCancelled:b.license_cancelled===true,
+  members:Array.isArray(b.members)?b.members.filter(m=>uuid(m?.user_id)).map(m=>({
+   userId:m.user_id,role:['owner','manager','cashier','stock','finance'].includes(m.role)?m.role:'cashier',
+   active:m.active===true,name:safeText(m.name,120),email:safeText(m.email,254)
+  })):[]
  }));
  const plans=raw.plans.filter(p=>uuid(p?.id)).map(p=>({
   id:p.id,name:safeText(p.name,120),priceCents:nonNegativeInteger(Number(p.price_cents)),
