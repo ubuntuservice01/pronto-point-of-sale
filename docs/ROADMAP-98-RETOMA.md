@@ -119,3 +119,14 @@ Esta é uma nova lista operacional, não uma cópia da auditoria original. [V] =
 - [ ] 96 [V] Verificar requisitos fiscais
 - [ ] 97 [V] Realizar piloto
 - [ ] 98 [V] Documentar aprovação de produção
+
+## Execução de 16/10/2026 — início dos blocos 01–10, 43–64 e 91–96
+
+- **01–10 — auditoria preliminar, NÃO homologados:** o projecto Supabase `xgtpvszwzvkwysrswkek` foi confirmado activo; as 32 tabelas `public.pronto_*` consultadas têm RLS activado. Isto **não comprova** políticas correctas ou isolamento real por utilizador. O advisor de segurança indicou 7 tabelas com RLS e sem políticas (incluindo duas públicas que podem estar deliberadamente inacessíveis), e **protecção contra palavras-passe comprometidas desactivada**. Exige avaliação antes de habilitar acessos adicionais.
+- **61–63 — reforço parcial do código:** commits `c8070a3`, `7fa3ea7` e `dffb6fd`. A resposta da RPC de fecho excepcional é confrontada com a sessão, montante contado e equação financeira; a UI deixa de reportar «fecho não confirmado» apenas porque falhou a actualização posterior ao fecho. **Não equivalem a reconciliação presencial homologada.**
+- **43–60 e 64 — por testar individualmente;** não marcar como completos.
+- **91 — CI por confirmar para o commit mais recente.**
+- **92–96 — dependem de QA manual, backups reais, logs operacionais, rede e enquadramento fiscal; não homologados.**
+
+**Próxima operação técnica:** ensaio RLS com duas identidades de empresas distintas sem alterar dados produtivos, e investigação das políticas de SELECT/INSERT/UPDATE antes de qualquer aprovação comercial. Critério para levantar bloqueio: evidência de isolamento real, vendas/caixa idempotentes e testes de recuperação.
+
