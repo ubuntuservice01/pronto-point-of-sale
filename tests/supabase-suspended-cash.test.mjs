@@ -66,6 +66,27 @@ test('Suspended cash RPCs are session-gated, scoped and cannot be used as admin 
  assert.equal(call.options.headers.Authorization,'Bearer bearer-token');
  assert.ok(!JSON.stringify(call).includes('service_role'));
 });
+test('Reject inconsistent reconciliation response without displaying misleading financial totals',async()=>{
+ const invalidResults=[
+  {session_id:S,expected_cents:7250,counted_cents:7100,difference_cents:0,duplicate:false},
+  {session_id:S,expected_cents:'7250',counted_cents:7100,difference_cents:-150,duplicate:false},
+  {session_id:B,expected_cents:7250,counted_cents:7100,difference_cents:-150,duplicate:false},
+  {session_id:S,expected_cents:7250,counted_cents:7100,difference_cents:-150,duplicate:'false'},
+  {session_id:S,expected_cents:7250,counted_cents:9000,difference_cents:1750,duplicate:false}
+ ];
+ for(const badResult of invalidResults){
+  const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:async(url)=>{
+   if(url.includes('grant_type=password'))return response(200,{access_token:'bearer-token',user:{id:U},expires_in:3600});
+   if(url.endsWith('/rpc/pronto_admin_status'))return response(200,false);
+   if(url.endsWith('/auth/v1/user'))return response(200,{id:U,email:'owner@example.org'});
+   if(url.includes('pronto_memberships?'))return response(200,[{business_id:B,role:'owner',active:true}]);
+   if(url.includes('pronto_businesses?'))return response(200,[{id:B,name:'Loja',status:'active'}]);
+   return response(200,badResult);
+  }});
+  await client.signIn('owner@example.org','password');
+  await assert.rejects(()=>client.ownerCloseSuspendedCash({business_id:B,session_id:S,counted_cash_cents:7100,reason:'Caixa após suspensão'}),/cash_reconciliation_response_invalid/);
+ }
+});
 test('SQL only recovers suspended worker cash; owner cannot change sale ledgers or erase data',()=>{
  const sql=readFileSync(new URL('../supabase/migrations/20261016121000_pronto_suspended_cash_reconciliation.sql',import.meta.url),'utf8');
  for(const pattern of [/member_role\(v_business\).*?'owner'/s,/membership\.active=false/,
