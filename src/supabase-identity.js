@@ -280,9 +280,16 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
    data.counted_cash_cents>999999999999||typeof data.reason!=='string'||
    data.reason.trim().length<12||data.reason.trim().length>250)
    throw Error('cash_reconciliation_invalid');
-  return call('/rest/v1/rpc/pronto_owner_suspended_cash_close',{
+  const result=await call('/rest/v1/rpc/pronto_owner_suspended_cash_close',{
    method:'POST',payload:{p_data:data}
   });
+  if(!result||result.session_id!==data.session_id||
+   typeof result.duplicate!=='boolean'||
+   ![result.expected_cents,result.counted_cents,result.difference_cents].every(Number.isSafeInteger)||
+   result.counted_cents!==data.counted_cash_cents||
+   result.expected_cents+result.difference_cents!==result.counted_cents)
+   throw Error('cash_reconciliation_response_invalid');
+  return result;
  }
  async function ownerStaffSnapshot(businessId){
   if(!uuid(businessId))throw Error('shop_scope');
