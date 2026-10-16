@@ -46,7 +46,7 @@ async function connect(webSocketUrl) {
   close() { ws.close(); }
  };
 }
-test('Chrome UI: payment buttons keep product search and checkout mounted', { skip: !executable, timeout: 45000 }, async () => {
+test('Chrome UI: payment buttons keep product search and checkout mounted', { skip: !executable, timeout: 60000 }, async () => {
  const preview = createPreviewServer(process.cwd());
  const profile = await mkdtemp(join(tmpdir(), 'pronto-browser-'));
  let chrome, cdp, listening = false;
@@ -61,18 +61,22 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
    '--user-data-dir=' + profile, '--remote-debugging-port=' + debugPort,
    '--window-size=1440,1000', pageUrl
   ], { stdio: 'ignore' });
-  let endpoint;
-  for (let i=0;i<90;i++) {
+  let endpoint,targetUrl;
+  // Chrome on CI sometimes opens about:blank or strips a fragment before
+  // the first navigation; neither means DevTools failed to start.
+  for (let i=0;i<120;i++) {
    if (chrome.exitCode !== null) throw Error('Chrome exited before debug endpoint');
    try {
     const pages = await (await fetch('http://127.0.0.1:' + debugPort + '/json/list')).json();
-    endpoint = pages.find(x => x.type === 'page' && x.url.includes('#sell'))?.webSocketDebuggerUrl;
-    if (endpoint) break;
+    const page = pages.find(x => x.type === 'page' && x.url.includes('#sell'))||
+     pages.find(x => x.type === 'page' && x.webSocketDebuggerUrl);
+    if(page?.webSocketDebuggerUrl){endpoint=page.webSocketDebuggerUrl;targetUrl=page.url;break;}
    } catch {}
    await wait(200);
   }
   assert.ok(endpoint, 'Chrome DevTools page not ready');
   cdp = await connect(endpoint);
+  if (!targetUrl.includes('#sell')) await cdp.send('Page.navigate',{url:pageUrl});
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await cdp.send('Runtime.enable');
   const evalJS = async expression => {
