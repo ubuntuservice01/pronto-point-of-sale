@@ -52,6 +52,14 @@ test('Suspended cash RPCs are session-gated, scoped and cannot be used as admin 
  const current=await client.ownerSuspendedCash(B);
  assert.equal(current.sessions[0].operatorId,U);
  await assert.rejects(()=>client.ownerCloseSuspendedCash({business_id:B,session_id:'bad'}),/cash_scope/);
+ const beforeInvalid=calls.length;
+ for(const invalid of [-1,1.5,NaN,Infinity,Number.MAX_SAFE_INTEGER,'100']){
+  await assert.rejects(()=>client.ownerCloseSuspendedCash({business_id:B,session_id:S,counted_cash_cents:invalid,reason:'Caixa após suspensão'}),/cash_reconciliation_invalid/);
+ }
+ for(const invalidReason of ['', 'curto', ' '.repeat(15), 'x'.repeat(251)]){
+  await assert.rejects(()=>client.ownerCloseSuspendedCash({business_id:B,session_id:S,counted_cash_cents:100,reason:invalidReason}),/cash_reconciliation_invalid/);
+ }
+ assert.equal(calls.length,beforeInvalid,'Invalid reconciliation must not reach API');
  assert.equal((await client.ownerCloseSuspendedCash({business_id:B,session_id:S,
   counted_cash_cents:7100,reason:'Caixa após suspensão'})).difference_cents,-150);
  const call=calls.find(x=>x.url.endsWith('/rpc/pronto_owner_suspended_cash_close'));
