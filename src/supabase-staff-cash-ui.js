@@ -1,11 +1,16 @@
 import {esc,MONEY} from './supabase-shop-core.js';
+const integerCents=(value,allowNegative=false)=>typeof value==='number'&&Number.isSafeInteger(value)&&(allowNegative||value>=0);
+const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 export function normalizeSuspendedCash(raw){
  if(!raw||!Array.isArray(raw.sessions))throw Error('suspended_cash_snapshot_invalid');
- return {sessions:raw.sessions.filter(s=>s?.id&&s?.branch_id&&s?.operator_id).map(s=>({
+ if(!raw.sessions.every(s=>s&&uuid(s.id)&&uuid(s.branch_id)&&uuid(s.operator_id)&&
+   integerCents(s.opening_cash_cents)&&integerCents(s.expected_cash_cents,true)))
+  throw Error('suspended_cash_snapshot_invalid');
+ return {sessions:raw.sessions.map(s=>({
   id:s.id,branchId:s.branch_id,branch:String(s.branch_name||'Filial'),
   operatorId:s.operator_id,operator:String(s.operator_name||'Colaborador'),
-  openedAt:s.opened_at,opening:Number(s.opening_cash_cents)||0,
-  expected:Number(s.expected_cash_cents)||0
+  openedAt:s.opened_at,opening:s.opening_cash_cents,
+  expected:s.expected_cash_cents
  }))};
 }
 export function renderSuspendedCash(cash){
