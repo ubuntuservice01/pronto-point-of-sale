@@ -4,6 +4,7 @@ import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './su
 import {creditStatementHTML,creditWhatsAppURL} from './supabase-credit-ui.js';
 import {shoppingListCSV} from './supabase-inventory-ui.js';
 import {reportsCSV} from './supabase-reports-ui.js';
+import {auditCSV} from './supabase-audit-ui.js';
 const maputoDate=(time=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'}).format(time);
 import {makeShopDraft,saveShopDraft,restoreShopDraft,hasShopDraft,clearShopDraft} from './supabase-shop-draft.js';
 import {parseProductCSV} from './product-import.js';
@@ -18,9 +19,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='';
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   aborter.abort();root.innerHTML='';
@@ -36,7 +37,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
    if(!path||!client.productPhotoUrl)continue;
@@ -52,12 +53,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(selectFirst){
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
-   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;returns=null;selectedReturnSaleId='';inventory=null;selectedProductId='';inventoryQuery='';report=null;reportScope='branch';
+   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;returns=null;selectedReturnSaleId='';inventory=null;selectedProductId='';inventoryQuery='';report=null;reportScope='branch';audit=null;auditPage=0;auditSearch='';
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   branchManagement=grant.role==='owner'?await client.manageBranch('list',{business_id:grant.id}):null;
   staffManagement=grant.role==='owner'?await client.ownerStaffSnapshot(grant.id):null;
+  if(view==='audit'&&grant.role==='owner')audit=await client.ownerAuditSnapshot(grant.id,auditPage);
   transfers=['owner','manager','stock','finance'].includes(grant.role)?await client.transferSnapshot(grant.id):null;
   credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
   finance=typeof client.financeSnapshot==='function'?await client.financeSnapshot(grant.id,branchId):null;
@@ -85,6 +87,15 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    report=await client.reportsSnapshot(grant.id,reportScope==='all'?null:branchId,reportFrom,reportTo);
    render();showMessage('Relatório actualizado. Os valores são operacionais e não substituem documentos fiscais.');
   }catch(error){report=null;render();showMessage('Não foi possível obter o relatório. Verifique as datas e permissões. ('+error.message+')',true);}
+  finally{busy=false;}
+ };
+ const loadAudit=async()=>{
+  if(disconnected())return showMessage('É necessário estar online para consultar a auditoria.',true);
+  if(busy||grant.role!=='owner')return;
+  busy=true;showMessage('A consultar o histórico protegido…');
+  try{audit=await client.ownerAuditSnapshot(grant.id,auditPage);
+   render();showMessage('Histórico de actividades actualizado.');}
+  catch(error){audit=null;render();showMessage('Não foi possível consultar a auditoria. ('+error.message+')',true);}
   finally{busy=false;}
  };
  const lockPending=()=>{if(!pending)return false;showMessage('Existe uma venda por confirmar. Reenvie o mesmo pedido ou confira a venda antes de descartá-lo.',true);return true;};
@@ -246,6 +257,18 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }catch(e){showMessage('Operação não realizada: '+e.message,true);}
    finally{busy=false;}})();return;
   }
+  if(el.hasAttribute('data-audit-prev')||el.hasAttribute('data-audit-next')){
+   if(grant.role!=='owner')return;
+   auditPage=Math.max(0,auditPage+(el.hasAttribute('data-audit-next')?1:-1));
+   audit=null;render();void loadAudit();return;
+  }
+  if(el.hasAttribute('data-audit-export')){
+   if(grant.role!=='owner'||!audit)return;
+   const blob=new Blob([auditCSV(audit)],{type:'text/csv;charset=utf-8'});
+   const url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='auditoria-pronto-pos-pagina-'+(audit.page+1)+'.csv';
+   document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);return;
+  }
   if(el.hasAttribute('data-report-export')){
    if(!report)return;
    const blob=new Blob([reportsCSV(report)],{type:'text/csv;charset=utf-8'});
@@ -304,7 +327,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    cart=cart.filter(x=>x.productId!==el.dataset.remove);render();return;
   }
   if(el.hasAttribute('data-qty'))return void add(el.dataset.id,Number(el.dataset.qty));
-  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;notice='';render();if(view==='reports')void loadReports();return;}
+  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
   if(el.hasAttribute('data-shop-discard')){
@@ -350,6 +373,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!branches.some(b=>b.id===el.value))return;
    branchId=el.value;cart=[];method='cash';discount='0';query='';report=null;void safeLoad();return;
   }
+  if(el.id==='shop-audit-search'){auditSearch=el.value;render();return;}
   if(el.id==='shop-sale-customer'){if(lockPending())return;selectedCustomerId=el.value;updatePanel();return;}
   if(el.id==='shop-credit-due'){creditDue=el.value;return;}
   if(el.id==='shop-debt-filter'){debtFilter=el.value;render();return;}
