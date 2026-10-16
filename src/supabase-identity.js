@@ -10,6 +10,7 @@ import {normalizeInventorySnapshot} from './supabase-inventory-ui.js';
 import {normalizeReports} from './supabase-reports-ui.js';
 import {normalizeTransferSnapshot} from './supabase-transfers-ui.js';
 import {normalizeStaffSnapshot} from './supabase-team-management-ui.js';
+import {normalizeSuspendedCash} from './supabase-staff-cash-ui.js';
 import {normalizeAuditSnapshot} from './supabase-audit-ui.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
@@ -266,6 +267,19 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   });
   return normalizeAuditSnapshot(value);
  }
+ async function ownerSuspendedCash(businessId){
+  if(!uuid(businessId))throw Error('cash_scope');
+  const value=await call('/rest/v1/rpc/pronto_owner_suspended_cash_snapshot',{
+   method:'POST',payload:{p_business:businessId}
+  });
+  return normalizeSuspendedCash(value);
+ }
+ async function ownerCloseSuspendedCash(data){
+  if(!data||typeof data!=='object'||Array.isArray(data)||!uuid(data.business_id)||!uuid(data.session_id))throw Error('cash_scope');
+  return call('/rest/v1/rpc/pronto_owner_suspended_cash_close',{
+   method:'POST',payload:{p_data:data}
+  });
+ }
  async function ownerStaffSnapshot(businessId){
   if(!uuid(businessId))throw Error('shop_scope');
   const result=await call('/rest/v1/rpc/pronto_owner_staff_snapshot',{
@@ -390,5 +404,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerAuditSnapshot,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

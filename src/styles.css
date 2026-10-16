@@ -948,3 +948,6 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
 
 /* Private owner operational audit history */
 .audit-history{max-height:68vh;overflow:auto;display:grid;gap:8px;margin:14px 0}.audit-record{display:grid;gap:4px;border:1px solid #dfeae4;border-radius:10px;padding:12px;background:#fbfdfb}.audit-record strong{font-size:13px;color:#176750}.audit-record small{color:#627b83;font-size:11px}.audit-record span{font-size:11px;color:#536f77}.audit-pagination{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:12px}.audit-pagination button{border:1px solid #b5d4c9;color:#086952;background:#eaf7f0;border-radius:9px;padding:10px 13px;font-weight:650}.audit-pagination button:disabled{opacity:.45;cursor:not-allowed}.audit-pagination span{font-size:12px;font-weight:700;color:#426157}
+
+/* Suspended staff drawer reconciliation */
+.shop-box [data-shop-form="suspended_cash_close"]{border:1px solid #e0b98d;border-radius:12px;padding:13px;margin-top:10px;background:#fffbf6}.shop-box [data-shop-form="suspended_cash_close"] label{display:block;margin-bottom:9px}.shop-box [data-shop-form="suspended_cash_close"] input[type="checkbox"]{width:auto;min-height:0;margin-right:8px}.shop-box [data-shop-form="suspended_cash_close"] button{max-width:100%;white-space:normal}

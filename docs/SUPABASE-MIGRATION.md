@@ -206,3 +206,11 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - O separador Auditoria permite pesquisa local na página, navegar por páginas e exportar CSV. A exportação protege células iniciadas com caracteres de fórmula para reduzir execução acidental em folhas de cálculo.
 - Um evento registado no Supabase continua preservado após alteração/suspensão do colaborador, mas não representa necessariamente acesso com sessão Auth revogada. A suspensão de um colaborador é verificada pelas regras RLS e RPCs; o encerramento remoto das sessões ainda requer testes adicionais.
 - A base existente não contém ainda vendas/comerciantes reais, pelo que a auditoria precisa de homologação com dados operacionais verdadeiros e testes multi-tenant antes de lançamento comercial.
+
+## Reconciliação excepcional de caixas de colaboradores suspensos (16/10/2026)
+
+- Migração `20261016121000_pronto_suspended_cash_reconciliation.sql` aplicada ao projecto Supabase `prontopos`.
+- Apenas o proprietário com assinatura activa pode consultar caixas **abertos** por funcionários cuja associação à empresa tenha sido suspensa. O ecrã aparece em **Colaboradores**; não permite operar sobre caixas de funcionários activos, proprietários ou de outras empresas.
+- Após contagem física, o proprietário introduz o montante contado e um motivo obrigatório com pelo menos 12 caracteres. A RPC `pronto_owner_suspended_cash_close` fecha a sessão num bloqueio de linha, mantendo intactos vendas, pagamentos, movimentos de stock e dívidas. Calcula o esperado por vendas em dinheiro, cobranças de dívidas em dinheiro e movimentos de caixa.
+- O encerramento grava autor, motivo, valores esperados/contados, diferença e evento imutável de auditoria `team.staff_cash_emergency_closed`. Repetições idênticas não geram um segundo encerramento; divergências são rejeitadas.
+- Não substitui a validação de contas reais e a contagem presencial. O encerramento forçado não deve ser utilizado com um colaborador activo nem para encobrir diferenças de caixa.
