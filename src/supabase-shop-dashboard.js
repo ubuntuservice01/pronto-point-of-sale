@@ -473,9 +473,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    try{
     const result=await client.ownerCloseSuspendedCash({business_id:grant.id,session_id:target,
      counted_cash_cents:counted,reason});
-    await refresh();showMessage((result.duplicate?'Este caixa já estava reconciliado. ':'Caixa encerrado com auditoria. ')+
-     'Esperado: '+(Number(result.expected_cents)/100).toFixed(2)+' MT. Diferença: '+
-     (Number(result.difference_cents)/100).toFixed(2)+' MT.');
+    let refreshed=true;
+    try{await refresh();}catch{refreshed=false;}
+    showMessage((result.duplicate?'Este caixa já estava reconciliado. ':'Caixa encerrado com auditoria. ')+
+     'Esperado: '+(result.expected_cents/100).toFixed(2)+' MT. Diferença: '+
+     (result.difference_cents/100).toFixed(2)+' MT.'+
+     (refreshed?'':' Actualização da lista indisponível; consulte o histórico antes de repetir.'),!refreshed);
    }catch(error){showMessage('Não foi possível confirmar o encerramento. Verifique o histórico antes de tentar novamente. ('+error.message+')',true);}
    finally{busy=false;}
    return;
