@@ -14,17 +14,19 @@ export function pinError(result){
 }
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function pinScreen({mode='unlock',email='',message=''}={}){
- const setup=mode==='create',change=mode==='change';
- const title=setup?'Criar PIN de 5 dígitos':change?'Alterar PIN':'Ecrã bloqueado';
+ const setup=mode==='create',change=mode==='change',recover=mode==='recover';
+ const title=setup?'Criar PIN de 5 dígitos':change?'Alterar PIN':recover?'Recuperar PIN':'Ecrã bloqueado';
  const subtitle=setup?'O PIN pertence à sua conta e será usado para desbloquear este dispositivo.':
   change?'Introduza o PIN actual e escolha um novo PIN.':
+  recover?'Confirme a sua palavra-passe da conta Supabase para definir um novo PIN pessoal.':
   'Introduza o seu PIN para continuar sem perder o trabalho.';
- const fields=setup||change?
+ const fields=setup||change||recover?
   '<form id="pronto-pin-form" autocomplete="off">'+
+   (recover?'<label>Palavra-passe da conta<input name="password" type="password" autocomplete="current-password" maxlength="200" required></label>':'')+
    (change?'<label>PIN actual<input name="current" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" minlength="5" maxlength="5" required></label>':'')+
    '<label>Novo PIN<input name="new" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" minlength="5" maxlength="5" required></label>'+
    '<label>Confirmar PIN<input name="confirm" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" minlength="5" maxlength="5" required></label>'+
-   '<button class="pronto-pin-primary" type="submit">'+(setup?'Activar PIN':'Alterar PIN')+'</button></form>':
+   '<button class="pronto-pin-primary" type="submit">'+(setup?'Activar PIN':recover?'Recuperar PIN':'Alterar PIN')+'</button></form>':
   '<form id="pronto-pin-form" autocomplete="off">'+
    '<div class="pronto-pin-dots" aria-hidden="true">'+Array.from({length:5},()=>'<span></span>').join('')+'</div>'+
    '<label class="pronto-pin-input-label">PIN<input id="pronto-pin-entry" name="pin" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" maxlength="5" minlength="5" required aria-label="Introduza o PIN de cinco dígitos"></label>'+
@@ -37,6 +39,7 @@ export function pinScreen({mode='unlock',email='',message=''}={}){
  '<h2 id="pronto-pin-title">'+title+'</h2><p class="pronto-pin-intro">'+subtitle+'</p>'+
  '<p class="pronto-pin-account">'+escape(email)+'</p>'+fields+
  '<p class="pronto-pin-message" id="pronto-pin-message" role="alert" aria-live="polite">'+escape(message)+'</p>'+
+ (mode==='unlock'||mode==='change'?'<button class="pronto-pin-exit" type="button" id="pronto-pin-forgot">Esqueci o PIN</button>':'')+
  '<button class="pronto-pin-exit" type="button" id="pronto-pin-signout">Sair e iniciar sessão novamente</button>'+
  '<small>O PIN não substitui a palavra-passe da conta nem autoriza operações offline.</small></section>';
 }
@@ -98,6 +101,7 @@ export async function mountProntoPinGate({
    });
   }
   overlay.querySelector('#pronto-pin-signout').addEventListener('click',()=>void signout(),{signal});
+  overlay.querySelector('#pronto-pin-forgot')?.addEventListener('click',()=>show('recover'),{signal});
   form.addEventListener('submit',async e=>{
    e.preventDefault();
    if(processing||destroyed)return;
@@ -112,16 +116,24 @@ export async function mountProntoPinGate({
    }
    processing=true;submit.disabled=true;alert.textContent='A validar no Supabase…';
    try{
-    const result=await client.sessionPin(mode==='unlock'?'verify':mode,pin,mode==='change'?current:null);
+    const result=mode==='recover'?await client.recoverPinWithPassword({
+     password:String(values.get('password')||''),pin
+    }):await client.sessionPin(mode==='unlock'?'verify':mode,pin,mode==='change'?current:null);
     if(result?.ok!==true){alert.textContent=pinError(result);return;}
-    if(mode==='create'||mode==='change'){
+    if(mode==='create'||mode==='change'||mode==='recover'){
      const check=await client.sessionPin('verify',pin);
      if(check?.ok!==true){alert.textContent=pinError(check);return;}
     }
     if(!opened){await open();opened=true;}
     close();
    }catch(error){
-    if(error.message==='supabase_unauthorized'){
+    if(error.message==='pin_recovery_password_incorrect'){
+     alert.textContent='Palavra-passe incorrecta. Utilize a mesma que usa para iniciar sessão.';
+    }else if(error.message==='pin_recovery_same_pin'){
+     alert.textContent='Escolha um PIN diferente do anterior.';
+    }else if(error.message==='supabase_rate_limit'){
+     alert.textContent='Demasiadas tentativas. Aguarde um minuto e tente novamente.';
+    }else if(error.message==='supabase_unauthorized'){
      alert.textContent='A sessão expirou. Termine a sessão e entre novamente.';
     }else{
      alert.textContent='Falha na ligação ao Supabase. Não foi possível desbloquear.';
