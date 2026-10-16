@@ -19,7 +19,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='';
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
@@ -37,7 +37,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
    if(!path||!client.productPhotoUrl)continue;
@@ -59,6 +59,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   data=await client.merchantSnapshot(grant.id,branchId);
   branchManagement=grant.role==='owner'?await client.manageBranch('list',{business_id:grant.id}):null;
   staffManagement=grant.role==='owner'?await client.ownerStaffSnapshot(grant.id):null;
+  staffCash=grant.role==='owner'?await client.ownerSuspendedCash(grant.id):null;
   if(view==='audit'&&grant.role==='owner')audit=await client.ownerAuditSnapshot(grant.id,auditPage);
   transfers=['owner','manager','stock','finance'].includes(grant.role)?await client.transferSnapshot(grant.id):null;
   credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
@@ -456,6 +457,29 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='suspended_cash_close'){
+   if(grant.role!=='owner'||disconnected())return showMessage('A reconciliação exige proprietário autenticado e ligação ao servidor.',true);
+   const fields=new FormData(form);
+   if(!fields.has('confirmed'))return showMessage('Confirme a contagem física do caixa.',true);
+   const target=String(fields.get('session_id')||''),reason=String(fields.get('reason')||'').trim();
+   if(!staffCash?.sessions.some(x=>x.id===target)||reason.length<12||reason.length>250)
+    return showMessage('Caixa ou motivo inválido.',true);
+   let counted;
+   try{counted=toCents(String(fields.get('counted_cash')||''));}
+   catch{return showMessage('Introduza o montante contado em MT.',true);}
+   if(counted<0)return showMessage('O dinheiro contado não pode ser negativo.',true);
+   if(!confirm('Confirma a contagem física e encerramento excepcional deste caixa? Não será possível reabrir esta sessão.'))return;
+   busy=true;showMessage('A reconciliar caixa no Supabase…');
+   try{
+    const result=await client.ownerCloseSuspendedCash({business_id:grant.id,session_id:target,
+     counted_cash_cents:counted,reason});
+    await refresh();showMessage((result.duplicate?'Este caixa já estava reconciliado. ':'Caixa encerrado com auditoria. ')+
+     'Esperado: '+(Number(result.expected_cents)/100).toFixed(2)+' MT. Diferença: '+
+     (Number(result.difference_cents)/100).toFixed(2)+' MT.');
+   }catch(error){showMessage('Não foi possível confirmar o encerramento. Verifique o histórico antes de tentar novamente. ('+error.message+')',true);}
+   finally{busy=false;}
+   return;
+  }
   if(['branch_create','branch_rename'].includes(action)){
    if(grant.role!=='owner'||disconnected()||pending)return showMessage('Não é possível alterar a filial neste momento.',true);
    const f=new FormData(form),name=String(f.get('name')||'').trim();
