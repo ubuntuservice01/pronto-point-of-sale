@@ -945,3 +945,6 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
 
 /* Filial-to-filial inventory transfer controls */
 .transfer-form-lines{display:grid;gap:10px}.transfer-form-lines .finance-purchase-line{padding:12px;border:1px solid #d6e6dc;border-radius:10px}.shop-box [data-transfer-add]{padding:11px 14px;border:1px solid #8cc7b3;border-radius:9px;background:#ebf8f2;color:#086e59;font-weight:700}.credit-debt-actions [data-transfer-cancel]{background:#fff3ea;color:#944615;border-color:#e7c5ab}.shop-box .shop-pending{padding:12px;margin:12px 0}
+
+/* Private owner operational audit history */
+.audit-history{max-height:68vh;overflow:auto;display:grid;gap:8px;margin:14px 0}.audit-record{display:grid;gap:4px;border:1px solid #dfeae4;border-radius:10px;padding:12px;background:#fbfdfb}.audit-record strong{font-size:13px;color:#176750}.audit-record small{color:#627b83;font-size:11px}.audit-record span{font-size:11px;color:#536f77}.audit-pagination{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:12px}.audit-pagination button{border:1px solid #b5d4c9;color:#086952;background:#eaf7f0;border-radius:9px;padding:10px 13px;font-weight:650}.audit-pagination button:disabled{opacity:.45;cursor:not-allowed}.audit-pagination span{font-size:12px;font-weight:700;color:#426157}
