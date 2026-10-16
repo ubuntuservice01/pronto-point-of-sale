@@ -6,6 +6,7 @@ import {renderInventoryView} from './supabase-inventory-ui.js';
 import {renderReportsView} from './supabase-reports-ui.js';
 import {renderTransfersView} from './supabase-transfers-ui.js';
 import {renderStaffManagement} from './supabase-team-management-ui.js';
+import {renderSuspendedCash} from './supabase-staff-cash-ui.js';
 import {renderAuditView} from './supabase-audit-ui.js';
 
 const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',mixed:'Repartido'};
@@ -50,7 +51,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<button class="shop-submit" type="submit" '+(!session||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch=''}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null}){
  const products=data?.products||[];
  const session=data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
@@ -146,7 +147,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    '<button type="submit" class="shop-submit">Enviar convite ao colaborador</button></form>'+
    '<p class="shop-help">Cada colaborador aceita o convite, inicia sessão na sua conta e define o próprio PIN de cinco dígitos. O proprietário não recebe nem conhece esse PIN.</p>',
    'Apenas o proprietário pode convidar funcionários; esta página não cria novos proprietários.')+
-   renderStaffManagement(staffManagement);
+   renderStaffManagement(staffManagement)+renderSuspendedCash(staffCash);
  }else{
   body=section('Vendas registadas nesta filial',
    '<div class="shop-history">'+(data?.sales.length?data.sales.map(s=>
