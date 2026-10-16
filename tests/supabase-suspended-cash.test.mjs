@@ -23,6 +23,14 @@ test('Suspended cashier reconciliation requires amount, detailed reason and expl
  assert.ok(!html.includes('<script>'));
  assert.ok(html.includes('&lt;script&gt;'));
  assert.throws(()=>normalizeSuspendedCash({sessions:{}}),/suspended_cash_snapshot_invalid/);
+ for(const invalid of [null,'0',NaN,Infinity,1.2,-1,Number.MAX_SAFE_INTEGER+1]){
+  assert.throws(()=>normalizeSuspendedCash({sessions:[{...source.sessions[0],opening_cash_cents:invalid}]}),/suspended_cash_snapshot_invalid/);
+ }
+ for(const invalid of [null,'0',NaN,Infinity,1.2,Number.MAX_SAFE_INTEGER+1]){
+  assert.throws(()=>normalizeSuspendedCash({sessions:[{...source.sessions[0],expected_cash_cents:invalid}]}),/suspended_cash_snapshot_invalid/);
+ }
+ assert.throws(()=>normalizeSuspendedCash({sessions:[{...source.sessions[0],id:'invalid'}]}),/suspended_cash_snapshot_invalid/);
+ assert.equal(normalizeSuspendedCash({sessions:[{...source.sessions[0],expected_cash_cents:-100}]}).sessions[0].expected,-100);
 });
 test('Suspended cash RPCs are session-gated, scoped and cannot be used as admin mutations',async()=>{
  const calls=[];
