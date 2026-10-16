@@ -276,6 +276,10 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
  }
  async function ownerCloseSuspendedCash(data){
   if(!data||typeof data!=='object'||Array.isArray(data)||!uuid(data.business_id)||!uuid(data.session_id))throw Error('cash_scope');
+  if(!Number.isSafeInteger(data.counted_cash_cents)||data.counted_cash_cents<0||
+   data.counted_cash_cents>999999999999||typeof data.reason!=='string'||
+   data.reason.trim().length<12||data.reason.trim().length>250)
+   throw Error('cash_reconciliation_invalid');
   return call('/rest/v1/rpc/pronto_owner_suspended_cash_close',{
    method:'POST',payload:{p_data:data}
   });
