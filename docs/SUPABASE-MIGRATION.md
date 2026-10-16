@@ -189,3 +189,12 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Suspensão e reactivação são operações no Supabase, auditadas e validadas em cada RPC/RLS por associação activa. Sessões Auth do colaborador podem continuar emitidas; a revogação aplicada é das permissões da empresa, não uma revogação universal do token.
 - Após a alteração de função ou reactivação, o colaborador deve terminar a sessão e voltar a entrar para actualizar os menus. PINs e palavras-passe não são expostos ao proprietário.
 - Falta homologação com funcionários reais e tratamento especializado de caixas abertos por operadores suspensos; a gestão de sessões de dispositivos permanece parcialmente pendente.
+
+## Recuperação de PIN esquecido — autenticação reforçada
+
+- A migração `20261016111000_pronto_pin_password_recovery.sql` e a Edge Function `pronto-pin-recovery` estão aplicadas no Supabase `prontopos`. A função Edge exige JWT da sessão existente **e nova verificação da palavra-passe** através de Supabase Auth, comparando IDs autenticados; a palavra-passe nunca é enviada à base PostgreSQL.
+- A única função que pode alterar o PIN sem o anterior (`public.pronto_pin_recovery_service`) permite EXECUTE exclusivamente ao papel `service_role`, não a utilizadores `anon` ou `authenticated`. O segredo só existe nas variáveis de ambiente da Edge Function e não no browser.
+- O PIN recuperado é novamente armazenado como hash bcrypt, não pode repetir o anterior e só é aceite após verificação adicional no servidor. A sessão permanece bloqueada até validar o novo PIN. O reset elimina tentativas falhadas e bloqueio temporário, porque é precedido de reautenticação válida.
+- Existe registo privado da recuperação sem gravar PIN ou palavra-passe; intervalo mínimo de 60 segundos entre recuperações. A API de autenticação do Supabase controla tentativas de palavra-passe errada.
+- Para usar: no ecrã de bloqueio seleccionar **Esqueci o PIN**, introduzir a palavra-passe da conta, definir e confirmar novo PIN de cinco dígitos. Se a palavra-passe também foi esquecida, primeiro efectuar recuperação de acesso por email (requer SMTP e redirect configurados no Supabase).
+- Não existe entrega de PIN a terceiros nem redefinição de códigos pelo proprietário. O fluxo necessita de testes manuais em browsers/dispositivos e confirmação do serviço de email antes de declarar o produto pronto para venda.

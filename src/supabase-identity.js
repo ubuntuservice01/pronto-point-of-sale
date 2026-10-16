@@ -339,6 +339,31 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   session=null;
   return true;
  }
+ async function recoverPinWithPassword({password,pin}){
+  if(!session)throw Error('supabase_unauthorized');
+  if(typeof password!=='string'||password.length<1||password.length>200||
+   typeof pin!=='string'||!/^\d{5}$/.test(pin))throw Error('pin_recovery_invalid');
+  await ensureFresh();
+  const response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-pin-recovery',{
+   method:'POST',
+   headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,
+    Accept:'application/json','Content-Type':'application/json'},
+   cache:'no-store',credentials:'omit',redirect:'error',
+   body:JSON.stringify({password,new_pin:pin})
+  });
+  let result;try{result=await response.json();}catch{throw Error('pin_recovery_unavailable');}
+  if(!response.ok){
+   if(response.status===401){session=null;throw Error('supabase_unauthorized');}
+   const reason=result?.error;
+   if(reason==='incorrect_password')throw Error('pin_recovery_password_incorrect');
+   if(reason==='same_pin')throw Error('pin_recovery_same_pin');
+   if(reason==='rate_limited'||response.status===429)throw Error('supabase_rate_limit');
+   if(reason==='pin_not_configured')throw Error('pin_not_configured');
+   throw Error('pin_recovery_unavailable');
+  }
+  if(result?.ok!==true)throw Error('pin_recovery_unavailable');
+  return {ok:true};
+ }
  async function sessionPin(action,pin=null,currentPin=null){
   if(!['status','create','verify','change'].includes(action))throw Error('pin_invalid_action');
   if(action!=='status'&&!(typeof pin==='string'&&/^\d{5}$/.test(pin)))throw Error('pin_five_digits');
@@ -357,5 +382,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
