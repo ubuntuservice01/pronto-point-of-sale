@@ -67,5 +67,5 @@ test('SQL does not expose arbitrary audit payload or allow non-owner reads',()=>
  assert.doesNotMatch(sql,/'payload',e\.payload/);
  const ui=readFileSync(new URL('../src/supabase-shop-ui.js',import.meta.url),'utf8');
  assert.match(ui,/renderAuditView/);
- assert.match(ui,/aud it/.source===undefined?/won't match/:/audit:\['owner'\]/);
+ assert.match(ui,/audit:\['owner'\]/);
 });
