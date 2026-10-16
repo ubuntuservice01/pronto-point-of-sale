@@ -10,6 +10,7 @@ import {normalizeInventorySnapshot} from './supabase-inventory-ui.js';
 import {normalizeReports} from './supabase-reports-ui.js';
 import {normalizeTransferSnapshot} from './supabase-transfers-ui.js';
 import {normalizeStaffSnapshot} from './supabase-team-management-ui.js';
+import {normalizeAuditSnapshot} from './supabase-audit-ui.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
@@ -258,6 +259,13 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   const result=await call('/rest/v1/rpc/pronto_merchant_snapshot',{method:'POST',payload});
   return normalizeMerchantSnapshot(result);
  }
+ async function ownerAuditSnapshot(businessId,page=0){
+  if(!uuid(businessId)||!Number.isInteger(page)||page<0||page>100)throw Error('audit_scope');
+  const value=await call('/rest/v1/rpc/pronto_owner_audit_snapshot',{
+   method:'POST',payload:{p_business:businessId,p_page:page,p_limit:50}
+  });
+  return normalizeAuditSnapshot(value);
+ }
  async function ownerStaffSnapshot(businessId){
   if(!uuid(businessId))throw Error('shop_scope');
   const result=await call('/rest/v1/rpc/pronto_owner_staff_snapshot',{
@@ -382,5 +390,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerAuditSnapshot,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

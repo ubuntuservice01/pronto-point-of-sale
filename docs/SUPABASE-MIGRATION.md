@@ -198,3 +198,11 @@ O actual projecto é JavaScript puro / Node, não Next.js; variáveis NEXT_PUBLI
 - Existe registo privado da recuperação sem gravar PIN ou palavra-passe; intervalo mínimo de 60 segundos entre recuperações. A API de autenticação do Supabase controla tentativas de palavra-passe errada.
 - Para usar: no ecrã de bloqueio seleccionar **Esqueci o PIN**, introduzir a palavra-passe da conta, definir e confirmar novo PIN de cinco dígitos. Se a palavra-passe também foi esquecida, primeiro efectuar recuperação de acesso por email (requer SMTP e redirect configurados no Supabase).
 - Não existe entrega de PIN a terceiros nem redefinição de códigos pelo proprietário. O fluxo necessita de testes manuais em browsers/dispositivos e confirmação do serviço de email antes de declarar o produto pronto para venda.
+
+## Histórico de actividades — proprietário (16/10/2026)
+
+- RPC `pronto_owner_audit_snapshot`: apenas utilizador com associação `owner` activa pode consultar os eventos da empresa. A consulta devolve até 50 eventos por página na interface, com limites impostos também no PostgreSQL.
+- A resposta contém exclusivamente `id`, tipo, data, nome do operador e referência técnica curta quando aplicável; **nunca** inclui a carga `payload` original, PIN, palavra-passe, dados de clientes, detalhes de cartões nem contactos privados.
+- O separador Auditoria permite pesquisa local na página, navegar por páginas e exportar CSV. A exportação protege células iniciadas com caracteres de fórmula para reduzir execução acidental em folhas de cálculo.
+- Um evento registado no Supabase continua preservado após alteração/suspensão do colaborador, mas não representa necessariamente acesso com sessão Auth revogada. A suspensão de um colaborador é verificada pelas regras RLS e RPCs; o encerramento remoto das sessões ainda requer testes adicionais.
+- A base existente não contém ainda vendas/comerciantes reais, pelo que a auditoria precisa de homologação com dados operacionais verdadeiros e testes multi-tenant antes de lançamento comercial.
