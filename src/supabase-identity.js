@@ -291,6 +291,22 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
    throw Error('cash_reconciliation_response_invalid');
   return result;
  }
+ async function myAccessStatus(businessId=null){
+  if(businessId!==null&&!uuid(businessId))throw Error('shop_scope');
+  const data=await call('/rest/v1/rpc/pronto_my_access_status',{
+   method:'POST',payload:{p_business:businessId}
+  });
+  if(!data||typeof data.allowed!=='boolean'||typeof data.reason!=='string')
+   throw Error('staff_access_response_invalid');
+  return data;
+ }
+ async function ownerStaffAccessAction(action,data){
+  if(!['mode','schedule'].includes(action)||!data||typeof data!=='object'||Array.isArray(data)
+    ||!uuid(data.business_id)||!uuid(data.user_id))throw Error('staff_access_invalid');
+  return call('/rest/v1/rpc/pronto_owner_staff_access_action',{
+   method:'POST',payload:{p_action:action,p_data:data}
+  });
+ }
  async function ownerStaffSnapshot(businessId){
   if(!uuid(businessId))throw Error('shop_scope');
   const result=await call('/rest/v1/rpc/pronto_owner_staff_snapshot',{
@@ -415,5 +431,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
