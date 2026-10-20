@@ -86,9 +86,9 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
   const walletColors=await js([
    '(()=>{const mpesa=document.querySelector("[data-shop-method=mpesa]");',
    'const emola=document.querySelector("[data-shop-method=emola]");',
-   'mpesa.click();const mpesaColor=getComputedStyle(mpesa).backgroundColor;',
-   'emola.click();const emolaColor=getComputedStyle(emola).backgroundColor;',
-   'const emolaText=getComputedStyle(emola).color;',
+   'mpesa.click();const selectedMpesa=document.querySelector("[data-shop-method=mpesa]");const mpesaColor=getComputedStyle(selectedMpesa).backgroundColor;',
+   'document.querySelector("[data-shop-method=emola]").click();const selectedEmola=document.querySelector("[data-shop-method=emola]");const emolaColor=getComputedStyle(selectedEmola).backgroundColor;',
+   'const emolaText=getComputedStyle(selectedEmola).color;',
    'return {mpesaColor,emolaColor,emolaText};})()'
   ].join(''));
   assert.deepEqual(walletColors,{
