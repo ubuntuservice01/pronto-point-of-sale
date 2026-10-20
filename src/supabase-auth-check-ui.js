@@ -17,7 +17,9 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
  const shell=content=>{
   root.innerHTML='<section class="login-shell pronto-auth-test"><div class="login-brand"><img src="/icon.svg" alt=""><h1>Pronto POS</h1><p>Verificação de acesso Supabase</p></div><div class="panel login-panel">'+content+'</div><footer>Ubuntu Service, Lda. · Ambiente de validação</footer></section>';
  };
+ let staffWaitTimer=null;
  const form=()=>{
+  if(staffWaitTimer){clearInterval(staffWaitTimer);staffWaitTimer=null;}
   shell('<h2>Verificar identidade e permissões</h2>'+
   '<p>Entre com a sua conta Supabase. Depois, utilize o seu PIN pessoal de 5 dígitos para desbloquear o Pronto POS.</p>'+
   '<form id="pronto-auth-check-form">'+
@@ -53,6 +55,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
  };
  const ready=async account=>{
   const admin=account.ubuntuAdmin===true;
+  const staffAccess=!admin&&!account.grants.length?await client.myAccessStatus():null;
   if(admin||account.grants.length){
    // A five-digit PIN protects an *already authenticated* Supabase session.
    // Every operator chooses their own PIN; it is never supplied by the merchant.
@@ -70,13 +73,25 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<div class="pronto-auth-grants">'+account.grants.map(grant=>
      '<article><strong>'+escape(grant.name)+'</strong><small>Perfil: '+escape(grant.role)+'</small></article>'
     ).join('')+'</div>':
-    '<p class="held-sale-warning">'+(admin?'O Super Administrador não precisa de uma associação comercial para exercer funções administrativas.':'Esta conta ainda não está associada a nenhuma empresa activa. Contacte a Ubuntu Service para concluir o registo.')+'</p>';
+    '<p class="held-sale-warning">'+(admin?'O Super Administrador não precisa de uma associação comercial para exercer funções administrativas.':''+(staffAccess?.reason==='outside_schedule'?'Fora do horário de trabalho. Aguarde a abertura programada.':staffAccess?.reason==='blocked'?'O seu acesso foi bloqueado pelo proprietário. Contacte o responsável.':'Esta conta não tem acesso disponível neste momento. Contacte o responsável.')+'')+'</p>';
   shell('<h2>'+ (admin?'Super Administrador — Ubuntu Service':'Identidade verificada') +'</h2>'+
    '<p>Conta: <strong>'+escape(account.email)+'</strong></p>'+
    (admin?'<p class="pronto-super-admin-status"><strong>Perfil confirmado:</strong> Super Administrador Ubuntu Service, Lda.</p><p class="form-hint">A verificação está activa. Os módulos de administração de comerciantes, licenças e subscrições serão ligados à nova base apenas depois da validação das operações seguras.</p>':'')+
    '<h3>Empresas autorizadas</h3>'+grants+
    '<p class="form-hint">Este teste consulta permissões reais através das políticas RLS. As operações comerciais continuam no backend existente.</p>'+
    '<button id="pronto-auth-check-logout" type="button" class="secondary full">Terminar sessão de teste</button>');
+  if(staffAccess&&['outside_schedule','blocked','suspended'].includes(staffAccess.reason)){
+   if(staffWaitTimer)clearInterval(staffWaitTimer);
+   staffWaitTimer=setInterval(async()=>{
+    try{
+     const latest=await client.myAccessStatus();
+     if(latest.allowed){
+      clearInterval(staffWaitTimer);staffWaitTimer=null;
+      await ready(await client.account());
+     }
+    }catch{/* Stay on blocked screen if network is unavailable. */}
+   },5000);
+  }
   root.querySelector('#pronto-auth-check-logout').onclick=async()=>{
    const button=root.querySelector('#pronto-auth-check-logout');button.disabled=true;
    await client.signOut();form();
