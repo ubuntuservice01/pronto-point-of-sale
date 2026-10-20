@@ -951,3 +951,133 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
 
 /* Suspended staff drawer reconciliation */
 .shop-box [data-shop-form="suspended_cash_close"]{border:1px solid #e0b98d;border-radius:12px;padding:13px;margin-top:10px;background:#fffbf6}.shop-box [data-shop-form="suspended_cash_close"] label{display:block;margin-bottom:9px}.shop-box [data-shop-form="suspended_cash_close"] input[type="checkbox"]{width:auto;min-height:0;margin-right:8px}.shop-box [data-shop-form="suspended_cash_close"] button{max-width:100%;white-space:normal}
+
+
+/* Contextual action colours · visual-only refinement, no layout or flow changes.
+   Mobile wallets use recognisable M-Pesa/Vodacom red and e-Mola/Movitel orange.
+   The same rules cover the existing POS and the Supabase merchant pilot. */
+:root{
+  --pronto-mpesa:#e60000;
+  --pronto-mpesa-hover:#c80000;
+  --pronto-emola:#f58220;
+  --pronto-emola-ink:#202b35; /* dark text is necessary on bright orange */
+  --pronto-action-blue:#185d8a;
+  --pronto-action-purple:#61409b;
+  --pronto-danger:#b52332;
+  --pronto-danger-hover:#981b28;
+  --pronto-danger-soft:#fff0f1;
+}
+
+/* Payment choices: recognisable even before selection. */
+.checkout-payment-choice .cashier-payment[data-quick-payment="mpesa"],
+.shop-methods button[data-shop-method="mpesa"]{
+  color:#ae1625;background:#fff1f2;border-color:#eab0b5;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="emola"],
+.shop-methods button[data-shop-method="emola"]{
+  color:#91430c;background:#fff2e5;border-color:#efbd90;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="cash"],
+.shop-methods button[data-shop-method="cash"]{
+  color:#155776;background:#edf6fb;border-color:#aecfdf;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="transfer"],
+.shop-methods button[data-shop-method="transfer"]{
+  color:#354a96;background:#eef1fe;border-color:#bfc9e9;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="mixed"],
+.shop-methods button[data-shop-method="mixed"]{
+  color:#654391;background:#f5efff;border-color:#d5c2ee;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="credit"]{
+  color:#83510e;background:#fff5e1;border-color:#e2c793;
+}
+
+/* Active payment choice: never revert to the generic green. */
+.checkout-payment-choice .cashier-payment[data-quick-payment="mpesa"][aria-pressed="true"],
+.shop-methods button[data-shop-method="mpesa"][aria-pressed="true"]{
+  background:var(--pronto-mpesa);border-color:var(--pronto-mpesa);color:#fff;
+  box-shadow:0 3px 10px #e6000026;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="emola"][aria-pressed="true"],
+.shop-methods button[data-shop-method="emola"][aria-pressed="true"]{
+  background:var(--pronto-emola);border-color:var(--pronto-emola);color:var(--pronto-emola-ink);
+  box-shadow:0 3px 10px #ee7a232b;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="cash"][aria-pressed="true"],
+.shop-methods button[data-shop-method="cash"][aria-pressed="true"]{
+  background:var(--pronto-action-blue);border-color:var(--pronto-action-blue);color:#fff;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="transfer"][aria-pressed="true"],
+.shop-methods button[data-shop-method="transfer"][aria-pressed="true"]{
+  background:#354a96;border-color:#354a96;color:#fff;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="mixed"][aria-pressed="true"],
+.shop-methods button[data-shop-method="mixed"][aria-pressed="true"]{
+  background:var(--pronto-action-purple);border-color:var(--pronto-action-purple);color:#fff;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="credit"][aria-pressed="true"]{
+  background:#905815;border-color:#905815;color:#fff;
+}
+
+/* High-risk buttons: stop, cancel, delete, discard, suspend. */
+.shop-shell :is(
+ button[data-shop-hold-delete],
+ button[data-transfer-cancel],
+ button[data-staff-suspend],
+ button[data-staff-access-mode="block"],
+ button[data-shop-discard],
+ button[data-shop-draft-clear],
+ button[data-finance-discard],
+ button[data-transfer-clear],
+ button[data-branch-toggle][data-branch-active="true"]
+){
+  background:var(--pronto-danger-soft);color:var(--pronto-danger);
+  border:1px solid #e5a5ac;
+}
+.shop-shell :is(
+ button[data-shop-hold-delete],
+ button[data-transfer-cancel],
+ button[data-staff-suspend],
+ button[data-staff-access-mode="block"]
+){
+  background:var(--pronto-danger);color:#fff;border-color:var(--pronto-danger);
+}
+.shop-shell :is(button[data-shop-hold-delete],button[data-transfer-cancel],button[data-staff-suspend],button[data-staff-access-mode="block"]):hover:not(:disabled){
+  background:var(--pronto-danger-hover);border-color:var(--pronto-danger-hover);color:#fff;
+}
+.shop-shell button[data-branch-toggle][data-branch-active="true"]:hover:not(:disabled),
+.shop-shell :is(button[data-shop-draft-clear],button[data-finance-discard],button[data-transfer-clear],button[data-shop-discard]):hover:not(:disabled){
+  background:#ffe1e5;color:var(--pronto-danger-hover);
+}
+
+/* Remove an item and clear a basket are reversible editing actions: outlined red. */
+#clear-cart,.cart-row button.remove,.shop-cart-qty button.shop-clear-row{
+  background:var(--pronto-danger-soft);color:var(--pronto-danger);
+  border:1px solid #e9aeb6;border-radius:8px;
+}
+#clear-cart:hover:not(:disabled),.cart-row button.remove:hover:not(:disabled),
+.shop-cart-qty button.shop-clear-row:hover:not(:disabled){
+  background:#ffe0e4;color:var(--pronto-danger-hover);
+}
+
+/* Legacy catalogue/user deactivation: red only for deactivation, never reactivation. */
+.catalog-buttons button[data-pronto-action="deactivate"]{
+  background:var(--pronto-danger-soft);color:var(--pronto-danger);
+  border:1px solid #e9aeb6;border-radius:9px;padding:8px 11px;
+}
+.catalog-buttons button[data-pronto-action="deactivate"]:hover:not(:disabled){
+  background:#ffe0e4;color:var(--pronto-danger-hover);
+}
+dialog button#confirm-management[data-pronto-action="deactivate"]{
+  background:var(--pronto-danger);color:#fff;border-color:var(--pronto-danger);
+}
+
+/* Neutral/informational actions and staff authorisation retain a distinct meaning. */
+.shop-shell button[data-shop-refresh],
+.shop-shell :is(button[data-shop-hold-resume],button[data-staff-access-mode="auto"]){
+  background:#edf5fd;color:var(--pronto-action-blue);border:1px solid #b9d2e6;
+}
+.shop-shell :is(button[data-staff-reactivate],button[data-staff-access-mode="allow"]){
+  background:#e9f7ee;color:#0b7650;border:1px solid #a9dcc6;
+}
