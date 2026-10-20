@@ -80,6 +80,18 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<h3>Empresas autorizadas</h3>'+grants+
    '<p class="form-hint">Este teste consulta permissões reais através das políticas RLS. As operações comerciais continuam no backend existente.</p>'+
    '<button id="pronto-auth-check-logout" type="button" class="secondary full">Terminar sessão de teste</button>');
+  if(staffAccess&&['outside_schedule','blocked','suspended'].includes(staffAccess.reason)){
+   if(staffWaitTimer)clearInterval(staffWaitTimer);
+   staffWaitTimer=setInterval(async()=>{
+    try{
+     const latest=await client.myAccessStatus();
+     if(latest.allowed){
+      clearInterval(staffWaitTimer);staffWaitTimer=null;
+      await ready(await client.account());
+     }
+    }catch{/* Stay on blocked screen if network is unavailable. */}
+   },5000);
+  }
   root.querySelector('#pronto-auth-check-logout').onclick=async()=>{
    const button=root.querySelector('#pronto-auth-check-logout');button.disabled=true;
    await client.signOut();form();
