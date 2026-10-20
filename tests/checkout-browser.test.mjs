@@ -102,9 +102,9 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
    return evalJS('(() => ({selected:document.querySelector(' + JSON.stringify(selector) + ')?.getAttribute("aria-pressed"),sameSearch:window.__posSearch===document.querySelector("#search"),sameCheckout:window.__posCheckout===document.querySelector("#sale-cart")}))()');
   }
   // Payment brands must remain visible with selected styles (not generic green).
-  await clickMethod('mpesa');
+  assert.equal((await clickMethod('mpesa')).selected,'true');
   assert.equal(await evalJS('getComputedStyle(document.querySelector("[data-quick-payment=mpesa]")).backgroundColor'),'rgb(230, 0, 0)');
-  await clickMethod('emola');
+  assert.equal((await clickMethod('emola')).selected,'true');
   assert.equal(await evalJS('getComputedStyle(document.querySelector("[data-quick-payment=emola]")).backgroundColor'),'rgb(245, 130, 32)');
   assert.equal(await evalJS('getComputedStyle(document.querySelector("[data-quick-payment=emola]")).color'),'rgb(32, 43, 53)');
   for (const key of ['emola','mpesa','transfer','mixed','cash','credit','mixed','emola','cash']) {
