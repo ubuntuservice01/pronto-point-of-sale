@@ -53,6 +53,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
  };
  const ready=async account=>{
   const admin=account.ubuntuAdmin===true;
+  const staffAccess=!admin&&!account.grants.length?await client.myAccessStatus():null;
   if(admin||account.grants.length){
    // A five-digit PIN protects an *already authenticated* Supabase session.
    // Every operator chooses their own PIN; it is never supplied by the merchant.
@@ -70,7 +71,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<div class="pronto-auth-grants">'+account.grants.map(grant=>
      '<article><strong>'+escape(grant.name)+'</strong><small>Perfil: '+escape(grant.role)+'</small></article>'
     ).join('')+'</div>':
-    '<p class="held-sale-warning">'+(admin?'O Super Administrador não precisa de uma associação comercial para exercer funções administrativas.':'Esta conta não tem acesso disponível neste momento. O proprietário poderá ter suspendido o acesso ou definido um horário de trabalho. Aguarde a abertura ou contacte o responsável.')+'</p>';
+    '<p class="held-sale-warning">'+(admin?'O Super Administrador não precisa de uma associação comercial para exercer funções administrativas.':''+(staffAccess?.reason==='outside_schedule'?'Fora do horário de trabalho. Aguarde a abertura programada.':staffAccess?.reason==='blocked'?'O seu acesso foi bloqueado pelo proprietário. Contacte o responsável.':'Esta conta não tem acesso disponível neste momento. Contacte o responsável.')+'')+'</p>';
   shell('<h2>'+ (admin?'Super Administrador — Ubuntu Service':'Identidade verificada') +'</h2>'+
    '<p>Conta: <strong>'+escape(account.email)+'</strong></p>'+
    (admin?'<p class="pronto-super-admin-status"><strong>Perfil confirmado:</strong> Super Administrador Ubuntu Service, Lda.</p><p class="form-hint">A verificação está activa. Os módulos de administração de comerciantes, licenças e subscrições serão ligados à nova base apenas depois da validação das operações seguras.</p>':'')+
