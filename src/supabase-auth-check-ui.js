@@ -17,7 +17,9 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
  const shell=content=>{
   root.innerHTML='<section class="login-shell pronto-auth-test"><div class="login-brand"><img src="/icon.svg" alt=""><h1>Pronto POS</h1><p>Verificação de acesso Supabase</p></div><div class="panel login-panel">'+content+'</div><footer>Ubuntu Service, Lda. · Ambiente de validação</footer></section>';
  };
+ let staffWaitTimer=null;
  const form=()=>{
+  if(staffWaitTimer){clearInterval(staffWaitTimer);staffWaitTimer=null;}
   shell('<h2>Verificar identidade e permissões</h2>'+
   '<p>Entre com a sua conta Supabase. Depois, utilize o seu PIN pessoal de 5 dígitos para desbloquear o Pronto POS.</p>'+
   '<form id="pronto-auth-check-form">'+
