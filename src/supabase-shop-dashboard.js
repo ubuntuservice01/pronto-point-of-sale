@@ -19,7 +19,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,accessBlocked=false,accessCheckBusy=false;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
@@ -35,7 +35,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const session=()=>data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const photoCache=new Map();
  const render=()=>{
-  if(!data)return;
+  if(!data||accessBlocked)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
    draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
@@ -80,6 +80,48 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    showMessage('Não foi possível carregar dados da loja. Confirme a licença e a ligação à internet.',true);
   }finally{busy=false;}
  };
+ const lockedScreen=(reason)=>{
+  const message={
+   blocked:'O seu acesso foi bloqueado pelo proprietário. Contacte o responsável.',
+   outside_schedule:'Fora do horário de trabalho. Aguarde a abertura programada ou contacte o responsável.',
+   suspended:'A sua conta está suspensa. Contacte o responsável.',
+   business_unavailable:'A loja não está disponível. Contacte o responsável.',
+   not_associated:'A sua conta já não está associada a esta loja.'
+  }[reason]||'Não é possível confirmar o acesso. Aguarde a ligação à internet.';
+  accessBlocked=true;data=null;cart=[];pending=null;credit=null;finance=null;returns=null;inventory=null;photoCache.clear();
+  root.innerHTML='<section class="login-shell pronto-auth-test"><div class="panel login-panel">'+
+   '<h2>Acesso ao Pronto POS encerrado</h2><p role="alert">'+esc(message)+'</p>'+
+   '<p class="form-hint">A verificação é automática. Nenhum dado comercial fica disponível enquanto o acesso estiver bloqueado.</p>'+
+   '<button type="button" data-shop-logout class="secondary full">Terminar sessão</button></div></section>';
+ };
+ const checkStaffAccess=async()=>{
+  if(signal.aborted||grant.role==='owner'||accessCheckBusy)return !accessBlocked;
+  accessCheckBusy=true;
+  try{
+   const state=await client.myAccessStatus(grant.id);
+   if(!state.allowed){
+    if(!accessBlocked)lockedScreen(state.reason);
+    return false;
+   }
+   if(accessBlocked){
+    if(busy)return false;
+    const latest=await client.account();
+    const permitted=latest.grants.find(g=>g.id===grant.id);
+    if(!permitted){lockedScreen('not_associated');return false;}
+    account=latest;grant=permitted;accessBlocked=false;
+    await safeLoad(true);
+   }
+   return true;
+  }catch(error){
+   if(error.message==='supabase_unauthorized'){await leave();return false;}
+   if(!signal.aborted&&!accessBlocked)lockedScreen('connection_lost');
+   return false;
+  }finally{accessCheckBusy=false;}
+ };
+ const accessTimer=setInterval(()=>{void checkStaffAccess();},5000);
+ signal.addEventListener('abort',()=>clearInterval(accessTimer),{once:true});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)void checkStaffAccess();},{signal});
+ window.addEventListener('focus',()=>{void checkStaffAccess();},{signal});
  const loadReports=async()=>{
   if(disconnected())return showMessage('Sem internet, não é possível actualizar relatórios.',true);
   if(busy)return;
@@ -166,6 +208,23 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
+  if(el.hasAttribute('data-staff-access-mode')){
+   if(grant.role!=='owner'||disconnected())return showMessage('Apenas o proprietário pode alterar o acesso online.',true);
+   const mode=el.dataset.staffAccessMode,target=el.dataset.staffUser;
+   const employee=staffManagement?.staff.find(p=>p.id===target);
+   if(!employee||!['auto','allow','block'].includes(mode))return;
+   const confirmation={block:'Bloquear imediatamente',allow:'Autorizar imediatamente',auto:'Retomar o horário automático'}[mode];
+   if(!confirm(confirmation+' para '+employee.name+'?'))return;
+   busy=true;showMessage('A actualizar acesso remoto no servidor…');
+   void(async()=>{
+    try{
+     await client.ownerStaffAccessAction('mode',{business_id:grant.id,user_id:target,manual_mode:mode});
+     await refresh();
+     showMessage('Controlo remoto actualizado. O servidor já aplica o novo acesso.');
+    }catch(error){showMessage('Não foi possível alterar o acesso. ('+error.message+')',true);}
+    finally{busy=false;}
+   })();return;
+  }
   if(el.hasAttribute('data-staff-suspend')||el.hasAttribute('data-staff-reactivate')){
    if(grant.role!=='owner'||disconnected())return showMessage('A alteração exige permissão de proprietário e ligação activa.',true);
    const mode=el.hasAttribute('data-staff-suspend')?'suspend':'reactivate';
@@ -495,6 +554,28 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     branches=await client.merchantBranches(grant.id);
     await refresh();showMessage('Filial actualizada com sucesso.');
    }catch(e){showMessage('Falha na gestão da filial: '+e.message,true);}
+   finally{busy=false;}
+   return;
+  }
+  if(action==='staff_access_schedule'){
+   if(grant.role!=='owner'||disconnected())return showMessage('É necessário ter permissão de proprietário e internet.',true);
+   const fields=new FormData(form),id=String(fields.get('user_id')||'');
+   const employee=staffManagement?.staff.find(x=>x.id===id);
+   const start=String(fields.get('start_time')||''),end=String(fields.get('end_time')||'');
+   const weekdays=fields.getAll('weekdays').map(Number);
+   if(!employee||!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(start)||
+    !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(end)||start===end||
+    weekdays.length===0||weekdays.length>7||new Set(weekdays).size!==weekdays.length||
+    weekdays.some(day=>!Number.isInteger(day)||day<0||day>6))
+    return showMessage('Revise o horário e seleccione pelo menos um dia.',true);
+   const enabled=fields.has('schedule_enabled');
+   if(!confirm('Guardar horário para '+employee.name+'? Os horários seguem Africa/Maputo e podem bloquear uma sessão já aberta.'))return;
+   busy=true;showMessage('A guardar horário no servidor…');
+   try{
+    await client.ownerStaffAccessAction('schedule',{business_id:grant.id,user_id:id,
+     schedule_enabled:enabled,start_time:start,end_time:end,weekdays});
+    await refresh();showMessage('Horário guardado. Use «Usar horário» para activar o controlo automático.');
+   }catch(error){showMessage('Não foi possível guardar o horário. ('+error.message+')',true);}
    finally{busy=false;}
    return;
   }
@@ -850,5 +931,5 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  window.addEventListener('offline',()=>showMessage('Sem internet: as vendas não podem ser concluídas. Guarde um rascunho encriptado e recupere-o depois de entrar novamente com ligação.',true),{signal});
  window.addEventListener('online',()=>showMessage('Ligação restabelecida. Confira o stock actualizado antes de concluir.'),{signal});
  root.innerHTML='<main class="shop-loading">A consultar filiais e permissões reais no Supabase…</main>';
- await safeLoad(true);
+ if(await checkStaffAccess())await safeLoad(true);
 }
