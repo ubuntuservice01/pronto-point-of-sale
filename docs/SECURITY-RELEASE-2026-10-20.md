@@ -14,18 +14,22 @@ Repositório: `ubuntuservice01/pronto-point-of-sale`. Projecto Supabase confirma
 
 ## Limites e bloqueios remanescentes
 
-**Ponto 01 — parcialmente validado, não homologado como produção.** O ensaio cobre 12 tabelas, não todas as 32 e não substitui login real no browser, requests REST/RPC forjadas, verificação da suspensão, Storage ou recuperação de sessão.
+**Ponto 01 — verificado na camada RLS/PostgreSQL (não é autorização de produção).** Depois do primeiro ensaio com 12 tabelas, uma segunda execução usou duas empresas com dois utilizadores sintéticos distintos e um utilizador sem associação, com dados presentes em **30 tabelas operacionais**. Todos os acessos esperados foram aprovados e o terceiro utilizador viu zero linhas. As **2 tabelas internas** (`pronto_plans` e `pronto_product_code_counters`) não permitem leitura directa nem possuem políticas. A transacção terminou com `ROLLBACK` e as contagens posteriores foram 0 comerciantes, 0 vendas e 0 associações. É um teste RLS com identidades simuladas em SQL, não um login HTTP real.
 - Projecto sem comerciantes/sessões/vendas reais: ainda não existe prova de fluxo comercial integral com duas lojas reais.
 - O advisor ainda assinala `auth_leaked_password_protection` desactivado; activar nas configurações Supabase Auth.
-- Sete tabelas sem políticas RLS requerem confirmação individual de inacessibilidade intencional.
+- O advisor continua a sinalizar sete tabelas sem políticas. As duas tabelas internas de `public` foram verificadas como privadas; cinco tabelas estão no esquema privado e a autorização das funções relevantes será revista nos pontos seguintes.
 - Os 67 cenários QA em `docs/QA-MANUAL.md` continuam por homologar.
 - Restauro de backup, testes Android/iOS/scanner/impressão e requisitos fiscais ainda bloqueiam a publicação comercial.
 
 ## Próximas acções
 
-1. Concluir teste de isolamento das restantes tabelas e de funções RPC/Storage com dois utilizadores reais num ambiente controlado (pontos 01–09).
+1. **Ponto 02 em seguida:** validar sessões de dois utilizadores reais na Data API/REST e RPCs, com acessos e dados segregados; os ensaios sintéticos no SQL não substituem autenticação HTTP.
 2. Realizar teste de registo do comerciante, produto, caixa, venda e reinício da sessão, com auditoria.
 3. Completar QA e backups/restauro; configurar domínio, HTTPS, email e política de autenticação antes do piloto.
 4. Não apresentar a demonstração IndexedDB como sistema comercial; `/?mode=supabase` permanece modo-piloto até homologação.
 
 Referências: `tests/sql/pronto_core_rls_rollback.sql`, `docs/QA-MANUAL.md`, `docs/ROADMAP-98-RETOMA.md`.
+
+## Contrato de segurança reproduzível
+
+Em 20/10/2026 foi executado com sucesso o teste de metadados de RLS e privilégios, agora reproduzível em `tests/sql/pronto_release_rls_contract.sql`. Confirma 32 tabelas com RLS, sem concessões anónimas e sem escrita directa a partir dos perfis browser. A última pipeline GitHub anterior a esta atualização, no commit `4f117a9`, concluiu com sucesso; o teste automático do commit de documentação deverá ser considerado separadamente.

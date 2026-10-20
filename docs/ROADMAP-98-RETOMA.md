@@ -3,7 +3,7 @@
 Esta é uma nova lista operacional, não uma cópia da auditoria original. [V] = verificar/homologar; [D] = requer desenvolvimento ou integração adicional. Nenhum item está marcado como concluído sem evidência individual. Retomar pelo ponto 01.
 
 ## Segurança
-- [ ] 01 [V] Validar RLS entre empresas (12 tabelas aprovadas no ensaio A/B; homologação completa pendente)
+- [x] 01 [V] Validar RLS entre empresas — **validação PostgreSQL concluída**: 30 tabelas com dados fictícios A/B e utilizador externo; 2 tabelas internas sem leitura directa. Os testes REST/RPC, sessões reais e Storage permanecem nos pontos 02–09.
 - [ ] 02 [V] Validar leitura isolada
 - [ ] 03 [V] Validar escrita isolada
 - [ ] 04 [V] Validar permissões por perfil
@@ -136,5 +136,14 @@ Esta é uma nova lista operacional, não uma cópia da auditoria original. [V] =
 - [x] Teste SQL transaccional A/B e utilizador externo em 12 tabelas; todas as consultas deram o resultado esperado. Dados revertidos por ROLLBACK.
 - [x] Revisão RLS: 32/32 tabelas operacionais têm RLS activo; sem escrita directa por `anon`/`authenticated`.
 - [x] Corrigidos privilégios excedentes de `anon`/`authenticated` em `pronto_debt_ledger`; migração Supabase `20261020170239` aplicada e verificada.
-- [ ] **Ponto 01 não homologado integralmente:** validar restantes políticas, RPCs, Storage e autenticação real em duas contas com dados de teste controlados.
+- [x] **Ponto 01 — isolamento RLS do PostgreSQL validado** em 30 tabelas legíveis por comerciantes; outras 2 permanecem privadas. Não equivale à homologação geral de Auth, REST/RPC ou Storage (pontos 02–09).
 - [ ] Publicação comercial continua bloqueada por QA manual, backups/restauro e requisitos fiscais; ver `docs/SECURITY-RELEASE-2026-10-20.md`.
+
+### Complemento do Ponto 01 — 20/10/2026
+
+- [x] Simulado no PostgreSQL um proprietário da Loja A, outro da Loja B e um terceiro utilizador sem associação. **30 tabelas com dados de ambas as lojas** respeitaram isolamento, incluindo caixa, dívidas, compras, devoluções e transferências; 2 filiais por loja em `pronto_branches`.
+- [x] Confirmado que `pronto_plans` e `pronto_product_code_counters` não possuem políticas nem `SELECT` para `anon` ou `authenticated`.
+- [x] Consulta de auditoria de permissões aprovou: **32/32 tabelas RLS; 0 leituras anónimas; 0 escritas directas por clientes**.
+- [x] Confirmação após `ROLLBACK`: 0 empresas, 0 vendas e 0 associados fictícios. Teste não guardou transacções comerciais.
+- [x] Reproduzível: `tests/sql/pronto_release_rls_contract.sql` (contrato de permissões). A execução A/B de dados foi efectuada em transacção na base, com `ROLLBACK`.
+- [ ] **Próximo: Ponto 02** — testar leitura REST/RPC com duas contas reais temporárias, sem misturar contas do Super Admin; seguir com perfil, Storage e verificação da autorização de escrita em pontos 03–09.
