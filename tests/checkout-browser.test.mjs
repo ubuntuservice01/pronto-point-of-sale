@@ -101,6 +101,14 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
    await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:rect.x,y:rect.y,button:'left',clickCount:1});
    return evalJS('(() => ({selected:document.querySelector(' + JSON.stringify(selector) + ')?.getAttribute("aria-pressed"),sameSearch:window.__posSearch===document.querySelector("#search"),sameCheckout:window.__posCheckout===document.querySelector("#sale-cart")}))()');
   }
+  // Payment brands must remain visible with selected styles (not generic green).
+  assert.equal((await clickMethod('mpesa')).selected,'true');
+  await wait(210); // CSS keeps its 150 ms button background transition.
+  assert.equal(await evalJS('getComputedStyle(document.querySelector("[data-quick-payment=mpesa]")).backgroundColor'),'rgb(230, 0, 0)');
+  assert.equal((await clickMethod('emola')).selected,'true');
+  await wait(210);
+  assert.equal(await evalJS('getComputedStyle(document.querySelector("[data-quick-payment=emola]")).backgroundColor'),'rgb(245, 130, 32)');
+  assert.equal(await evalJS('getComputedStyle(document.querySelector("[data-quick-payment=emola]")).color'),'rgb(32, 43, 53)');
   for (const key of ['emola','mpesa','transfer','mixed','cash','credit','mixed','emola','cash']) {
    const result = await clickMethod(key);
    assert.equal(result.selected,'true',key);
