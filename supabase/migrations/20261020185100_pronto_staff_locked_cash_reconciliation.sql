@@ -64,7 +64,7 @@ begin
   values(v_business,v_actor,'team.staff_cash_emergency_closed',v_result||
    pg_catalog.jsonb_build_object('reason',v_reason));
  return v_result;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION pronto_private.owner_suspended_cash_snapshot(p_business uuid)
  RETURNS jsonb
@@ -101,5 +101,5 @@ begin
    where s.business_id=p_business and s.status='open'
    ),'[]'::jsonb),
   'generated_at',now());
-end $function$
+end $function$;
 
