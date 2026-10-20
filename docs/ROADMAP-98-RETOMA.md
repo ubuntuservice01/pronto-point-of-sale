@@ -3,7 +3,7 @@
 Esta é uma nova lista operacional, não uma cópia da auditoria original. [V] = verificar/homologar; [D] = requer desenvolvimento ou integração adicional. Nenhum item está marcado como concluído sem evidência individual. Retomar pelo ponto 01.
 
 ## Segurança
-- [ ] 01 [V] Validar RLS entre empresas
+- [ ] 01 [V] Validar RLS entre empresas (12 tabelas aprovadas no ensaio A/B; homologação completa pendente)
 - [ ] 02 [V] Validar leitura isolada
 - [ ] 03 [V] Validar escrita isolada
 - [ ] 04 [V] Validar permissões por perfil
@@ -130,3 +130,11 @@ Esta é uma nova lista operacional, não uma cópia da auditoria original. [V] =
 
 **Próxima operação técnica:** ensaio RLS com duas identidades de empresas distintas sem alterar dados produtivos, e investigação das políticas de SELECT/INSERT/UPDATE antes de qualquer aprovação comercial. Critério para levantar bloqueio: evidência de isolamento real, vendas/caixa idempotentes e testes de recuperação.
 
+
+## Execução de 20/10/2026 — isolamento A/B e permissões de dívidas
+
+- [x] Teste SQL transaccional A/B e utilizador externo em 12 tabelas; todas as consultas deram o resultado esperado. Dados revertidos por ROLLBACK.
+- [x] Revisão RLS: 32/32 tabelas operacionais têm RLS activo; sem escrita directa por `anon`/`authenticated`.
+- [x] Corrigidos privilégios excedentes de `anon`/`authenticated` em `pronto_debt_ledger`; migração Supabase `20261020170239` aplicada e verificada.
+- [ ] **Ponto 01 não homologado integralmente:** validar restantes políticas, RPCs, Storage e autenticação real em duas contas com dados de teste controlados.
+- [ ] Publicação comercial continua bloqueada por QA manual, backups/restauro e requisitos fiscais; ver `docs/SECURITY-RELEASE-2026-10-20.md`.
