@@ -68,11 +68,11 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
    'const b="22222222-2222-4222-8222-222222222222";',
    'const p="33333333-3333-4333-8333-333333333333";',
    'const s="44444444-4444-4444-8444-444444444444";',
-   'window.__merchantTest={calls:[],stock:5};',
+   'window.__merchantTest={calls:[],stock:5,staffAllowed:true};',
    'for(let i=0;i<100&&!document.getElementById("app");i++)await new Promise(r=>setTimeout(r,80));',
    'const root=document.getElementById("app");if(!root)throw Error("app container missing");root.replaceChildren();',
    'const client={',
-   'async myAccessStatus(){return {allowed:true,reason:"open"};},',
+   'async myAccessStatus(){return {allowed:window.__merchantTest.staffAllowed,reason:window.__merchantTest.staffAllowed?"open":"blocked"};},',
    'async merchantBranches(){return [{id:b,name:"Principal"}];},',
    'async merchantSnapshot(){return {role:"cashier",products:[{id:p,name:"Arroz",code:"PR-000001",unit:"kg",category:"Alimentação",priceCents:7000,stock:window.__merchantTest.stock,minStock:1}],branches:[{id:b,name:"Principal"}],sessions:[{id:s,operatorId:u,openingCash:20000,openedAt:new Date().toISOString()}],sales:[]};},',
    'async merchantAction(action,payload){window.__merchantTest.calls.push({action,payload});if(action==="sale_complete"){window.__merchantTest.stock-=1;return {sale_id:u,duplicate:false,total_cents:7000};}throw Error("unexpected");},',
@@ -108,6 +108,14 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
   assert.equal(sale.calls[0].payload.cash_received_cents,2000);
   assert.equal(sale.cart,0);
   assert.match(sale.feedback,/Venda concluída/);
+
+  const accessLocked=await js([
+   '(async()=>{window.__merchantTest.staffAllowed=false;window.dispatchEvent(new Event("focus"));',
+   'for(let i=0;i<40&&!document.body.textContent.includes("Acesso ao Pronto POS encerrado");i++)await new Promise(r=>setTimeout(r,20));',
+   'return {locked:document.body.textContent.includes("Acesso ao Pronto POS encerrado"),',
+   'search:!!document.querySelector("#shop-search")};})()'
+  ].join(''));
+  assert.deepEqual(accessLocked,{locked:true,search:false});
 
   // The same real Chrome page now checks PIN enrollment and lock/unlock.
   const pinMounted=await js([
