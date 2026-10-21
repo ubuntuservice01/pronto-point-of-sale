@@ -20,6 +20,7 @@ Implementação aditiva à estrutura atual do POS Supabase. Os cálculos de vend
 - `20261021120000_cash_justifications.sql` — notas auditadas sem editar a contagem.
 - `20261021121500_cash_private_totals_permissions.sql` — protege o cálculo privado dos acessos directos por funcionários.
 - `20261021122500_optional_sale_without_drawer.sql` — coluna `session_id` de vendas permite NULL quando a política dispensa abertura.
+- `20261021124500_cash_historical_close_snapshot.sql` — recupera totais de fechos antigos e fechos excepcionais com contagem para preservar o relatório sem modificar sessões existentes.
 
 ## Verificações efectuadas
 - SQL transaccional **com ROLLBACK**: abertura 0 MT e 2.000 MT; duplicação de terminal; política obrigatória/opcional; venda mista 20 MT dinheiro + 50 MT e-Mola; venda M-Pesa 70 MT separada do saldo físico; repetição de venda sem duplicação; reforço de 50 MT; retirada de 10 MT; fecho cego com falta; pedido de fecho bloqueando movimentos; bloqueio/desbloqueio remoto; fecho administrativo sem contagem; justificação posterior imutável; permissões simuladas de operador que impedem divulgação do saldo esperado e alterações de administração.
