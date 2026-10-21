@@ -89,6 +89,14 @@
 .pin-city-theme #pronto-pin-form input:not(#pronto-pin-entry){letter-spacing:3px;background:rgba(3,24,29,.42);color:#fff;border:1px solid #60bd9c}
 .pin-city-theme #pronto-pin-form input:not(#pronto-pin-entry):focus-visible{outline-color:#26eea8}
 .pin-city-theme .pronto-pin-panel>small{color:#c3dace;font-size:10px;opacity:.85}
+.pin-city-mobile-kpis{display:none}
+@media(max-width:550px){
+ .pin-city-theme .pin-city-mobile-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:5px}
+ .pin-city-theme .pin-city-mobile-kpis>div{min-width:0;text-align:left;padding:8px 10px;border-radius:11px;
+  border:1px solid #74e9bd66;background:rgba(19,119,91,.2)}
+ .pin-city-theme .pin-city-mobile-kpis span{display:block;color:#cef6df;font-size:10px}
+ .pin-city-theme .pin-city-mobile-kpis strong{display:block;color:#7ff7c8;font-size:13px;margin-top:4px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+}
 .pin-city-footer{position:absolute;bottom:14px;left:20px;right:20px;z-index:3;text-align:center;font-size:12px;color:#e2f5eb;letter-spacing:.03em;text-shadow:0 2px 12px #061921}
 .pin-city-footer strong{color:#2bf0ac;font-weight:800}
 @keyframes pin-city-pan{0%{transform:scale(1) translate(-.8%,-.6%)}100%{transform:scale(1.075) translate(.8%,.4%)}}
