@@ -4,6 +4,21 @@ import {pinCityBackdrop,readPinKPIs,clearPinKPIs} from './pin-city-ui.js';
 import {MONEY} from './supabase-shop-core.js';
 // Not a replacement for Supabase Auth / MFA and not a cold-start login credential.
 const valid=value=>typeof value==='string'&&/^[0-9]{5}$/.test(value);
+export const PIN_FOOTER_TEXT='Plataforma desenvolvida pela Ubuntu Service, Lda. — Criando pontes entre o físico e o digital.';
+// Number-row and Numpad presses both expose their character through event.key.
+// Ignore shortcuts and composition so the keyboard handler stays PIN-only.
+export function pinKeyboardKey(event){
+ if(!event||event.isComposing||event.ctrlKey||event.metaKey||event.altKey)return null;
+ const key=String(event.key||'');
+ return /^[0-9]$/.test(key)||['Backspace','Delete','Escape','Enter'].includes(key)?key:null;
+}
+export function editUnlockPin(value,key){
+ const current=String(value??'').replace(/[^0-9]/g,'').slice(0,5);
+ if(/^[0-9]$/.test(key))return (current+key).slice(0,5);
+ if(key==='Backspace')return current.slice(0,-1);
+ if(key==='Delete'||key==='Escape')return '';
+ return current;
+}
 export const PIN_IDLE_MS=600000; // 10 minutes of actual inactivity.
 export function pinError(result){
  if(result?.reason==='incorrect_pin')return 'PIN incorrecto. Restam '+(result.remaining_attempts??'?')+' tentativas.';
@@ -30,7 +45,7 @@ export function pinScreen({mode='unlock',email='',message='',metrics=null}={}){
    '<label>Novo PIN<input name="new" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" minlength="5" maxlength="5" required></label>'+
    '<label>Confirmar PIN<input name="confirm" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" minlength="5" maxlength="5" required></label>'+
    '<button class="pronto-pin-primary" type="submit">'+(setup?'Activar PIN':recover?'Recuperar PIN':'Alterar PIN')+'</button></form>':
-  '<form id="pronto-pin-form" autocomplete="off">'+
+  '<form id="pronto-pin-form" autocomplete="off" novalidate>'+
    '<div class="pronto-pin-dots" aria-hidden="true">'+Array.from({length:5},()=>'<span></span>').join('')+'</div>'+
    '<label class="pronto-pin-input-label">PIN<input id="pronto-pin-entry" name="pin" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" maxlength="5" minlength="5" required aria-label="Introduza o PIN de cinco dígitos"></label>'+
    '<div class="pronto-pin-keypad">'+['1','2','3','4','5','6','7','8','9','Limpar','0','⌫'].map(key=>{
@@ -54,7 +69,7 @@ export function pinScreen({mode='unlock',email='',message='',metrics=null}={}){
   '<div><span>Vendas hoje</span><strong>'+(metrics?escape(MONEY(metrics.todayCents)):'—')+'</strong></div>'+
   '<div><span>Este mês</span><strong>'+(metrics?escape(MONEY(metrics.monthCents)):'—')+'</strong></div>'+
  '</div></section>'+
- '<footer class="pin-city-footer">plataforma desenvolvida pelo <strong>Ubuntu Servers</strong>, criando pontes entre o físico e o digital.</footer>';
+ '<footer class="pin-city-footer">Plataforma desenvolvida pela <strong>Ubuntu Service, Lda.</strong> — Criando pontes entre o físico e o digital.</footer>';
 }
 export async function mountProntoPinGate({
  root,client,account,open,onLogout,
@@ -120,8 +135,9 @@ export async function mountProntoPinGate({
    overlay.querySelectorAll('[data-pin-key]').forEach(button=>{
     button.addEventListener('click',()=>{
      const key=button.dataset.pinKey;
-     entry.value=key==='Limpar'?'':key==='⌫'?entry.value.slice(0,-1):(entry.value+key).slice(0,5);
-     updateDots();entry.focus();
+     entry.value=editUnlockPin(entry.value,key==='Limpar'?'Delete':key==='⌫'?'Backspace':key);
+     entry.dispatchEvent(new Event('input',{bubbles:true}));
+     entry.focus({preventScroll:true});
     },{signal});
    });
   }
@@ -165,7 +181,7 @@ export async function mountProntoPinGate({
     }
    }finally{processing=false;if(submit.isConnected)submit.disabled=false;}
   },{signal});
-  win.setTimeout(()=>{if(!destroyed)form.querySelector('input')?.focus();},0);
+  win.setTimeout(()=>{if(!destroyed)form.querySelector('input')?.focus({preventScroll:true});},0);
  };
  const close=()=>{
   if(destroyed)return;
@@ -179,6 +195,28 @@ export async function mountProntoPinGate({
   lastRemembered=0;
   resetIdle();
  };
+ // Only the unlock PIN input is handled. Creation, recovery and normal pages
+ // remain native keyboard forms; this single listener is aborted on cleanup.
+ const onPinKeyboard=e=>{
+  const entry=overlay?.querySelector('#pronto-pin-entry');
+  if(!entry||destroyed||processing||e.defaultPrevented)return;
+  const key=pinKeyboardKey(e);
+  if(!key)return;
+  if(key==='Enter'){
+   // Native Enter on an input or focused button must keep its usual action.
+   if(e.target===entry||e.target?.closest?.('button,a,input,select,textarea,[role="button"]'))return;
+   e.preventDefault();
+   overlay.querySelector('#pronto-pin-form')?.requestSubmit();
+   return;
+  }
+  if(e.target!==entry&&e.target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+  // Avoid entering a digit twice when the real password input has focus.
+  if(e.target===entry&&key!=='Delete'&&key!=='Escape')return;
+  e.preventDefault();
+  entry.value=editUnlockPin(entry.value,key);
+  entry.dispatchEvent(new Event('input',{bubbles:true}));
+ };
+ doc.addEventListener('keydown',onPinKeyboard,{signal,capture:true});
  // Close/background: always require PIN next time; a genuine refresh is different.
  // beforeunload happens on reload AND tab close. Only a browser-confirmed
  // navigation.type=reload on the next load may use the recent per-tab unlock.
