@@ -1,5 +1,7 @@
 // Trusted-screen PIN gate for sessions already authenticated with Supabase Auth.
 import {clearPinContinuity,rememberPinContinuity,canResumePinContinuity} from './pronto-pin-continuity.js';
+import {pinCityBackdrop,readPinKPIs,clearPinKPIs} from './pin-city-ui.js';
+import {MONEY} from './supabase-shop-core.js';
 // Not a replacement for Supabase Auth / MFA and not a cold-start login credential.
 const valid=value=>typeof value==='string'&&/^[0-9]{5}$/.test(value);
 export const PIN_IDLE_MS=600000; // 10 minutes of actual inactivity.
@@ -14,7 +16,7 @@ export function pinError(result){
  return 'Não foi possível validar o PIN. Verifique a ligação e tente novamente.';
 }
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function pinScreen({mode='unlock',email='',message=''}={}){
+export function pinScreen({mode='unlock',email='',message='',metrics=null}={}){
  const setup=mode==='create',change=mode==='change',recover=mode==='recover';
  const title=setup?'Criar PIN de 5 dígitos':change?'Alterar PIN':recover?'Recuperar PIN':'Ecrã bloqueado';
  const subtitle=setup?'O PIN pertence à sua conta e será usado para desbloquear este dispositivo.':
@@ -31,18 +33,28 @@ export function pinScreen({mode='unlock',email='',message=''}={}){
   '<form id="pronto-pin-form" autocomplete="off">'+
    '<div class="pronto-pin-dots" aria-hidden="true">'+Array.from({length:5},()=>'<span></span>').join('')+'</div>'+
    '<label class="pronto-pin-input-label">PIN<input id="pronto-pin-entry" name="pin" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" maxlength="5" minlength="5" required aria-label="Introduza o PIN de cinco dígitos"></label>'+
-   '<div class="pronto-pin-keypad">'+['1','2','3','4','5','6','7','8','9','Limpar','0','⌫'].map(key=>
-    '<button type="button" data-pin-key="'+escape(key)+'" aria-label="'+(key==='⌫'?'Apagar último número':escape(key))+'">'+escape(key)+'</button>').join('')+'</div>'+
+   '<div class="pronto-pin-keypad">'+['1','2','3','4','5','6','7','8','9','Limpar','0','⌫'].map(key=>{
+    const letters={2:'ABC',3:'DEF',4:'GHI',5:'JKL',6:'MNO',7:'PQRS',8:'TUV',9:'WXYZ'}[key]||'';
+    return '<button type="button" data-pin-key="'+escape(key)+'" aria-label="'+(key==='⌫'?'Apagar último número':escape(key))+'">'+
+     '<span>'+escape(key)+'</span>'+(letters?'<small>'+letters+'</small>':'')+'</button>';
+   }).join('')+'</div>'+
    '<button class="pronto-pin-primary" type="submit">Desbloquear</button></form>';
- return '<section class="pronto-pin-panel" role="dialog" aria-modal="true" aria-labelledby="pronto-pin-title">'+
- '<div class="pronto-pin-brand"><img src="/icon.svg" alt=""><strong>Pronto POS</strong></div>'+
+ return pinCityBackdrop({metrics})+
+ '<section class="pronto-pin-panel" role="dialog" aria-modal="true" aria-labelledby="pronto-pin-title">'+
+ '<div class="pronto-pin-brand"><img src="/icon.svg" alt=""><strong>Pronto <span class="pin-pos-green">POS</span></strong></div>'+
  '<div class="pronto-pin-lock-icon" aria-hidden="true">🔒</div>'+
  '<h2 id="pronto-pin-title">'+title+'</h2><p class="pronto-pin-intro">'+subtitle+'</p>'+
  '<p class="pronto-pin-account">'+escape(email)+'</p>'+fields+
  '<p class="pronto-pin-message" id="pronto-pin-message" role="alert" aria-live="polite">'+escape(message)+'</p>'+
+ '<div class="pin-city-actions">'+
  (mode==='unlock'||mode==='change'?'<button class="pronto-pin-exit" type="button" id="pronto-pin-forgot">Esqueci o PIN</button>':'')+
- '<button class="pronto-pin-exit" type="button" id="pronto-pin-signout">Sair e iniciar sessão novamente</button>'+
- '<small>O PIN não substitui a palavra-passe da conta nem autoriza operações offline.</small></section>';
+ '<button class="pronto-pin-exit" type="button" id="pronto-pin-signout">Terminar sessão</button></div>'+
+ '<small>O PIN protege o acesso à sua conta.</small>'+
+ '<div class="pin-city-mobile-kpis" aria-label="Resumo da loja">'+
+  '<div><span>Vendas hoje</span><strong>'+(metrics?escape(MONEY(metrics.todayCents)):'—')+'</strong></div>'+
+  '<div><span>Este mês</span><strong>'+(metrics?escape(MONEY(metrics.monthCents)):'—')+'</strong></div>'+
+ '</div></section>'+
+ '<footer class="pin-city-footer">plataforma desenvolvida pelo <strong>Ubuntu Servers</strong>, criando pontes entre o físico e o digital.</footer>';
 }
 export async function mountProntoPinGate({
  root,client,account,open,onLogout,
@@ -71,7 +83,7 @@ export async function mountProntoPinGate({
   forget();
  };
  const signout=async()=>{
-  cleanup();
+  cleanup();clearPinKPIs(account.userId);
   try{await client.signOut();}finally{onLogout();}
  };
  const resetIdle=()=>{
@@ -88,10 +100,10 @@ export async function mountProntoPinGate({
   toolbar?.remove();toolbar=null;
   if(!overlay){
    overlay=doc.createElement('div');
-   overlay.className='pronto-pin-backdrop';
+   overlay.className='pronto-pin-backdrop pin-city-theme';
    doc.body.appendChild(overlay);
   }
-  overlay.innerHTML=pinScreen({mode,email:account.email});
+  overlay.innerHTML=pinScreen({mode,email:account.email,metrics:readPinKPIs(account.userId)});
   const form=overlay.querySelector('#pronto-pin-form');
   const alert=overlay.querySelector('#pronto-pin-message');
   const entry=overlay.querySelector('#pronto-pin-entry');
