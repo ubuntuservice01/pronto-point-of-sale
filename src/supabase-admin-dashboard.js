@@ -102,8 +102,9 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  };
  const submit=async event=>{
   const form=event.target.closest('form[data-provision-action]');
-  if(!form||busy)return;
+  if(!form)return;
   event.preventDefault();
+  if(busy)return;
   let item;
   try{item=prepareAdminProvisioning(form);}
   catch(e){message.textContent=errorMessages[e.message]||'Confira os dados introduzidos.';return;}
@@ -123,8 +124,9 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  };
  const controlForm=async event=>{
   const form=event.target.closest('form[data-admin-control]');
-  if(!form||busy)return;
+  if(!form)return;
   event.preventDefault();
+  if(busy)return;
   const action=form.dataset.adminControl,fd=new FormData(form),val=n=>String(fd.get(n)||'').trim();
   const moneyCents=name=>{
    const value=val(name);
