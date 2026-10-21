@@ -120,3 +120,24 @@
  .shop-layout .shop-notification-popover{right:-86px;width:min(350px,calc(100vw - 28px))}
  .shop-layout .shop-account{order:3;width:100%}
 }
+
+/* Mobile POS: the authorised Vender action owns the central (third) nav slot. */
+@media(max-width:830px){
+ .shop-layout .shop-mobile-bottom{align-items:center;padding-top:12px;padding-bottom:max(9px,env(safe-area-inset-bottom))}
+ .shop-layout .shop-mobile-bottom button.shop-bottom-sell{
+  position:relative;z-index:1;min-height:69px;transform:translateY(-11px);
+  background:linear-gradient(145deg,#099c7c,#08765e);color:#fff;
+  border-radius:17px;box-shadow:0 8px 19px #08765e54,0 0 0 3px #fff;
+  font-weight:850;touch-action:manipulation;
+ }
+ .shop-layout .shop-mobile-bottom button.shop-bottom-sell[aria-current=page]{
+  background:linear-gradient(145deg,#00a785,#006b56);color:#fff;
+  box-shadow:0 10px 23px #08765e6b,0 0 0 3px #fff;
+ }
+ .shop-layout .shop-mobile-bottom .shop-bottom-sell .shop-bottom-icon{width:34px;height:34px}
+ .shop-layout .shop-mobile-bottom .shop-bottom-sell .shop-bottom-icon svg{width:29px;height:29px;stroke-width:2.2}
+ .shop-layout .shop-mobile-bottom .shop-bottom-sell small{font-size:12px;font-weight:900;letter-spacing:.1px}
+ .shop-layout .shop-mobile-bottom button.shop-bottom-sell:focus-visible{outline:3px solid #2db9ff;outline-offset:4px}
+ .shop-layout .shop-main{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+}
+@media(prefers-reduced-motion:reduce){.shop-layout .shop-mobile-bottom button.shop-bottom-sell{transition:none}}
