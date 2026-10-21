@@ -1,5 +1,15 @@
 # Pronto POS
 
+## Entrada pública para piloto (Outubro de 2026)
+
+Em domínio público, o acesso inicia sempre no login real do Supabase: **não são criados nem apresentados produtos, empresas ou vendas fictícios**. A demonstração local é restrita a localhost/127.0.0.1 para testes de desenvolvimento. O servidor Node/SQLite mantém o seu modo autenticado quando identifica `meta[name=pronto-mode]` como `server`.
+
+**Primeira mercearia:** entrar com a conta Supabase de Super Administrador já configurada, criar o comerciante e a filial principal, criar um plano de teste, convidar uma **segunda conta de email** para proprietário e atribuir a licença. O proprietário aceita o convite, define a palavra-passe e o PIN de 5 dígitos, entra, cadastra produtos, abre o caixa e regista vendas reais de teste. O Super Administrador global não pode ser associado directamente como empregado de qualquer loja (proteção no backend).
+
+A base comercial Supabase foi verificada vazia antes do lançamento. Não foram apagados registos. O fluxo de autenticação conta com uma conta global preexistente confirmada; não podemos provar o login sem as credenciais dessa conta. Antes de utilização comercial com clientes, verificar dispositivos, backups, integração fiscal e meios de pagamento. Actualizar a página exige autenticação de novo enquanto o token é mantido apenas em memória.
+
+
+
 **O seu negócio na palma da mão.** POS geral mobile first da Ubuntu Service, Lda.
 
 ## Estado actual — 0.12
