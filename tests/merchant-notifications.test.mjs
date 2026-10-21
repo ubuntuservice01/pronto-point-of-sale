@@ -86,7 +86,7 @@ test('Merchant navigation uses real individual SVG symbols with distinct palette
  assert.match(css,/@media\(max-width:680px\)/);
 });
 test('Bell state, accessible close, scoped server refresh and context-switch guards are wired',()=>{
- const js=read('src/supabase-shop-dashboard-new.js');
+ const js=read('src/supabase-shop-dashboard.js');
  assert.match(js,/notificationsOpen=!notificationsOpen/);
  assert.match(js,/data-shop-notifications-all/);
  assert.match(js,/refreshAlertBadges/);
