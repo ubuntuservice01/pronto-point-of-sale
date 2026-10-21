@@ -103,7 +103,10 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
   assert.deepEqual(switched,{same:true,mixed:true,active:'true'});
   // Homologação 11: responsive merchant navigation at Android-size viewport.
   await debug.send('Emulation.setDeviceMetricsOverride',{width:360,height:800,deviceScaleFactor:2,mobile:true});
-  await wait(120);
+  // The test fixture is not an installed PWA; supply its viewport meta so
+  // Chromium emulates the same CSS viewport as a normal Android installation.
+  await js('(()=>{let m=document.querySelector("meta[name=viewport]");if(!m){m=document.createElement("meta");m.name="viewport";document.head.append(m);}m.content="width=device-width,initial-scale=1";return true;})()');
+  await wait(170);
   const mobile=await js([
    '(()=>{const app=document.querySelector(".shop-layout");',
    'const bottom=document.querySelector(".shop-mobile-bottom");',
