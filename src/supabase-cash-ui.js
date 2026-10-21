@@ -65,6 +65,11 @@ function sessionCard(s,{owner,blind,userId}){
      (typeof s.difference==='number'?'<p class="'+(s.difference<0?'cash-short':s.difference>0?'cash-extra':'cash-match')+'">'+
      (s.difference<0?'FALTA de ':s.difference>0?'SOBRA de ':'Caixa certo: ')+MONEY(Math.abs(s.difference))+'</p>':'')):
    '')+
+  (s.status==='closed'&&typeof s.difference==='number'&&s.difference!==0&&(isMine||owner)?
+   '<form data-shop-form="cash_note_difference" class="shop-form">'+
+   '<input type="hidden" name="session_id" value="'+esc(s.id)+'">'+
+   '<label>Justificar a diferença sem alterar a contagem<input name="reason" minlength="8" maxlength="500" required placeholder="Descreva o motivo da falta ou sobra"></label>'+
+   '<button class="shop-submit" type="submit">Guardar justificação auditada</button></form>':'')+
   (s.status==='pending'&&isMine?
    '<form data-shop-form="cash_close" class="shop-form">'+
    '<label>Dinheiro contado (MT)<input type="number" name="counted_cash" min="0" step="0.01" required></label>'+
