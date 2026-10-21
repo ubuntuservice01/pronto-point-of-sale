@@ -31,7 +31,7 @@ export function renderReturnView({returns,selectedSaleId='',session=null}={}){
     '<small>Vendido: '+esc(i.qty)+' '+esc(i.unit)+' · Já devolvido: '+esc(i.returned)+'</small>'+
     '<input type="hidden" name="product_'+n+'" value="'+esc(i.productId)+'">'+
     '<label>Quantidade a devolver<input type="number" name="qty_'+n+'" min="0" max="'+esc(Math.max(0,i.qty-i.returned))+'" step="0.001" value="0"></label>'+
-    '<label><input type="checkbox" name="resellable_'+n+'"> Artigo revendido / apto a voltar ao stock</label>'+
+    '<label><input type="checkbox" name="resellable_'+n+'"> Artigo em condições de voltar ao stock</label>'+
     '<label>Validade do artigo devolvido (se aplicável)<input type="date" name="expiry_'+n+'"></label></div>').join('')+
    '<label>Meio do reembolso<select name="method">'+methods.map(([id,name])=>
     '<option value="'+id+'">'+name+'</option>').join('')+'</select></label>'+
