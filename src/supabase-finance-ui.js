@@ -18,7 +18,7 @@ export function normalizeFinanceSnapshot(raw){
 }
 const payMethods='<option value="cash">Dinheiro</option><option value="mpesa">M-Pesa</option><option value="emola">e-Mola</option><option value="transfer">Transferência</option>';
 export function renderFinanceView({view,finance,products=[],supplierId='',lines=1,role='',session=null}){
- if(!finance)return section('Compras e despesas','A consultar dados do Supabase…','');
+ if(!finance)return section('Compras e despesas','','');
  if(view==='suppliers'){
   const chosen=finance.suppliers.find(x=>x.id===supplierId);
   return '<div class="shop-two">'+section('Fornecedores','Consulte os fornecedores registados no seu negócio.',
