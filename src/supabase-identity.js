@@ -9,6 +9,7 @@ import {normalizeFinanceSnapshot} from './supabase-finance-ui.js';
 import {normalizeReturnSnapshot} from './supabase-returns-ui.js';
 import {normalizeInventorySnapshot} from './supabase-inventory-ui.js';
 import {normalizeReports} from './supabase-reports-ui.js';
+import {normalizeDocumentBranding,serializeDocumentBranding} from './supabase-document-branding.js';
 import {normalizeTransferSnapshot} from './supabase-transfers-ui.js';
 import {normalizeStaffSnapshot} from './supabase-team-management-ui.js';
 import {normalizeSuspendedCash} from './supabase-staff-cash-ui.js';
@@ -87,11 +88,12 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   await refreshJob;
  }
- async function call(endpoint, {method='GET', payload, authenticated=true,allowLocked=false}={}) {
+ async function call(endpoint, {method='GET', payload, authenticated=true,allowLocked=false,prefer=''}={}) {
   if(authenticated&&sessionLocked&&!allowLocked)throw Error('pin_screen_locked');
   if(authenticated)await ensureFresh();
   const headers={apikey:publishableKey,Accept:'application/json'};
   if(payload!==undefined)headers['Content-Type']='application/json';
+  if(prefer)headers.Prefer=prefer;
   if(authenticated && session?.access_token)headers.Authorization='Bearer '+session.access_token;
   const response=await fetchImpl(apiURL.origin+endpoint, {
    method,headers,cache:'no-store',credentials:'omit',redirect:'error',
@@ -224,6 +226,59 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
  }
  async function provisionShopStaff({businessId,email,name,role}){
   return provisionAccount({businessId,email,name,role,scope:'owner'});
+ }
+
+ async function documentSettings(businessId){
+  if(!uuid(businessId))throw Error('document_scope');
+  const [settings,business]=await Promise.all([
+   call('/rest/v1/pronto_document_settings?select=display_name,phone,address,email,primary_color,secondary_color,template,footer_note,logo_path&business_id=eq.'+businessId),
+   call('/rest/v1/pronto_businesses?select=name,phone,address&id=eq.'+businessId)
+  ]);
+  if(!Array.isArray(settings)||!Array.isArray(business)||!business.length)throw Error('document_scope');
+  const company=business[0],row=settings[0]||{display_name:company.name,phone:company.phone||'',address:company.address||''};
+  return normalizeDocumentBranding(row,company.name);
+ }
+ async function saveDocumentSettings(businessId,branding){
+  if(!uuid(businessId))throw Error('document_scope');
+  const values=serializeDocumentBranding(branding);
+  if(values.logo_path&&!values.logo_path.startsWith(businessId+'/'))throw Error('document_logo_scope');
+  const rows=await call('/rest/v1/pronto_document_settings?on_conflict=business_id',{
+   method:'POST',prefer:'resolution=merge-duplicates,return=representation',
+   payload:{business_id:businessId,...values,updated_at:new Date().toISOString()}
+  });
+  if(!Array.isArray(rows)||rows.length!==1)throw Error('document_save_failed');
+  return normalizeDocumentBranding(rows[0]);
+ }
+ async function uploadDocumentLogo(businessId,file){
+  if(!uuid(businessId)||!file||typeof file.size!=='number'||file.size<1||file.size>2097152)
+   throw Error('document_logo_invalid');
+  const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[file.type];
+  if(!ext)throw Error('document_logo_invalid');
+  if(sessionLocked)throw Error('pin_screen_locked');
+  if(!session)throw Error('supabase_unauthorized');
+  await ensureFresh();
+  const path=businessId+'/'+crypto.randomUUID()+'.'+ext;
+  const response=await fetchImpl(apiURL.origin+'/storage/v1/object/pronto-document-logos/'+path,{
+   method:'POST',headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,
+    'Content-Type':file.type,'x-upsert':'false'},
+   cache:'no-store',credentials:'omit',redirect:'error',body:file
+  });
+  if(!response.ok)throw Error('document_logo_upload_failed');
+  return path;
+ }
+ async function documentLogoUrl(path){
+  if(typeof path!=='string'||!/^([0-9a-f-]{36})\/[0-9a-f-]{36}\.(png|jpg|webp)$/.test(path))
+   throw Error('document_logo_path');
+  const result=await call('/storage/v1/object/sign/pronto-document-logos/'+path,{
+   method:'POST',payload:{expiresIn:300}
+  });
+  const signed=result?.signedURL||result?.signedUrl;
+  if(typeof signed!=='string')throw Error('document_logo_url');
+  const normal=signed.startsWith('/object/sign/pronto-document-logos/')?'/storage/v1'+signed:signed;
+  const u=new URL(normal,apiURL.origin);
+  if(u.origin!==apiURL.origin||!u.pathname.startsWith('/storage/v1/object/sign/pronto-document-logos/'+path))
+   throw Error('document_logo_url');
+  return u.href;
  }
  async function merchantBranches(businessId){
   if(!uuid(businessId))throw Error('shop_scope');
@@ -518,5 +573,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {restoreSession,unlockReloadedScreen,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {restoreSession,unlockReloadedScreen,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
