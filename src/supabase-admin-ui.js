@@ -1,3 +1,4 @@
+import {renderAdmin360Overview,renderAdmin360Businesses,renderAdmin360Members,renderAdmin360Licenses,renderAdmin360Plans,renderAdmin360Finance,renderAdmin360Audit,renderAdmin360Security} from './supabase-admin-360.js';
 import {ADMIN_TABS,adminSummary,licenseState,matchAdminBusiness} from './supabase-admin-model.js';
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -12,7 +13,7 @@ const empty=(title,help)=>'<div class="pronto-admin-empty"><strong>'+esc(title)+
 const sub='Registos, associações e licenças são protegidos por permissões e histórico de alterações.';
 const tabs=[
  ['overview','Visão geral','layout-dashboard'],['businesses','Comerciantes','store'],['members','Utilizadores','users'],
- ['licenses','Licenças','shield-check'],['plans','Planos','package'],['security','Segurança','lock-keyhole']
+ ['licenses','Licenças','shield-check'],['plans','Planos','package'],['finance','Financeiro','wallet'],['audit','Auditoria','clipboard-list'],['security','Segurança','lock-keyhole']
 ];
 
 export function renderUbuntuAdminShell(account){
@@ -32,8 +33,18 @@ export function renderUbuntuAdminShell(account){
 
 const title=(name,description)=>'<div class="pronto-admin-page-title"><h2>'+esc(name)+'</h2><p>'+esc(description)+'</p></div>';
 const stats=(value,label,info='')=>'<article class="pronto-admin-stat"><small>'+esc(label)+'</small><strong>'+value+'</strong>'+(info?'<span>'+esc(info)+'</span>':'')+'</article>';
-export function renderUbuntuAdminTab(key,data,{query='',now=new Date()}={}){
+export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights={}}={}){
  if(!ADMIN_TABS.includes(key))throw Error('admin_tab');
+ if(key==='overview')return title('Painel de controlo','Gestão integral da plataforma e dos seus comerciantes.')+renderAdmin360Overview(data,insights);
+ if(key==='businesses')return title('Comerciantes','Administrar lojas, filiais e respectivos estados.')+
+  renderAdmin360Businesses({...data,businesses:data.businesses.filter(b=>matchAdminBusiness(b,query))},insights);
+ if(key==='members')return title('Utilizadores e acessos','Criar, editar, bloquear e reactivar perfis.')+renderAdmin360Members(data);
+ if(key==='licenses')return title('Licenças e subscrições','Atribuir, renovar ou cancelar licenças.')+renderAdmin360Licenses(data);
+ if(key==='plans')return title('Planos comerciais','Definir e gerir as condições comerciais.')+renderAdmin360Plans(data);
+ if(key==='finance')return title('Cobranças da Ubuntu','Apenas pagamentos efectivamente recebidos e registados.')+renderAdmin360Finance(data,insights);
+ if(key==='audit')return title('Auditoria','Operações e intervenções administrativas registadas.')+renderAdmin360Audit(data,insights);
+ if(key==='security')return title('Controlo e segurança','Bloqueios e suspensão dos serviços.')+renderAdmin360Security(data,insights);
+
  const summary=adminSummary(data,now);
  if(key==='overview'){
   return title('Visão geral','Empresas e licenças registadas no Pronto POS.')+

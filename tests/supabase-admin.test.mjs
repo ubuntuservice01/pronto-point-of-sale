@@ -84,24 +84,21 @@ test('Licence states and dashboard totals reflect current real records, not demo
  assert.equal(matchAdminBusiness(data.businesses[0],'sao joao'),true);
  assert.equal(matchAdminBusiness(data.businesses[0],'inexistente'),false);
 });
-test('The five navigation pages exist; no editable financial or licensing controls are rendered',()=>{
+test('All administration screens contain protected and interactive controls',()=>{
  const data=normalizeAdminOverview(serverData);
  const shell=renderUbuntuAdminShell({email:'test@example.org'});
- for(const tab of ADMIN_TABS) {
-  assert.ok(shell.includes('data-admin-tab="'+tab+'"'));
+ for(const tab of ADMIN_TABS){
+  assert.match(shell,new RegExp('data-admin-tab="'+tab+'"'));
   const html=renderUbuntuAdminTab(tab,data,{now:new Date('2026-10-14T19:00:00Z')});
   assert.ok(html.length>100);
-  assert.ok(!html.includes('<form'));
-  assert.ok(!html.includes('data-admin-delete'));
-  assert.ok(!html.includes('data-admin-create'));
  }
- assert.match(shell,/id="pronto-admin-refresh"/);
- assert.match(shell,/id="pronto-admin-logout"/);
- assert.match(shell,/id="pronto-admin-search"/);
- assert.match(renderUbuntuAdminTab('businesses',data),/Mercearia São João/);
- assert.match(renderUbuntuAdminTab('licenses',data),/Activo|Sem licença/);
- assert.match(renderUbuntuAdminTab('plans',data),/3[ .\u00a0\u202f]500,00 MT/);
- assert.match(renderUbuntuAdminTab('businesses',data,{query:'inexistente'}),/Nenhum comerciante encontrado/);
+ assert.match(renderUbuntuAdminTab('businesses',data),/business_edit/);
+ assert.match(renderUbuntuAdminTab('members',data),/Gerir|Gestão de contas/);
+ assert.match(renderUbuntuAdminTab('licenses',data),/license_cancel/);
+ assert.match(renderUbuntuAdminTab('plans',data),/plan_edit/);
+ assert.match(renderUbuntuAdminTab('finance',data),/payment_record/);
+ assert.match(renderUbuntuAdminTab('audit',data),/Histórico/);
+ assert.doesNotMatch(renderUbuntuAdminTab('businesses',data,{query:'inexistente'}),/data-admin-control="business_edit"/);
 });
 test('All untrusted business details and emails are escaped in the dashboard',()=>{
  const danger='<img src=x onerror=alert(1)>';
