@@ -18,7 +18,7 @@ export function pinScreen({mode='unlock',email='',message=''}={}){
  const title=setup?'Criar PIN de 5 dígitos':change?'Alterar PIN':recover?'Recuperar PIN':'Ecrã bloqueado';
  const subtitle=setup?'O PIN pertence à sua conta e será usado para desbloquear este dispositivo.':
   change?'Introduza o PIN actual e escolha um novo PIN.':
-  recover?'Confirme a sua palavra-passe da conta Supabase para definir um novo PIN pessoal.':
+  recover?'Confirme a sua palavra-passe para definir um novo PIN pessoal.':
   'Introduza o seu PIN para continuar sem perder o trabalho.';
  const fields=setup||change||recover?
   '<form id="pronto-pin-form" autocomplete="off">'+
