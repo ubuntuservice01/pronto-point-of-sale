@@ -132,20 +132,20 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    if(!Number.isSafeInteger(n)||n<0)throw Error('invalid_price');
    return n;
   };
-  let data;
+  let payload;
   try{
-   if(action==='business_edit')data={business_id:val('business_id'),name:val('name'),phone:val('phone'),address:val('address')};
-   else if(action==='branch_edit')data={business_id:val('business_id'),branch_id:val('branch_id'),name:val('name'),active:fd.has('active')};
-   else if(action==='member_edit')data={business_id:val('business_id'),user_id:val('user_id'),display_name:val('display_name'),role:val('role')};
-   else if(action==='plan_edit')data={plan_id:val('plan_id'),name:val('name'),price_cents:moneyCents('price_mzn'),duration_days:Number(val('duration_days'))};
-   else if(action==='payment_record')data={business_id:val('business_id'),plan_id:val('plan_id')||null,
+   if(action==='business_edit')payload={business_id:val('business_id'),name:val('name'),phone:val('phone'),address:val('address')};
+   else if(action==='branch_edit')payload={business_id:val('business_id'),branch_id:val('branch_id'),name:val('name'),active:fd.has('active')};
+   else if(action==='member_edit')payload={business_id:val('business_id'),user_id:val('user_id'),display_name:val('display_name'),role:val('role')};
+   else if(action==='plan_edit')payload={plan_id:val('plan_id'),name:val('name'),price_cents:moneyCents('price_mzn'),duration_days:Number(val('duration_days'))};
+   else if(action==='payment_record')payload={business_id:val('business_id'),plan_id:val('plan_id')||null,
     amount_cents:moneyCents('amount_mzn'),method:val('method'),external_reference:val('external_reference'),reason:val('reason')};
    else throw Error('admin_invalid_action');
   }catch(e){message.textContent=errorMessages[e.message]||'Confira todos os campos.';return;}
   if(!confirm(action==='payment_record'?'Confirma que a Ubuntu RECEBEU efectivamente este pagamento?':'Guardar estas alterações na plataforma?'))return;
   toggleBusy(true);message.textContent='A guardar no servidor…';
   try{
-   await client.adminControl(action,data);
+   await client.adminControl(action,payload);
    [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
    render();message.textContent='Operação confirmada e auditada.';
   }catch(e){await failure(e);}finally{toggleBusy(false);}
