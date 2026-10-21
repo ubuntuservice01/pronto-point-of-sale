@@ -1,5 +1,7 @@
 import {admin360AuditCSV} from './supabase-admin-360.js';
 import {showConfirmModal,showPromptModal} from './ui/pronto-modal.js';
+import {startProntoLoading} from './ui/pronto-loading.js';
+import {customerMessage} from './customer-copy.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderUbuntuAdminShell,renderUbuntuAdminTab} from './supabase-admin-ui.js';
 import {renderProvisioningForms} from './supabase-admin-forms.js';
@@ -80,8 +82,8 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   if(['supabase_unauthorized','supabase_identity_mismatch','admin_required'].includes(error.message)){
    await expired();return true;
   }
-  message.textContent=errorMessages[error.message.split(':')[0]]||
-   'Não foi possível completar a operação. Verifique a ligação e tente novamente.';
+  message.textContent=customerMessage(errorMessages[error.message.split(':')[0]]||
+   'Não foi possível completar a operação. Verifique a ligação e tente novamente.',{warning:true});
   return false;
  };
  const logout=async()=>{
@@ -91,14 +93,19 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  };
  const load=async(nextTab=tab)=>{
   if(busy||!ADMIN_TABS.includes(nextTab))return;
-  toggleBusy(true);message.textContent='A actualizar informações autorizadas…';
+  const loader=!data||nextTab===tab?startProntoLoading({title:'A preparar o seu painel',mode:'admin'}):null;
+  let succeeded=false;
+  toggleBusy(true);message.textContent='';
   try{
    [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);tab=nextTab;
-   message.textContent='';render();
+   message.textContent='';render();succeeded=true;
   }catch(error){
    if(await failure(error))return;
    content.replaceChildren();
-  }finally{if(root.querySelector('#pronto-admin-refresh')===refreshButton)toggleBusy(false);}
+  }finally{
+   if(root.querySelector('#pronto-admin-refresh')===refreshButton)toggleBusy(false);
+   if(loader){if(succeeded)void loader.finish();else loader.cancel();}
+  }
  };
  const submit=async event=>{
   const form=event.target.closest('form[data-provision-action]');
@@ -108,7 +115,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   let item;
   try{item=prepareAdminProvisioning(form);}
   catch(e){message.textContent=errorMessages[e.message]||'Confira os dados introduzidos.';return;}
-  toggleBusy(true);message.textContent='A guardar alterações…';
+  toggleBusy(true);message.textContent='';
   try{
    if(item.action==='member_create'){
     const account=await client.provisionMember(item.data);
@@ -218,7 +225,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
     payload.reason=reason;
    }
   }
-  toggleBusy(true);message.textContent='A executar operação protegida…';
+  toggleBusy(true);message.textContent='';
   try{
    await client[request](action,payload);
    [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
