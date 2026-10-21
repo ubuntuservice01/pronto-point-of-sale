@@ -71,6 +71,7 @@ function open({kind='info',title='',message='',confirmText='',cancelText='Cancel
    if(settled)return;
    settled=true;
    dialog.close();
+   cleanup(); // Release dialog lock before resolving: a second modal may open immediately.
    resolve(value);
   };
   const cleanup=()=>{
