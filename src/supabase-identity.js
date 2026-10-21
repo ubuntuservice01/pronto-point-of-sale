@@ -144,7 +144,11 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
  // Runs only after startup. The saved refresh credential is exchanged with Supabase,
  // then roles and store permissions are fetched afresh; stored roles are never trusted.
  async function restoreSession(){
-  if(session)return account();
+  if(session){
+   const profile=await account();
+   sessionLocked=true;
+   return profile;
+  }
   const saved=readSaved();
   if(!saved)return null;
   session={access_token:null,refresh_token:saved.refresh_token,user:{id:saved.user_id},expiresAt:0};
