@@ -1,5 +1,6 @@
 import {normalizeCashControl,ownOpenSession,cashSessionsCSV} from './supabase-cash-ui.js';
 import {showConfirmModal} from './ui/pronto-modal.js';
+import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/pronto-sale-success.js';
 import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
@@ -177,8 +178,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(disconnected()){showMessage('Sem internet: a venda não foi concluída. Guarde o rascunho encriptado e volte a tentar depois de restabelecer a ligação.',true);return;}
   busy=true;showMessage('A verificar e registar a venda no servidor…');
   try{
+   const checkoutRequest=pending;
+   const receiptProducts=data.products.slice();
    const result=await client.merchantAction(pending.due_on?'credit_sale':'sale_complete',pending);
    const wasRepeated=result.duplicate===true;
+   const receipt=confirmedSaleReceipt({request:checkoutRequest,result,products:receiptProducts,
+    shop:grant.name,branch:branches.find(b=>b.id===branchId)?.name||'',seller:account.email});
    if(resumedHoldId&&typeof client.holdAction==='function'){
     try{await client.holdAction('hold_delete',cashData({hold_id:resumedHoldId}));resumedHoldId=null;}
     catch{/* Sale was committed; the held cart may require manual removal. */}
@@ -187,6 +192,16 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    try{await refresh();}catch{render();}
    showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':result.debt_id?'Venda a crédito registada. ':'Venda concluída. ')+
     'Referência: '+String(result.sale_id||'').slice(0,8)+'.');
+   // The decision appears only after a confirmed server commit, never on failure.
+   void showSaleCompleteModal(receipt).then(action=>{
+    if(action==='print'){
+     try{printSaleReceipt(receipt);}
+     catch{showMessage('Venda confirmada. Não foi possível abrir a impressão neste dispositivo.',true);}
+    }else if(action==='new'){
+     view='sell';render();
+     root.querySelector('#shop-search')?.focus();
+    }
+   }).catch(()=>showMessage('Venda confirmada. Consulte o histórico para imprimir o comprovativo.',true));
   }catch(e){
    showMessage('Venda ainda sem confirmação. Verifique a sessão e clique em «Repetir o mesmo pedido» para evitar duplicações. ('+String(e.message||'erro')+')',true);
    render();
@@ -411,6 +426,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    cart=cart.filter(x=>x.productId!==el.dataset.remove);render();return;
   }
   if(el.hasAttribute('data-qty'))return void add(el.dataset.id,Number(el.dataset.qty));
+  if(el.hasAttribute('data-shop-held-tab')){if(!authorizedView('held'))return;view='held';render();return;}
+  if(el.hasAttribute('data-shop-sell-tab')){if(!authorizedView('sell'))return;view='sell';render();return;}
   if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;menuOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
@@ -524,9 +541,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      method:m,amount:String(f.get('pay_'+m)||'0')
     })).filter(p=>toCents(p.amount)>0):[{method,amount:totalText}];
     if(allocations.some(x=>x.method!=='cash')&&f.get('confirmed')!=='yes')throw Error('digital_unconfirmed');
+    const givenCash=String(f.get('cash_received')??'').trim();
+    const hasCash=allocations.some(x=>x.method==='cash'&&toCents(x.amount)>0);
+    if(hasCash&&!givenCash)throw Error('cash_required');
     pending=makeSaleRequest({businessId:grant.id,branchId,sessionId:shift?.id||null,
      cart,products:data.products,discount:disc,allocations,idempotencyKey:idem,
-     cashReceived:String(f.get('cash_received')||'0')});
+     cashReceived:givenCash||'0'});
     if(selectedCustomerId)pending.customer_id=selectedCustomerId;
     await processSale();
    }catch(e){
@@ -535,7 +555,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      digital_unconfirmed:'Confirme o recebimento digital antes de concluir.',
      payment_mismatch:'Os pagamentos devem somar exactamente o valor total.',
      stock_unavailable:'O stock já não é suficiente.',
-     cash_short:'O dinheiro recebido é inferior ao montante devido.'
+     cash_short:'O dinheiro recebido é inferior ao montante devido.',
+     cash_required:'Introduza o valor de dinheiro efectivamente entregue pelo cliente.'
     }[e.message]||'Corrija os valores e as quantidades antes de concluir. ('+e.message+')',true);
    }
    return;
