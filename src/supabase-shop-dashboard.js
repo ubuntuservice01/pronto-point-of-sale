@@ -528,7 +528,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
-  if(['cash_configure','cash_request_close','cash_remote'].includes(action)){
+  if(['cash_configure','cash_request_close','cash_remote','cash_note_difference'].includes(action)){
    if(disconnected()||typeof client.cashControl!=='function'||lockPending())
     return showMessage('A gestão do caixa exige ligação e não pode ficar pendente.',true);
    const f=new FormData(form);let command,payload;
@@ -536,6 +536,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     if(action==='cash_configure'){
      if(grant.role!=='owner')return showMessage('Apenas o proprietário altera as definições.',true);
      command='configure';payload={opening_required:f.has('opening_required'),blind_close:f.has('blind_close')};
+    }else if(action==='cash_note_difference'){
+     command='note_difference';payload={session_id:String(f.get('session_id')||''),reason:String(f.get('reason')||'').trim()};
+     if(payload.reason.length<8||payload.reason.length>500)throw Error('reason_required');
     }else if(action==='cash_request_close'){
      if(!session())return showMessage('Sem sessão aberta para pedir fecho.',true);
      command='request_close';payload={session_id:session().id};
@@ -548,12 +551,14 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     }
     if(!confirm(action==='cash_configure'?'Guardar as regras de caixa para esta filial?':
       action==='cash_request_close'?'Solicitar fecho e impedir novas vendas nesta sessão?':
+      action==='cash_note_difference'?'Guardar esta justificação no histórico, sem alterar a contagem?':
       command==='admin_close'?'Fechar sem conferência? O resultado não poderá ser apresentado como dinheiro contado.':
       (command==='block'?'Bloquear':'Desbloquear')+' esta sessão de caixa?'))return;
     busy=true;showMessage('A confirmar no servidor…');
     await client.cashControl(command,cashData(payload));
     await refresh();showMessage(command==='admin_close'?'Sessão encerrada sem conferência física, com auditoria.':
-     command==='request_close'?'Pedido de fecho registado. Conte o dinheiro e confirme o valor.':'Operação confirmada e auditada.');
+     command==='request_close'?'Pedido de fecho registado. Conte o dinheiro e confirme o valor.':
+     command==='note_difference'?'Justificação adicionada ao histórico sem modificar os valores.':'Operação confirmada e auditada.');
    }catch(error){showMessage('Não foi possível confirmar a operação. Consulte o estado da sessão antes de repetir. ('+error.message+')',true);}
    finally{busy=false;}
    return;
