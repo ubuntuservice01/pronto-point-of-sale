@@ -15,23 +15,52 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
  })[char]);
  const shell=content=>{
-  root.innerHTML='<section class="login-shell pronto-auth-test"><div class="login-brand"><img src="/icon.svg" alt=""><h1>Pronto POS</h1><p>O seu negócio na palma da mão</p></div><div class="panel login-panel">'+content+'</div><footer>Ubuntu Service, Lda.</footer></section>';
+  root.innerHTML='<section class="login-shell pronto-auth-test">'+
+   '<div class="pronto-login-layout">'+
+    '<div class="pronto-login-left">'+
+     '<div class="login-brand">'+
+      '<div class="pronto-brand-row"><img src="/icon.svg" alt="" width="54" height="54">'+
+       '<div><h1>Pronto <span>POS</span></h1><p>Menos complicações, mais negócio.</p></div></div>'+
+     '</div>'+
+     '<div class="panel login-panel">'+content+'</div>'+
+     '<footer>Um sistema da Ubuntu Service, Lda.</footer>'+
+    '</div>'+
+    '<aside class="pronto-login-right" aria-label="Antes e depois de usar o Pronto POS">'+
+     '<img src="/login-antes-depois.webp" alt="Antes: comerciante com caderno molhado pela chuva. Depois: comerciante feliz a confirmar uma venda no Pronto POS." loading="eager" decoding="async">'+
+    '</aside>'+
+   '</div>'+
+  '</section>';
  };
  let staffWaitTimer=null;
  const form=()=>{
   if(staffWaitTimer){clearInterval(staffWaitTimer);staffWaitTimer=null;}
-  shell('<h2>Bem-vindo ao Pronto POS</h2>'+
-  '<p>Entre com o seu email e palavra-passe. O PIN pessoal de 5 dígitos protege o acesso ao painel.</p>'+
+  shell('<div class="pronto-login-heading"><span class="pronto-login-eyebrow">Acesso à sua loja</span>'+
+   '<h2>Bem-vindo</h2>'+
+   '<p>Entre para gerir a sua loja com facilidade.</p></div>'+
   '<form id="pronto-auth-check-form">'+
-   '<label>Email<input type="email" name="email" autocomplete="username" maxlength="254" required></label>'+
-   '<label>Palavra-passe<input type="password" name="password" autocomplete="current-password" maxlength="200" required></label>'+
+   '<label for="pronto-login-email">Email de acesso</label>'+
+   '<div class="pronto-field"><span class="pronto-field-icon" aria-hidden="true">✉</span>'+
+    '<input id="pronto-login-email" type="email" name="email" placeholder="email@exemplo.co.mz" autocomplete="username" maxlength="254" required></div>'+
+   '<label for="pronto-login-password">Palavra-passe</label>'+
+   '<div class="pronto-field"><span class="pronto-field-icon" aria-hidden="true">♧</span>'+
+    '<input id="pronto-login-password" type="password" name="password" placeholder="Introduza a sua palavra-passe" autocomplete="current-password" maxlength="200" required>'+
+    '<button type="button" id="pronto-toggle-password" class="pronto-password-toggle" aria-label="Mostrar palavra-passe" aria-pressed="false">Mostrar</button></div>'+
+   '<div class="pronto-login-helpers"><button type="button" class="pronto-recovery-link" id="recovery-request">Esqueceu-se da palavra-passe?</button></div>'+
    '<p id="pronto-auth-check-error" role="alert" aria-live="polite"></p>'+
-   '<button class="primary full" type="submit">Entrar</button>'+
+   '<button class="primary full pronto-login-submit" type="submit">Entrar <span aria-hidden="true">→</span></button>'+
   '</form>'+
-  '<p class="form-hint">A sua loja na palma da mão. Entre para continuar o seu trabalho.</p>'+
-  '<button type="button" class="secondary full" id="recovery-request">Esqueceu-se da palavra-passe?</button>'+
-  '');
+  '<div class="pronto-login-security"><span aria-hidden="true">✓</span> Acesso seguro para proprietários e colaboradores.</div>');
   root.querySelector('#recovery-request').onclick=()=>beginRecovery(null);
+  root.querySelector('#pronto-toggle-password').onclick=()=>{
+   const field=root.querySelector('#pronto-login-password');
+   const button=root.querySelector('#pronto-toggle-password');
+   const show=field.type==='password';
+   field.type=show?'text':'password';
+   button.textContent=show?'Ocultar':'Mostrar';
+   button.setAttribute('aria-label',show?'Ocultar palavra-passe':'Mostrar palavra-passe');
+   button.setAttribute('aria-pressed',String(show));
+   field.focus();
+  };
   const node=root.querySelector('#pronto-auth-check-form');
   node.addEventListener('submit',async event=>{
    event.preventDefault();
