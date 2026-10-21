@@ -194,7 +194,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  (draftAvailable?'<form data-shop-form="draft_restore" class="shop-form"><label>Frase do rascunho guardado<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Recuperar rascunho</button></form><button type="button" data-shop-draft-clear class="shop-logout">Apagar rascunho do dispositivo</button>':'')+
  '<p class="shop-help">Se uma venda foi enviada e a resposta falhou, recupere o mesmo pedido e a mesma referência antes de reenviar. Não crie uma venda nova sem conferir os registos.</p></section>'+
  (pendingFinance?'<div class="shop-pending"><strong>Operação financeira por confirmar</strong><p>Verifique o histórico no Supabase antes de tentar outra operação. Repetir o mesmo formulário reutiliza a chave original.</p><button type="button" data-finance-discard>Descartar referência local após conferir</button></div>':'')+
- '<p class="shop-footer">Piloto PostgreSQL: clientes, vendas a crédito e cobrança manual integrados. Devoluções, vendas offline sincronizadas e documentos fiscais ainda não estão homologados.</p></main></div>'+
+ '<p class="shop-footer">Pronto POS — Menos complicações, mais negócio. © Ubuntu Service, Lda.</p></main></div>'+
  '<nav class="shop-mobile-bottom" aria-label="Navegação rápida">'+bottomNav+
  '<button type="button" data-shop-menu-toggle aria-label="Mais funcionalidades" aria-expanded="'+menuOpen+'"><span aria-hidden="true">☰</span><small>Mais</small></button></nav></div>';
 }
