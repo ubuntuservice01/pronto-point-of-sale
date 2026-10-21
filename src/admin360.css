@@ -1,0 +1,47 @@
+/* Ubuntu Super Admin 360 — scoped to the existing dashboard. */
+.pronto-admin-shell .admin360-headline{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:800;color:#163b2d;margin:6px 0 16px}
+.pronto-admin-shell .admin360-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:0 0 18px}
+.pronto-admin-shell .admin360-kpis article{border:1px solid #deede5;background:linear-gradient(135deg,#fff,#f4fbf6);padding:21px;border-radius:16px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.pronto-admin-shell .admin360-kpis article span{font-size:12px;color:#587366}
+.pronto-admin-shell .admin360-kpis article strong{font-size:clamp(24px,3.2vw,37px);color:#0b765b;overflow-wrap:anywhere}
+.pronto-admin-shell .admin360-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:16px 0}
+.pronto-admin-shell .admin360-panel{margin:16px 0;border-radius:16px}
+.pronto-admin-shell .admin360-panel h3{margin:0 0 14px}
+.pronto-admin-shell .admin360-chart{display:grid;gap:16px;margin-top:22px}
+.pronto-admin-shell .admin360-barline{display:grid;grid-template-columns:minmax(52px,100px) 1fr 32px;gap:11px;align-items:center;font-size:12px;color:#415e4e}
+.pronto-admin-shell .admin360-barline strong{text-align:right;font-variant-numeric:tabular-nums}
+.pronto-admin-shell .admin360-track{background:#e8f1ec;height:16px;border-radius:15px;overflow:hidden}
+.pronto-admin-shell .admin360-fill{height:100%;background:linear-gradient(90deg,#087f68,#1dbb85);border-radius:15px;min-width:0}
+.pronto-admin-shell .admin360-quicknav{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0}
+.pronto-admin-shell .admin360-quicknav h3{width:100%;margin:0 0 4px;font-size:15px}
+.pronto-admin-shell .admin360-btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:9px 14px;border:1px solid #cfdfd5;border-radius:10px;background:#f8fbf9;color:#1f5340;cursor:pointer;font-size:13px;font-weight:750;line-height:1.3}
+.pronto-admin-shell .admin360-btn:hover{filter:brightness(.94)}
+.pronto-admin-shell .admin360-btn:focus-visible{outline:3px solid #64c9a1;outline-offset:2px}
+.pronto-admin-shell .admin360-btn:disabled{opacity:.5;cursor:wait}
+.pronto-admin-shell .admin360-btn.admin360-save,.pronto-admin-shell .admin360-btn.admin360-positive{background:#0b8062;color:#fff;border-color:#0b8062}
+.pronto-admin-shell .admin360-btn.admin360-danger{background:#be2039;color:#fff;border-color:#be2039}
+.pronto-admin-shell .admin360-btn.admin360-warn{background:#fff1dc;color:#a85d00;border-color:#f2bc76}
+.pronto-admin-shell .admin360-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:50px;background:#e7ece9;color:#4a5b53;font-size:11px;font-weight:800;white-space:nowrap}
+.pronto-admin-shell .admin360-badge.admin360-good{background:#d9f4e3;color:#096c4f}
+.pronto-admin-shell .admin360-badge.admin360-warn{background:#fff0d8;color:#9b5601}
+.pronto-admin-shell .admin360-badge.admin360-danger{background:#ffe4e9;color:#a81731}
+.pronto-admin-shell .admin360-shop{margin:10px 0;border:1px solid #dce9df;border-radius:13px;overflow:hidden;background:#fff}
+.pronto-admin-shell .admin360-shop>summary{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:16px;cursor:pointer;list-style:none}
+.pronto-admin-shell .admin360-shop>summary::-webkit-details-marker{display:none}
+.pronto-admin-shell .admin360-shop[open]>summary{background:#f5faf6;border-bottom:1px solid #e4ece8}
+.pronto-admin-shell .admin360-shop>summary strong{font-size:15px}
+.pronto-admin-shell .admin360-shop>summary small{font-size:11px;color:#698173}
+.pronto-admin-shell .admin360-shop-actions{display:flex;flex-wrap:wrap;gap:9px;padding:13px 15px 5px}
+.pronto-admin-shell .admin360-edit-form{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;padding:14px 15px;border-top:1px solid #edf1ee}
+.pronto-admin-shell .admin360-edit-form label{display:flex;flex-direction:column;gap:7px;flex:1 1 175px;min-width:165px;font-size:12px;font-weight:700;color:#486456}
+.pronto-admin-shell .admin360-edit-form input:not([type=checkbox]),.pronto-admin-shell .admin360-edit-form select{width:100%;min-height:43px;padding:8px 11px;border:1px solid #d0e1d6;border-radius:9px;font:inherit;color:#274334;background:#fff}
+.pronto-admin-shell .admin360-edit-form input[type=checkbox]{width:20px;height:20px;accent-color:#0b8062}
+.pronto-admin-shell .admin360-subpanel{margin:10px 15px;border-radius:12px;background:#f4f8f6;padding:12px}
+.pronto-admin-shell .admin360-subpanel>summary{font-weight:700;color:#174932;cursor:pointer}
+.pronto-admin-shell .admin360-muted{margin:8px 15px 15px;color:#667c6d;font-size:12px;line-height:1.55}
+.pronto-admin-shell .admin360-listrow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:13px 0;border-bottom:1px solid #e9f1ec}
+.pronto-admin-shell .admin360-listrow div{display:grid;gap:5px}
+.pronto-admin-shell .admin360-listrow small{color:#667d71;max-width:700px;overflow-wrap:anywhere}
+.pronto-admin-shell .admin360-listrow strong{font-size:13px}
+@media(max-width:1000px){.pronto-admin-shell .admin360-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.pronto-admin-shell .admin360-chart-grid{grid-template-columns:1fr}}
+@media(max-width:580px){.pronto-admin-shell .admin360-kpis{gap:9px}.pronto-admin-shell .admin360-kpis article{padding:13px}.pronto-admin-shell .admin360-chart-grid{gap:10px}.pronto-admin-shell .admin360-edit-form{display:grid;grid-template-columns:1fr}.pronto-admin-shell .admin360-btn{min-height:46px}.pronto-admin-shell .admin360-shop>summary{align-items:flex-start}.pronto-admin-shell .admin360-barline{grid-template-columns:68px 1fr 25px;gap:5px}}
