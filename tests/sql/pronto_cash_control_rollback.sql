@@ -44,8 +44,7 @@ begin
  result:=public.pronto_cash_control('close',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'counted_cash_cents',210000));
  if (result->>'expected_cents')::bigint<>211000 or (result->>'difference_cents')::bigint<>-1000 or result->>'close_type'<>'blind' then
   raise exception 'wrong_blind_reconciliation: %',result;end if;
- perform public.pronto_cash_control('note_difference',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'reason','Justificação de diferença de caixa'));
- select count(*) into n from public.pronto_cash_difference_notes where business_id=b and session_id=cash_session;
- if n<>1 then raise exception 'missing_immutable_note';end if;
+ result:=public.pronto_cash_control('note_difference',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'reason','Justificação de diferença de caixa'));
+ if result->>'note_added'<>'true' then raise exception 'missing_immutable_note';end if;
 end $$;
 rollback;
