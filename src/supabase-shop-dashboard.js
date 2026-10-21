@@ -11,7 +11,7 @@ import {checkoutCashPreview} from './supabase-checkout-change.js';
 import {getPinKPIs,setPinKPIs,clearPinKPIs} from './pin-city-ui.js';
 import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
 import {creditStatementHTML,creditWhatsAppURL} from './supabase-credit-ui.js';
-import {shoppingListCSV,inventoryNotificationSummary} from './supabase-inventory-ui.js';
+import {shoppingListCSV,inventoryNotificationSummary,inventoryAlerts} from './supabase-inventory-ui.js';
 import {reportsCSV,reportDocumentData} from './supabase-reports-ui.js';
 import {normalizeDocumentBranding,serializeDocumentBranding,brandedDocumentHTML} from './supabase-document-branding.js';
 import {buildBrandedXLSX} from './supabase-document-xlsx.js';
@@ -37,6 +37,32 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
   transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,accessBlocked=false,accessCheckBusy=false;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
+ // The same identity, colours and logo are reused by each formatted workbook.
+ const downloadBrandedExcel=async({title,period,summary=[],sections=[],filename})=>{
+  let logoPng=null;
+  if(branding?.logoPath){
+   try{
+    const signed=await client.documentLogoUrl(branding.logoPath);
+    const response=await fetch(signed,{cache:'no-store'});
+    if(!response.ok)throw Error('logo_fetch_failed');
+    const image=await createImageBitmap(await response.blob());
+    const canvas=document.createElement('canvas');
+    const scale=Math.min(1,300/image.width,160/image.height);
+    canvas.width=Math.max(1,Math.round(image.width*scale));
+    canvas.height=Math.max(1,Math.round(image.height*scale));
+    canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+    image.close?.();
+    const png=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('logo_conversion_failed')),'image/png'));
+    logoPng=new Uint8Array(await png.arrayBuffer());
+   }catch{/* The report remains available if the private logo is temporarily unavailable. */}
+  }
+  const bytes=buildBrandedXLSX({branding,title,period,summary,sections,logoPng});
+  const url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  const link=document.createElement('a');
+  link.href=url;link.download=filename;
+  document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+ };
  let pinMetricCheckedAt=0,pinMetricBusy=false;
  // Read only the branch and business currently authorised for this signed-in user.
  // PIN KPIs are aggregates retrieved AFTER PIN unlock; never query while locked.
@@ -545,29 +571,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    busy=true;showMessage('A preparar a folha Excel...');
    try{
     const payload=reportDocumentData(report);
-    let logoPng=null;
-    if(branding?.logoPath){
-     try{
-      const signed=await client.documentLogoUrl(branding.logoPath);
-      const image=await createImageBitmap(await (await fetch(signed)).blob());
-      const canvas=document.createElement('canvas');
-      const scale=Math.min(1,300/image.width,160/image.height);
-      canvas.width=Math.max(1,Math.round(image.width*scale));
-      canvas.height=Math.max(1,Math.round(image.height*scale));
-      canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
-      image.close?.();
-      const png=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('png_export_failed')),'image/png'));
-      logoPng=new Uint8Array(await png.arrayBuffer());
-     }catch{/* Exportar o relatório mesmo se a imagem estiver indisponível. */}
-    }
-    const bytes=buildBrandedXLSX({
-     ...payload,branding,title:'Relatório financeiro e operacional',
-     period:report.start+' a '+report.end,logoPng
+    await downloadBrandedExcel({
+     ...payload,title:'Relatório financeiro e operacional',
+     period:report.start+' a '+report.end,
+     filename:'relatorio-pronto-pos-'+report.start+'-'+report.end+'.xlsx'
     });
-    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download='relatorio-pronto-pos-'+report.start+'-'+report.end+'.xlsx';
-    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
     showMessage('Relatório Excel preparado.');
    }catch(e){showMessage('Não foi possível exportar o Excel: '+String(e.message||'erro'),true);}
    finally{busy=false;}
@@ -580,6 +588,24 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    a.href=url;a.download='relatorio-pronto-pos.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);return;
   }
   if(el.hasAttribute('data-inventory-select')){selectedProductId=el.dataset.inventorySelect;render();return;}
+  if(el.hasAttribute('data-inventory-xlsx')){
+   if(!inventory||!authorizedView('shopping_list'))return;
+   busy=true;showMessage('A preparar a lista Excel...');
+   try{
+    const suggestions=inventoryAlerts(inventory,alertDays).suggestions;
+    const fmt=x=>new Intl.NumberFormat('pt-MZ',{maximumFractionDigits:3}).format(Number(x)||0);
+    await downloadBrandedExcel({
+     title:'Lista automática de compras',period:'Gerado em '+maputoDate(),
+     summary:[['Artigos sugeridos',suggestions.length],['Filial',branches.find(b=>b.id===branchId)?.name||'Filial']],
+     sections:[{title:'Sugestões de compra · estimativa',columns:['Produto','Disponível','Vendido em 30 dias','Comprar'],
+      rows:suggestions.map(x=>[x.name,fmt(x.available),fmt(x.sold30),fmt(x.suggested)])}],
+     filename:'lista-compras-pronto-pos-'+maputoDate()+'.xlsx'
+    });
+    showMessage('Lista de compras Excel preparada. Confirme as quantidades antes de encomendar.');
+   }catch(e){showMessage('Não foi possível exportar a lista Excel: '+String(e.message||'erro'),true);}
+   finally{busy=false;}
+   return;
+  }
   if(el.hasAttribute('data-inventory-export')){
    if(!inventory)return;
    const csv=shoppingListCSV(inventory);
