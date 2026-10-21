@@ -88,3 +88,42 @@ test('operational report data preserves structured spreadsheet sections',()=>{
  assert.equal(data.sections[0].rows[0][0],'Dinheiro');
  assert.equal(data.summary.some(([label])=>label==='Lucro líquido estimado'),true);
 });
+
+
+test('settings page contains eight owner sections and reuses existing forms',async()=>{
+ const {OWNER_SETTINGS_TABS,renderOwnerSettings,renderShopScreen}=await import('../src/supabase-shop-ui.js');
+ assert.equal(OWNER_SETTINGS_TABS.length,8);
+ const settings={branding,businessName:'Mercearia Palichi & Filhos',email:'owner@empresa.co.mz',
+  branchName:'Loja principal',branches:[{id:'branch1',name:'Loja principal'}],
+  cashState:{policy:{openingRequired:true,blindClose:false},sessions:[]},
+  staffManagement:{staff:[{active:true}]},alertDays:60,pendingOffline:0};
+ const brandingView=renderOwnerSettings(settings);
+ assert.match(brandingView,/Definições/);
+ assert.match(brandingView,/data-shop-settings-section="personalizacao"/);
+ assert.match(brandingView,/id="shop-document-settings-form"/);
+ const cashView=renderOwnerSettings({...settings,selected:'caixa'});
+ assert.match(cashView,/data-shop-form="cash_configure"/);
+ assert.match(cashView,/name="opening_required" checked/);
+ const securityView=renderOwnerSettings({...settings,selected:'seguranca'});
+ assert.match(securityView,/data-shop-pin-change/);
+ assert.match(securityView,/data-shop-pin-lock/);
+ const stockView=renderOwnerSettings({...settings,selected:'stock'});
+ assert.match(stockView,/value="60" selected/);
+ const backupView=renderOwnerSettings({...settings,selected:'dados'});
+ assert.match(backupView,/ainda requerem validação/);
+ assert.doesNotMatch(backupView,/Restaurar backup agora/);
+ const ownerShell=renderShopScreen({
+  account:{userId:'owner-1',email:'owner@empresa.co.mz'},grants:[],grant:{id:'business1',name:'Empresa 1',role:'owner'},
+  branches:settings.branches,branchId:'branch1',data:{products:[],sessions:[],sales:[]},cart:[],view:'settings',branding,
+  cashState:settings.cashState,staffManagement:settings.staffManagement,settingsSection:'caixa'
+ });
+ assert.match(ownerShell,/data-shop-view="settings"/);
+ assert.match(ownerShell,/data-shop-form="cash_configure"/);
+ assert.doesNotMatch(ownerShell,/data-shop-view="branding"/);
+ const cashierShell=renderShopScreen({
+  account:{userId:'cashier-1',email:'caixa@empresa.co.mz'},grants:[],grant:{id:'business1',name:'Empresa 1',role:'cashier'},
+  branches:settings.branches,branchId:'branch1',data:{products:[],sessions:[],sales:[]},cart:[],view:'sell',
+  cashState:settings.cashState
+ });
+ assert.doesNotMatch(cashierShell,/data-shop-view="settings"/);
+});
