@@ -12,7 +12,9 @@ import {getPinKPIs,setPinKPIs,clearPinKPIs} from './pin-city-ui.js';
 import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
 import {creditStatementHTML,creditWhatsAppURL} from './supabase-credit-ui.js';
 import {shoppingListCSV,inventoryNotificationSummary} from './supabase-inventory-ui.js';
-import {reportsCSV} from './supabase-reports-ui.js';
+import {reportsCSV,reportDocumentData} from './supabase-reports-ui.js';
+import {normalizeDocumentBranding,serializeDocumentBranding,brandedDocumentHTML} from './supabase-document-branding.js';
+import {buildBrandedXLSX} from './supabase-document-xlsx.js';
 import {auditCSV} from './supabase-audit-ui.js';
 const maputoDate=(time=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'}).format(time);
 import {makeShopDraft,saveShopDraft,restoreShopDraft,hasShopDraft,clearShopDraft} from './supabase-shop-draft.js';
@@ -33,7 +35,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,accessBlocked=false,accessCheckBusy=false;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,accessBlocked=false,accessCheckBusy=false;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  let pinMetricCheckedAt=0,pinMetricBusy=false;
  // Read only the branch and business currently authorised for this signed-in user.
@@ -60,7 +62,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   finally{pinMetricBusy=false;}
  };
 
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],branding:['owner'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   clearPinKPIs(account.userId);
@@ -81,7 +83,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data||accessBlocked)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,branding,logoUrl:brandLogoUrl});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
    if(!path||!client.productPhotoUrl)continue;
@@ -102,6 +104,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
+  branding=await client.documentSettings(grant.id);
+  brandLogoUrl='';
+  if(branding.logoPath){try{brandLogoUrl=await client.documentLogoUrl(branding.logoPath);}catch{/* A imagem pode não estar temporariamente disponível. */}}
   cashState=typeof client.cashControl==='function'?normalizeCashControl(await client.cashControl('snapshot',cashData({}))):null;
   pendingCashOffline=offlineCount();
   branchManagement=grant.role==='owner'?await client.manageBranch('list',{business_id:grant.id}):null;
@@ -144,7 +149,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    not_associated:'A sua conta já não está associada a esta loja.'
   }[reason]||'Não é possível confirmar o acesso. Aguarde a ligação à internet.';
   clearPinKPIs(account.userId);
-  accessBlocked=true;notificationsOpen=false;data=null;cart=[];pending=null;credit=null;finance=null;returns=null;inventory=null;photoCache.clear();
+  accessBlocked=true;notificationsOpen=false;data=null;cart=[];pending=null;credit=null;finance=null;returns=null;inventory=null;branding=null;brandLogoUrl='';photoCache.clear();
   root.innerHTML='<section class="login-shell pronto-auth-test"><div class="panel login-panel">'+
    '<h2>Acesso ao Pronto POS encerrado</h2><p role="alert">'+esc(message)+'</p>'+
    '<p class="form-hint">A verificação é automática. Nenhum dado comercial fica disponível enquanto o acesso estiver bloqueado.</p>'+
@@ -294,7 +299,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    // The decision appears only after a confirmed server commit, never on failure.
    void showSaleCompleteModal(receipt).then(action=>{
     if(action==='print'){
-     try{printSaleReceipt(receipt);}
+     try{printSaleReceipt(receipt,{branding,logoUrl:brandLogoUrl});}
      catch{showMessage('Venda confirmada. Não foi possível abrir a impressão neste dispositivo.',true);}
     }else if(action==='new'){
      view='sell';render();
@@ -348,6 +353,29 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  root.addEventListener('click',async event=>{
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
+  if(el.hasAttribute('data-document-preview')){
+   if(grant.role!=='owner')return;
+   const form=root.querySelector('#shop-document-settings-form');
+   if(!form)return;
+   const fields=new FormData(form);
+   const draft=normalizeDocumentBranding({
+    displayName:fields.get('display_name'),address:fields.get('address'),
+    phone:fields.get('phone'),email:fields.get('email'),
+    primaryColor:fields.get('primary_color'),secondaryColor:fields.get('secondary_color'),
+    footerNote:fields.get('footer_note'),template:fields.get('template'),
+    logoPath:branding?.logoPath||''
+   },grant.name);
+   const win=window.open('','_blank');
+   if(!win)return showMessage('Autorize a janela de pré-visualização.',true);
+   win.document.write(brandedDocumentHTML({
+    branding:draft,logoUrl:brandLogoUrl,title:'Pré-visualização de documento',
+    subtitle:'Exemplo da identidade visual. Nenhum dado comercial é utilizado.',
+    meta:[['Período','A definir'],['Filial','A definir']],
+    sections:[{title:'Exemplo de tabela',columns:['Descrição','Quantidade','Valor (MT)'],rows:[]}],
+    summary:[['Total ilustrativo','—']],scopeNote:'Documento de pré-visualização, sem validade fiscal.'
+   }));
+   win.document.close();return;
+  }
   if(el.hasAttribute('data-shop-notifications')){
    notificationsOpen=!notificationsOpen;render();
    root.querySelector('[data-shop-notifications]')?.focus({preventScroll:true});return;
@@ -451,12 +479,16 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.hasAttribute('data-credit-customer')){selectedCustomerId=el.dataset.creditCustomer;render();return;}
   if(el.hasAttribute('data-credit-receipt')||el.hasAttribute('data-credit-statement')){
    if(!credit)return;
-   try{const debtId=el.dataset.creditReceipt;
+   const win=window.open('','_blank');
+   if(!win)return showMessage('Autorize a janela de impressão.',true);
+   try{
+    const debtId=el.dataset.creditReceipt;
     const customerId=debtId?credit.debts.find(d=>d.id===debtId)?.customerId:el.dataset.creditStatement;
-    const html=creditStatementHTML(credit,customerId,{debtId});
-    const win=window.open('','_blank');if(!win){showMessage('Autorize a janela de impressão.',true);return;}
-    win.document.write(html);win.document.close();win.focus();win.print();
-   }catch{showMessage('Não foi possível gerar o extracto.',true);}return;
+    const logoUrl=branding?.logoPath?await client.documentLogoUrl(branding.logoPath):'';
+    win.document.write(creditStatementHTML(credit,customerId,{debtId,branding,logoUrl}));
+    win.document.close();
+    win.addEventListener('load',()=>{win.focus();win.print();},{once:true});
+   }catch{win.close();showMessage('Não foi possível gerar o extracto.',true);}return;
   }
   if(el.hasAttribute('data-credit-whatsapp')){
    try{window.open(creditWhatsAppURL(credit,el.dataset.creditWhatsapp),'_blank','noopener,noreferrer');}
@@ -486,6 +518,56 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const url=URL.createObjectURL(blob),a=document.createElement('a');
    a.href=url;a.download='auditoria-pronto-pos-pagina-'+(audit.page+1)+'.csv';
    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);return;
+  }
+  if(el.hasAttribute('data-report-print')){
+   if(!report)return;
+   const win=window.open('','_blank');
+   if(!win)return showMessage('Autorize a janela de impressão.',true);
+   try{
+    const payload=reportDocumentData(report);
+    const logoUrl=branding?.logoPath?await client.documentLogoUrl(branding.logoPath):'';
+    win.document.write(brandedDocumentHTML({
+     ...payload,branding,logoUrl,title:'Relatório financeiro e operacional',
+     subtitle:'Relatório interno do Pronto POS · valores expressos em meticais',
+     scopeNote:'Lucro estimado depende dos custos de compra disponíveis. Documento não fiscal.'
+    }));
+    win.document.close();
+    win.addEventListener('load',()=>{win.focus();win.print();},{once:true});
+   }catch{win.close();showMessage('Não foi possível gerar o relatório para impressão.',true);}
+   return;
+  }
+  if(el.hasAttribute('data-report-xlsx')){
+   if(!report)return;
+   busy=true;showMessage('A preparar a folha Excel...');
+   try{
+    const payload=reportDocumentData(report);
+    let logoPng=null;
+    if(branding?.logoPath){
+     try{
+      const signed=await client.documentLogoUrl(branding.logoPath);
+      const image=await createImageBitmap(await (await fetch(signed)).blob());
+      const canvas=document.createElement('canvas');
+      const scale=Math.min(1,300/image.width,160/image.height);
+      canvas.width=Math.max(1,Math.round(image.width*scale));
+      canvas.height=Math.max(1,Math.round(image.height*scale));
+      canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+      image.close?.();
+      const png=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('png_export_failed')),'image/png'));
+      logoPng=new Uint8Array(await png.arrayBuffer());
+     }catch{/* Exportar o relatório mesmo se a imagem estiver indisponível. */}
+    }
+    const bytes=buildBrandedXLSX({
+     ...payload,branding,title:'Relatório financeiro e operacional',
+     period:report.start+' a '+report.end,logoPng
+    });
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='relatorio-pronto-pos-'+report.start+'-'+report.end+'.xlsx';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+    showMessage('Relatório Excel preparado.');
+   }catch(e){showMessage('Não foi possível exportar o Excel: '+String(e.message||'erro'),true);}
+   finally{busy=false;}
+   return;
   }
   if(el.hasAttribute('data-report-export')){
    if(!report)return;
@@ -627,6 +709,29 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   // Prevent browser navigation on every submit, including duplicate taps during an async save.
   event.preventDefault();
   if(busy)return;
+  if(form.id==='shop-document-settings-form'){
+   if(grant.role!=='owner'||disconnected())return showMessage('Apenas o proprietário online pode guardar a personalização.',true);
+   const fields=new FormData(form);
+   const raw=normalizeDocumentBranding({
+    displayName:fields.get('display_name'),address:fields.get('address'),
+    phone:fields.get('phone'),email:fields.get('email'),
+    primaryColor:fields.get('primary_color'),secondaryColor:fields.get('secondary_color'),
+    footerNote:fields.get('footer_note'),template:fields.get('template'),
+    logoPath:branding?.logoPath||''
+   },grant.name);
+   try{serializeDocumentBranding(raw);}
+   catch{return showMessage('Confirme o nome comercial e o e-mail.',true);}
+   const file=fields.get('document_logo');
+   busy=true;showMessage('A guardar personalização na nuvem...');
+   try{
+    if(file&&file.size>0)raw.logoPath=await client.uploadDocumentLogo(grant.id,file);
+    branding=await client.saveDocumentSettings(grant.id,raw);
+    brandLogoUrl=branding.logoPath?await client.documentLogoUrl(branding.logoPath):'';
+    render();showMessage('Personalização guardada e aplicada aos documentos.');
+   }catch(e){showMessage('Não foi possível guardar a personalização: '+String(e.message||'erro'),true);}
+   finally{busy=false;}
+   return;
+  }
   if(form.id==='shop-reports-form'){
    const fields=new FormData(form);
    const from=String(fields.get('from')||''),to=String(fields.get('to')||'');
