@@ -45,7 +45,7 @@ function mock(){
  return {calls,fetchImpl};
 }
 test('PIN screen renders five digits, Portuguese labels and clear lock controls',()=>{
- assert.equal(PIN_IDLE_MS,180000);
+ assert.equal(PIN_IDLE_MS,600000);
  const html=pinScreen({mode:'unlock',email:'seller@example.org'});
  assert.match(html,/Ecrã bloqueado/);
  assert.match(html,/Desbloquear/);
