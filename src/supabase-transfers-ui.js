@@ -29,7 +29,7 @@ export function transferFormRows(products,count){
 }
 export function renderTransfersView({snapshot,branches=[],branchId='',products=[],
  role='owner',lineCount=1,pendingTransfer=null}={}){
- if(!snapshot)return '<section class="shop-box"><h3>Transferências</h3><p>A consultar stock em trânsito…</p></section>';
+ if(!snapshot)return '<section class="shop-box"><h3>Transferências</h3><p></p></section>';
  const canWrite=['owner','manager','stock'].includes(role);
  const eligible=branches.filter(b=>b.id!==branchId&&b.active!==false);
  const names=new Map(branches.map(b=>[b.id,b.name]));

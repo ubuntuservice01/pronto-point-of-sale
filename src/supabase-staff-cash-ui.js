@@ -14,7 +14,7 @@ export function normalizeSuspendedCash(raw){
  }))};
 }
 export function renderSuspendedCash(cash){
- if(!cash)return '<section class="shop-box"><h3>Caixas suspensos</h3><p>A consultar sessões em aberto…</p></section>';
+ if(!cash)return '<section class="shop-box"><h3>Caixas suspensos</h3><p></p></section>';
  const sessions=cash.sessions;
  return '<section class="shop-box"><h3>Caixas de colaboradores suspensos ou com acesso bloqueado</h3>'+
  '<p class="shop-help">O proprietário pode reconciliar um caixa que permaneceu aberto após a suspensão ou o bloqueio de acesso do funcionário, incluindo o fim do horário programado. Conte fisicamente o dinheiro antes de confirmar. As vendas e movimentos originais não são modificados; a diferença será registada para auditoria.</p>'+

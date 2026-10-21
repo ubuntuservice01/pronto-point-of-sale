@@ -1,5 +1,7 @@
 import {normalizeCashControl,ownOpenSession,cashSessionsCSV} from './supabase-cash-ui.js';
 import {showConfirmModal} from './ui/pronto-modal.js';
+import {startProntoLoading} from './ui/pronto-loading.js';
+import {customerMessage} from './customer-copy.js';
 import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/pronto-sale-success.js';
 import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
@@ -39,9 +41,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   try{await client.signOut();}finally{onLogout();}
  };
  const showMessage=(text,warning=false)=>{
-  notice=text;
+  const safe=customerMessage(text,{warning});
+  notice=safe;
   const el=root.querySelector('#shop-message');
-  if(el){el.textContent=text;el.classList.toggle('shop-error',warning);}
+  if(el){el.textContent=safe;el.classList.toggle('shop-error',warning);}
  };
  const session=()=>cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const offlineCount=()=>offlineCashKeys(localStorage,scope()).length;
@@ -84,15 +87,22 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
  };
- const safeLoad=async(first=false)=>{
+ const safeLoad=async(first=false,fullScreen=false)=>{
   if(busy)return;busy=true;
-  try{await refresh(first);showMessage('Dados sincronizados com o Supabase.');}
-  catch(e){
+  const loading=fullScreen?startProntoLoading():null;
+  let succeeded=false;
+  try{
+   await refresh(first);showMessage('');
+   succeeded=true;
+  }catch(e){
    if(e.message==='supabase_unauthorized'||e.message==='shop_access_required'){
-    await leave();return;
+    loading?.cancel();await leave();return;
    }
-   showMessage('Não foi possível carregar dados da loja. Confirme a licença e a ligação à internet.',true);
-  }finally{busy=false;}
+   showMessage('Não foi possível abrir os dados da loja. Confirme a licença e a ligação à internet.',true);
+  }finally{
+   busy=false;
+   if(loading){if(succeeded)void loading.finish();else loading.cancel();}
+  }
  };
  const lockedScreen=(reason)=>{
   const message={
@@ -140,7 +150,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const loadReports=async()=>{
   if(disconnected())return showMessage('Sem internet, não é possível actualizar relatórios.',true);
   if(busy)return;
-  busy=true;showMessage('A consultar relatórios do Supabase…');
+  busy=true;showMessage('');
   try{
    report=await client.reportsSnapshot(grant.id,reportScope==='all'?null:branchId,reportFrom,reportTo);
    render();showMessage('Relatório actualizado. Os valores são operacionais e não substituem documentos fiscais.');
@@ -150,7 +160,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const loadAudit=async()=>{
   if(disconnected())return showMessage('É necessário estar online para consultar a auditoria.',true);
   if(busy||grant.role!=='owner')return;
-  busy=true;showMessage('A consultar o histórico protegido…');
+  busy=true;showMessage('');
   try{audit=await client.ownerAuditSnapshot(grant.id,auditPage);
    render();showMessage('Histórico de actividades actualizado.');}
   catch(error){audit=null;render();showMessage('Não foi possível consultar a auditoria. ('+error.message+')',true);}
@@ -204,7 +214,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const processSale=async()=>{
   if(!pending)return;
   if(disconnected()){showMessage('Sem internet: a venda não foi concluída. Guarde o rascunho encriptado e volte a tentar depois de restabelecer a ligação.',true);return;}
-  busy=true;showMessage('A verificar e registar a venda no servidor…');
+  busy=true;showMessage('');
   try{
    const checkoutRequest=pending;
    const receiptProducts=data.products.slice();
@@ -237,8 +247,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  };
  const execute=async(action,payload)=>{
   if(busy)return;
-  if(disconnected())return showMessage('Sem ligação à internet. Esta operação não foi enviada ao Supabase.',true);
-  busy=true;showMessage('A registar informação no Supabase…');
+  if(disconnected())return showMessage('Sem ligação à internet. A operação não foi enviada.',true);
+  busy=true;showMessage('');
   try{
    const result=['cash_open','cash_close'].includes(action)&&typeof client.cashControl==='function'?
     await client.cashControl(action==='cash_open'?'open':'close',cashData(payload)):
@@ -252,9 +262,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     action==='stock_receive'?'Stock recebido e registado por lote.':
     action==='cash_open'?'Sessão de caixa aberta.':
     action==='cash_close'?'Caixa encerrado. Esperado: '+(Number(result.expected_cents)/100).toFixed(2)+' MT; diferença: '+(Number(result.difference_cents)/100).toFixed(2)+' MT.':
-    action==='customer_save'?'Cliente guardado no Supabase.':
+    action==='customer_save'?'Cliente guardado com sucesso.':
     action==='credit_policy'?'Limite de crédito actualizado com auditoria.':
-    action==='debt_payment'?'Pagamento da dívida confirmado no Supabase.':
+    action==='debt_payment'?'Pagamento da dívida confirmado.':
     'Operação realizada.';
    showMessage(summary);
   }catch(e){
@@ -354,7 +364,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return;
   }
   if(el.hasAttribute('data-finance-discard')){
-   if(await confirmShop('Já verificou se a operação foi registada no Supabase? Descartar uma tentativa NÃO reverte lançamentos existentes.')){pendingFinance=null;showMessage('Referência local descartada. Confirme o histórico antes de repetir.');}
+   if(await confirmShop('Já confirmou no histórico se a operação foi registada? Descartar uma tentativa NÃO reverte lançamentos existentes.')){pendingFinance=null;showMessage('Referência local descartada. Confirme o histórico antes de repetir.');}
    return;
   }
   if(el.hasAttribute('data-credit-customer')){selectedCustomerId=el.dataset.creditCustomer;render();return;}
@@ -372,7 +382,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    catch{showMessage('Verifique o telefone do cliente.',true);}return;
   }
   if(el.hasAttribute('data-shop-credit')){if(lockPending())return;method=method==='credit'?'cash':'credit';updatePanel();return;}
-  if(el.hasAttribute('data-shop-refresh'))return void safeLoad();
+  if(el.hasAttribute('data-shop-refresh'))return void safeLoad(false,true);
   if(el.hasAttribute('data-branch-toggle')){
    if(grant.role!=='owner'||disconnected()||pending)return;
    const mode=el.dataset.branchActive==='true'?'deactivate':'reactivate';
@@ -444,7 +454,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
 
   if(el.hasAttribute('data-shop-draft-clear')){
-   if(await confirmShop('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas no Supabase.')){
+   if(await confirmShop('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas na loja.')){
     clearShopDraft(localStorage,scope());render();showMessage('Rascunho local apagado.');
    }return;
   }
@@ -642,7 +652,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    catch{return showMessage('Introduza o montante contado em MT.',true);}
    if(counted<0)return showMessage('O dinheiro contado não pode ser negativo.',true);
    if(!await confirmShop('Confirma a contagem física e encerramento excepcional deste caixa? Não será possível reabrir esta sessão.'))return;
-   busy=true;showMessage('A reconciliar caixa no Supabase…');
+   busy=true;showMessage('');
    try{
     const result=await client.ownerCloseSuspendedCash({business_id:grant.id,session_id:target,
      counted_cash_cents:counted,reason});
@@ -684,7 +694,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     return showMessage('Revise o horário e seleccione pelo menos um dia.',true);
    const enabled=fields.has('schedule_enabled');
    if(!await confirmShop('Guardar horário para '+employee.name+'? Os horários seguem Africa/Maputo e podem bloquear uma sessão já aberta.'))return;
-   busy=true;showMessage('A guardar horário no servidor…');
+   busy=true;showMessage('');
    try{
     await client.ownerStaffAccessAction('schedule',{business_id:grant.id,user_id:id,
      schedule_enabled:enabled,start_time:start,end_time:end,weekdays});
@@ -700,7 +710,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!employee||!['manager','cashier','stock','finance'].includes(role))
     return showMessage('Funcionário ou função inválidos.',true);
    if(!await confirmShop('Alterar a função de '+employee.name+' para '+role+'?'))return;
-   busy=true;showMessage('A actualizar a função no Supabase…');
+   busy=true;showMessage('');
    try{
     await client.ownerStaffAction('role_change',{business_id:grant.id,user_id:id,role});
     await refresh();showMessage('Função alterada no servidor. O colaborador deverá entrar novamente para actualizar o menu.');
@@ -746,7 +756,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   if(action==='csv_import'){
    if(!['owner','manager','stock'].includes(grant.role))return showMessage('Sem permissão para importar artigos.',true);
-   if(disconnected())return showMessage('Importação necessita de ligação ao Supabase.',true);
+   if(disconnected())return showMessage('A importação exige ligação à internet.',true);
    if(pending)return void lockPending();
    const input=new FormData(form),file=input.get('csv_file');
    if(!input.has('confirm_import'))return showMessage('Confirme os dados antes da importação.',true);
@@ -783,7 +793,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const f=new FormData(form),file=f.get('photo'),productId=String(f.get('product_id')||''),
     expectedRevision=Number(f.get('revision'));
    if(!inventory?.products.some(p=>p.id===productId))return showMessage('Produto não encontrado.',true);
-   busy=true;showMessage('A enviar fotografia de forma privada ao Supabase…');
+   busy=true;showMessage('');
    try{
     await client.uploadProductPhoto({businessId:grant.id,branchId,productId,expectedRevision,file});
     photoCache.clear();await refresh();render();showMessage('Fotografia guardada. A imagem só está disponível aos utilizadores autorizados.');
@@ -814,7 +824,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
       expires_on:get('expires_on')};
     }
    }catch(error){return showMessage('Reveja o formulário: '+error.message,true);}
-   busy=true;showMessage('A validar quantidades e permissões no Supabase…');
+   busy=true;showMessage('');
    try{
     const result=await client.inventoryAction(action,cashData(payload));
     await refresh();render();showMessage('Inventário actualizado. Stock actual: '+String(result.stock||0));
@@ -868,7 +878,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const keys=offlineCashKeys(localStorage,scope());
    if(!keys.length)return showMessage('Não há movimentos offline pendentes neste dispositivo.');
    if(!await confirmShop('Sincronizar '+keys.length+' movimento(s)? Cada lançamento mantém a sua referência original.'))return;
-   busy=true;showMessage('A verificar acesso e sincronizar movimentos…');
+   busy=true;showMessage('');
    let done=0;
    try{
     const access=await client.myAccessStatus(grant.id);
@@ -930,7 +940,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   if(['supplier_save','purchase_receive','purchase_payment','expense_add','expense_schedule_save'].includes(action)){
    if(lockPending())return;
-   if(disconnected())return showMessage('Esta operação exige ligação ao Supabase. Não foi lançada.',true);
+   if(disconnected())return showMessage('Esta operação exige ligação à internet. Não foi concluída.',true);
    const f=new FormData(form),str=k=>String(f.get(k)||'').trim();
    let payload;
    try{
@@ -974,7 +984,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     else if(['purchase_receive','purchase_payment','expense_add'].includes(action))
      pendingFinance={action,payload};
    }catch(error){return showMessage('Reveja o formulário ou a operação pendente: '+error.message,true);}
-   busy=true;showMessage('A registar operação no Supabase…');
+   busy=true;showMessage('');
    try{
     const result=await client.financeAction(action,{business_id:grant.id,branch_id:branchId,...payload});
     if(pendingFinance?.action===action)pendingFinance=null;
@@ -1012,12 +1022,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      pendingPayment=payload;
     }
    }catch(error){return showMessage('Verifique os dados da operação: '+error.message,true);}
-   busy=true;showMessage('A guardar no Supabase…');
+   busy=true;showMessage('');
    try{
     const result=await client.merchantAction(action,{business_id:grant.id,branch_id:branchId,...payload});
     if(action==='debt_payment')pendingPayment=null;
     await refresh();if(action==='customer_save')selectedCustomerId=result.customer_id;
-    render();showMessage(action==='debt_payment'?'Cobrança registada e reconciliada com o caixa.':'Dados actualizados no Supabase.');
+    render();showMessage(action==='debt_payment'?'Cobrança registada e reconciliada com o caixa.':'Dados actualizados com sucesso.');
    }catch(error){
     showMessage(action==='debt_payment'?'Cobrança por confirmar. Não altere o pedido nem o repita com outra referência; confira o histórico ou reenvie o mesmo pedido.':'O servidor rejeitou a operação: '+error.message,true);
    }finally{busy=false;}
@@ -1106,6 +1116,6 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  },{signal});
  window.addEventListener('offline',()=>showMessage('Sem internet: as vendas não podem ser concluídas. Guarde um rascunho encriptado e recupere-o depois de entrar novamente com ligação.',true),{signal});
  window.addEventListener('online',()=>showMessage('Ligação restabelecida. Sincronize os movimentos offline pendentes em Caixa, se existirem.'),{signal});
- root.innerHTML='<main class="shop-loading">A consultar filiais e permissões reais no Supabase…</main>';
+ root.innerHTML='<main class="shop-loading" aria-hidden="true"></main>';
  if(await checkStaffAccess())await safeLoad(true);
 }

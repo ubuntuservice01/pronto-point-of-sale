@@ -1,4 +1,5 @@
 import {prontoSupabaseConfig} from './pronto-supabase-config.js';
+import {startProntoLoading} from './ui/pronto-loading.js';
 import {createProntoIdentity} from './supabase-identity.js';
 import {mountUbuntuAdminDashboard} from './supabase-admin-dashboard.js';
 import {mountSupabaseMerchantPilot} from './supabase-shop-dashboard.js';
@@ -67,10 +68,13 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    const button=node.querySelector('button'),error=node.querySelector('#pronto-auth-check-error');
    button.disabled=true;error.textContent='';
    const data=new FormData(node);
+   const loading=startProntoLoading();
    try{
     const account=await client.signIn(String(data.get('email')||''),String(data.get('password')||''));
     node.reset();await ready(account,false);
+    await loading.finish();
    }catch(e){
+    loading.cancel();
     const messages={
      supabase_rate_limit:'Demasiadas tentativas. Aguarde e volte a tentar.',
      supabase_unauthorized:'Não foi possível autenticar. Confira a conta e as permissões.',
@@ -127,16 +131,17 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   };
  };
  const bootstrap=async()=>{
-  if(recovery.token){beginRecovery(recovery.token,recovery.kind);return;}
-  root.innerHTML='<section class="shop-loading" role="status" aria-live="polite">'+
-   'A recuperar a sessão segura…</section>';
+  const loading=startProntoLoading();
+  if(recovery.token){loading.cancel();beginRecovery(recovery.token,recovery.kind);return;}
   try{
    const account=await client.restoreSession();
    if(account)await ready(account,true);
    else form();
+   await loading.finish(); // Display 100% only after login/PIN or screen is ready.
   }catch(error){
+   loading.cancel(); // Never claim 100% on network or login errors.
    if(['supabase_unavailable','supabase_rate_limit'].includes(error.message)){
-    // Do not erase the refresh token when connectivity is merely unavailable.
+    // Keep the saved session; allow the user to retry without re-entering a password.
     root.innerHTML='<section class="login-shell pronto-auth-test">'+
      '<div class="panel login-panel"><h2>Ligação indisponível</h2>'+
      '<p>A sua sessão está guardada. Verifique a Internet e tente novamente.</p>'+
