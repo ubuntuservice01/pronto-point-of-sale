@@ -44,7 +44,7 @@ export function customerPicker(credit,selected=''){
   list.map(c=>'<option value="'+esc(c.id)+'"'+(c.id===selected?' selected':'')+'>'+esc(c.name)+(c.phone?' · '+esc(c.phone):'')+'</option>').join('')+'</select></label>';
 }
 export function creditCheckoutFields({credit,selected='',today='',method='cash'}={}){
- if(!credit)return '<p class="shop-help">A carregar clientes do Supabase…</p>';
+ if(!credit)return '<p class="shop-help"></p>';
  const customer=credit.customers.find(c=>c.id===selected);
  const outstanding=customer?credit.debts.filter(d=>d.customerId===selected&&d.status==='open')
   .reduce((n,d)=>n+d.balance,0):0;
@@ -54,7 +54,7 @@ export function creditCheckoutFields({credit,selected='',today='',method='cash'}
   (method==='credit'?'<p class="shop-help">A venda a crédito cria uma dívida no servidor, sujeita ao limite do cliente e à disponibilidade do stock.</p>':'');
 }
 export function renderCreditView({view,credit,role,query='',filter='open',session=null,selectedCustomerId=''}){
- if(!credit)return panel('Clientes e dívidas','<p>A consultar informações no Supabase…</p>');
+ if(!credit)return panel('Clientes e dívidas','<p></p>');
  const customers=searchCustomers(credit.customers,query);
  const active=credit.customers.filter(x=>x.active);
  if(view==='customers'){
