@@ -72,6 +72,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   notice=safe;
   const el=root.querySelector('#shop-message');
   if(el){el.textContent=safe;el.classList.toggle('shop-error',warning);}
+  const inline=root.querySelector('#shop-checkout-feedback');
+  if(inline){inline.textContent=warning?safe:'';inline.hidden=!warning;}
  };
  const session=()=>cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const offlineCount=()=>offlineCashKeys(localStorage,scope()).length;
@@ -300,8 +302,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     }
    }).catch(()=>showMessage('Venda confirmada. Consulte o histórico para imprimir o comprovativo.',true));
   }catch(e){
-   showMessage('Venda ainda sem confirmação. Verifique a sessão e clique em «Repetir o mesmo pedido» para evitar duplicações. ('+String(e.message||'erro')+')',true);
    render();
+   showMessage('Venda ainda sem confirmação. Verifique a sessão e clique em «Repetir o mesmo pedido» para evitar duplicações. ('+String(e.message||'erro')+')',true);
   }finally{busy=false;}
  };
  const execute=async(action,payload)=>{
@@ -675,7 +677,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      payment_mismatch:'Os pagamentos devem somar exactamente o valor total.',
      stock_unavailable:'O stock já não é suficiente.',
      cash_short:'O dinheiro recebido é inferior ao montante devido.',
-     cash_required:'Introduza o valor de dinheiro efectivamente entregue pelo cliente.'
+     cash_required:'Introduza o valor de dinheiro efectivamente entregue pelo cliente.',
+     debt_customer_required:'Seleccione o cliente antes de registar uma dívida.',
+     debt_due_date:'Seleccione um prazo de pagamento válido.',
+     debt_blocked:'Este cliente está bloqueado para novas dívidas. Contacte o gerente.',
+     debt_limit:'Limite de crédito insuficiente. Solicite ao proprietário ou gerente para actualizar o limite na opção Clientes.'
     }[e.message]||'Corrija os valores e as quantidades antes de concluir. ('+e.message+')',true);
    }
    return;
