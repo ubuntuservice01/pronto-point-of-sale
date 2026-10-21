@@ -1,0 +1,19 @@
+/* Venda e carrinhos suspensos — navigation within merchant checkout. */
+.shop-sales-tabs{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:0 0 16px}
+.shop-sales-tab{border:1px solid #bddac9;border-radius:12px;background:#fff;color:#286a50;min-height:46px;padding:10px 16px;font-weight:750;cursor:pointer}
+.shop-sales-tab.selected{border-color:#087f68;background:#087f68;color:#fff}
+.shop-sales-tab span,.shop-held-heading span,.shop-held-menu-count{display:inline-grid;place-items:center;margin-left:6px;border-radius:99px;min-width:22px;height:22px;padding:0 5px;font-size:12px;font-weight:850;background:#e6f4ea;color:#087f68}
+.shop-sales-tab.selected span{background:#fff;color:#087f68}
+.shop-held-menu-count{margin-left:auto}
+.shop-held-in-sales{margin:16px 0}
+.shop-held-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.shop-held-heading h3{margin:0}
+.shop-held-heading>button{border:1px solid #b7dcca;background:#e9f7ee;color:#076b52;border-radius:10px;min-height:40px;padding:7px 15px;font-weight:750}
+.shop-held-mini-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e2eee6}
+.shop-held-mini-item:last-child{border-bottom:0}
+.shop-held-mini-item>div{min-width:0}
+.shop-held-mini-item strong{display:block;color:#214c37;font-size:13px;overflow-wrap:anywhere}
+.shop-held-mini-item small{display:block;color:#6b8073;font-size:12px;margin-top:4px}
+.shop-held-mini-item button{flex:none;border:1px solid #0c8967;color:#08765a;background:#f1fbf5;border-radius:10px;min-height:42px;padding:8px 16px;font-weight:750}
+.shop-held-mini-item button:hover,.shop-held-heading>button:hover{background:#d6eee1}
+@media(max-width:600px){.shop-sales-tabs{display:grid;grid-template-columns:1fr 1fr}.shop-sales-tab{font-size:13px;padding:10px 8px}.shop-held-mini-item{align-items:flex-start;flex-wrap:wrap}.shop-held-mini-item>div{flex:1 1 180px}}
