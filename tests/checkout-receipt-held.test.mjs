@@ -73,5 +73,6 @@ test('Checkout confirmation is shown only after successful server response, and 
  for(const action of ['new','print','close'])assert.match(modal,new RegExp('data-sale-done="'+action+'"'));
  assert.match(modal,/win\.print\(\)/);
  assert.match(css,/@media print/);
- assert.match(css,/size:80mm/);
+ assert.match(modal,/size:80mm/);
+ assert.match(css,/body\.pronto-printing/);
 });
