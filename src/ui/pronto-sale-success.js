@@ -1,6 +1,7 @@
 // Confirmed sale summary. Only successful server responses may reach this screen.
 // Printable document is explicitly an operational receipt, not a fiscal invoice.
 import {esc,MONEY} from '../supabase-shop-core.js';
+import {normalizeDocumentBranding} from '../supabase-document-branding.js';
 const methods={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência'};
 const integer=x=>Number.isSafeInteger(Number(x))&&Number(x)>=0;
 const formatDate=stamp=>new Intl.DateTimeFormat('pt-PT',{
@@ -31,12 +32,17 @@ export function confirmedSaleReceipt({request,result,products,shop,branch,seller
   payments,cashReceived:Number(request.cash_received_cents||0),change,
   credit:Boolean(result.debt_id||request.due_on),duplicate:Boolean(result.duplicate)};
 }
-export function receiptMarkup(r){
+export function receiptMarkup(r,{branding,logoUrl=''}={}){
+ const b=normalizeDocumentBranding(branding,r.shop);
  const rows=r.items.map(p=>'<tr><td>'+esc(p.name)+'<small>'+esc(p.qty)+' × '+MONEY(p.unitCents)+' / '+esc(p.unit)+'</small></td>'+
   '<td>'+MONEY(p.lineCents)+'</td></tr>').join('');
  const pay=r.payments.map(p=>'<div><span>'+esc(p.name)+'</span><strong>'+MONEY(p.cents)+'</strong></div>').join('');
  return '<div class="pronto-receipt-content">'+
-  '<header><strong>Pronto POS</strong><p>'+esc(r.shop)+'</p>'+
+  '<header>'+(logoUrl?'<img class="pronto-receipt-brand-logo" src="'+esc(logoUrl)+'" alt="Logótipo do negócio">':'')+
+  '<strong>'+esc(b.displayName)+'</strong>'+
+  (b.address?'<p>'+esc(b.address)+'</p>':'')+
+  (b.phone?'<p>'+esc(b.phone)+'</p>':'')+
+  (b.email?'<p>'+esc(b.email)+'</p>':'')+
   (r.branch?'<p>Filial: '+esc(r.branch)+'</p>':'')+'</header>'+
   '<p><b>Comprovativo de venda</b></p>'+
   '<p>Ref.: '+esc(r.id)+'</p><p>Data: '+esc(r.date)+'</p>'+
@@ -50,7 +56,7 @@ export function receiptMarkup(r){
   (r.payments.some(p=>p.name==='Dinheiro')?'<div><span>Dinheiro recebido</span><strong>'+MONEY(r.cashReceived)+'</strong></div>'+
    '<div><span>Troco</span><strong>'+MONEY(r.change)+'</strong></div>':'')+
   (r.credit?'<p>Venda a crédito — pagamento pendente.</p>':'')+
-  '</div><footer>Obrigado pela preferência.<p>Comprovativo operacional; não substitui documento fiscal.</p></footer></div>';
+  '</div><footer>'+esc(b.footerNote||'Obrigado pela preferência.')+'<p>Comprovativo operacional; não substitui documento fiscal. Gerado pelo Pronto POS.</p></footer></div>';
 }
 export function showSaleCompleteModal(receipt,{doc=document}={}){
  if(!receipt?.id)throw Error('sale_not_confirmed');
@@ -91,16 +97,16 @@ export function showSaleCompleteModal(receipt,{doc=document}={}){
   catch{dialog.remove();resolve('close');}
  });
 }
-export function printSaleReceipt(r,{doc=document,win=window}={}){
+export function printSaleReceipt(r,{doc=document,win=window,branding=null,logoUrl=''}={}){
  if(!r?.id)throw Error('sale_not_confirmed');
  // Only one print container; escaped data come from confirmed checkout request.
  doc.getElementById('pronto-sale-print')?.remove();
  const page=doc.createElement('section');
  page.id='pronto-sale-print';page.className='pronto-sale-print-page';
- page.innerHTML=receiptMarkup(r);
+ page.innerHTML=receiptMarkup(r,{branding,logoUrl});
  doc.body.append(page);
  const pageStyle=doc.createElement('style');
- pageStyle.textContent='@page{size:80mm auto;margin:3mm}';
+ pageStyle.textContent='@page{size:80mm auto;margin:3mm}.pronto-receipt-brand-logo{display:block;width:70px;height:58px;object-fit:contain;margin:0 auto 8px}.pronto-receipt-content header{text-align:center}';
  doc.head.append(pageStyle);
  doc.body.classList.add('pronto-printing');
  const cleanup=()=>{page.remove();pageStyle.remove();doc.body.classList.remove('pronto-printing');};
