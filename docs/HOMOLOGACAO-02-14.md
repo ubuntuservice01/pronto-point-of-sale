@@ -25,10 +25,11 @@
 | **H14 Backup e recuperação** | Verificações read-only da base e controlo de versão das migrações | **Restauro de backup — PENDENTE:** evidenciar snapshot recuperável, cópia segura, restauro numa base isolada, consistência e tempo de recuperação | **PENDENTE** |
 
 ## Verificações directas de hoje, sem alteração de dados
-- Supabase: **35** tabelas `public.pronto_*`, **35** com RLS activo; **0** RPCs públicas `pronto_*` executáveis por `anon`.
+- Supabase: **35** tabelas `public.pronto_*`, **35** com RLS activo; **0** RPCs públicas `pronto_*` executáveis por `anon`. Em revisão de permissões, **0** tabelas com SELECT concedido a `anon` e **0** concessões directas INSERT/UPDATE/DELETE para `authenticated`.
 - Base de dados contém **2 comerciantes, 4 vendas, 0 sessões de caixa abertas/registadas** no instante consultado. Não foram alterados.
 - Aviso de segurança por tratar: `auth_leaked_password_protection` desactivado. Ver [configuração recomendada](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 - Aviso informativo: 12 tabelas sem políticas RLS, incluindo tabelas internas; confirmar se o bloqueio de acesso directo é intencional antes de abrir permissões.
+- Ensaio SQL adicional `tests/sql/pronto_cash_control_rollback.sql` **não pôde prosseguir**: `fixture_requires_licensed_owner` (não existia uma conta de proprietário de teste elegível para a função). A transacção falhou e foi revertida; contagens de produtos, vendas, sessões e políticas **inalteradas**. Não marcar como aprovado. Repetir apenas com conta piloto autorizada, nunca forçar dados em loja operacional.
 - O projecto Lovable está publicado, mas uma URL pública e CI verde **não** demonstram homologação real.
 - O ficheiro `docs/QA-MANUAL.md` contém **67 testes manuais ainda marcados Pendente**. Não foram aprovados em massa.
 - A versão do README inclui passagens históricas desactualizadas sobre sessões e modos; usar esta matriz e as verificações actuais para decisões de lançamento.
