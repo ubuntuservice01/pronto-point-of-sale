@@ -61,7 +61,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   (method!=='credit'?'<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>':'')+
   '<p class="shop-help">Os pagamentos M-Pesa, e-Mola e transferência não são verificados automaticamente pela operadora.</p>'+
   (['owner','manager','cashier'].includes(role)?'<button type="button" class="shop-credit-toggle" data-shop-credit aria-pressed="'+(method==='credit')+'">'+(method==='credit'?'Voltar a pagamento imediato':'Vender a crédito')+'</button>':'')+
-  creditWarning+'<p id="shop-checkout-feedback" class="shop-error" role="alert" hidden></p>'+
+  creditWarning+(method==='credit'?'<p id="shop-checkout-feedback" class="shop-error" role="alert" hidden></p>':'')+
   '<button class="shop-submit" type="submit" '+((!session&&!allowNoSession)||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
