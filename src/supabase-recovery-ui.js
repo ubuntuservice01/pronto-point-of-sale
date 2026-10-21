@@ -48,7 +48,7 @@ export function mountPasswordRecovery({root,client,token,onBack,kind='recovery'}
   return;
  }
  root.innerHTML=content('<h2>Esqueceu-se da palavra-passe?</h2>'+
-  '<p>Indique o email da conta. Se existir e o serviço de email estiver configurado, receberá instruções para recuperar o acesso.</p>'+
+  '<p>Indique o email da conta. Se tiver dificuldade com a palavra-passe, contacte o responsável pelo seu acesso. Também pode solicitar uma recuperação por email, se disponível.</p>'+
   '<form id="recovery-request-form"><label>Email<input type="email" name="email" maxlength="254" autocomplete="email" required></label>'+
   '<p id="recovery-message" role="status" aria-live="polite"></p>'+
   '<button type="submit" class="primary full">Solicitar recuperação</button></form>'+
