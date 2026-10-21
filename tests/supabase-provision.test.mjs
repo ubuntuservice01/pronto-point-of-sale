@@ -22,8 +22,8 @@ function mock({admin=true}={}){
   if(url.endsWith('/rest/v1/rpc/pronto_admin_mutation')){
    return admin?json(200,{id:B,status:'suspended'}):json(403,{error:'admin_required'});
   }
-  if(url.endsWith('/functions/v1/pronto-admin-invite')){
-   return admin?json(201,{ok:true,invited:true,user_id:U}):json(403,{error:'admin_required'});
+  if(url.endsWith('/functions/v1/pronto-credentials')){
+   return admin?json(201,{ok:true,email:'staff@example.org',temporary_password:'Strong-Credential-Not-Shared-232',account_code:'POS-11111111',user_id:U}):json(403,{error:'not_authorized'});
   }
   return json(404,{});
  };
@@ -40,7 +40,7 @@ test('Six Ubuntu administrative tabs include a specific user-management screen',
   assert.ok(renderProvisioningForms(key,example).includes('<form'),key);
  }
  const html=renderProvisioningForms('members',example);
- assert.ok(html.includes('member_invite')&&html.includes('member_assign'));
+ assert.ok(html.includes('member_create')&&html.includes('member_assign'));
  assert.ok(html.includes('Sofia')&&!html.includes('<Sofia>'));
  assert.ok(html.includes('&lt;Sofia&gt;'));
  assert.ok(html.includes('sofia@example.org'));
@@ -67,15 +67,15 @@ test('Supabase privileged operations require authenticated bearer and never ship
  const m=mock();
  const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:m.fetchImpl});
  await assert.rejects(()=>client.adminMutate('business_create',{}),/supabase_unauthorized/);
- await assert.rejects(()=>client.inviteMember({}),/supabase_unauthorized/);
+ await assert.rejects(()=>client.provisionMember({}),/supabase_unauthorized/);
  const account=await client.signIn('owner@example.com','demo-password');
  assert.equal(account.ubuntuAdmin,true);
  assert.deepEqual(await client.adminMutate('business_create',{name:'Loja Real'}),{id:B,status:'suspended'});
- assert.deepEqual(await client.inviteMember({email:'staff@example.org',business_id:B,role:'owner',display_name:'Sofia'}),{ok:true,invited:true,user_id:U});
+ assert.deepEqual(await client.provisionMember({email:'staff@example.org',business_id:B,role:'owner',display_name:'Sofia'}),{ok:true,email:'staff@example.org',temporary_password:'Strong-Credential-Not-Shared-232',account_code:'POS-11111111',user_id:U});
  const mutation=m.calls.find(c=>c.url.endsWith('/rpc/pronto_admin_mutation'));
  assert.equal(mutation.headers.Authorization,'Bearer jwt-token');
  assert.deepEqual(JSON.parse(mutation.data),{p_action:'business_create',p_data:{name:'Loja Real'}});
- const invite=m.calls.find(c=>c.url.endsWith('/functions/v1/pronto-admin-invite'));
+ const invite=m.calls.find(c=>c.url.endsWith('/functions/v1/pronto-credentials'));
  assert.equal(invite.headers.Authorization,'Bearer jwt-token');
  assert.equal(invite.headers.apikey,prontoSupabaseConfig.publishableKey);
  assert.ok(!m.calls.some(c=>JSON.stringify(c).includes('sb_secret_')));
