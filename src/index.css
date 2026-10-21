@@ -2,3 +2,13 @@
 #lovable-badge {
   display: none !important;
 }
+
+/* Private one-time credentials, shown only after authorised account creation. */
+.pronto-credentials-dialog{width:min(94vw,490px);max-height:88vh;overflow:auto;border:1px solid #dfe4e8;border-radius:18px;padding:24px;color:#20303b;background:#fff;box-shadow:0 18px 70px #0d263644}
+.pronto-credentials-dialog::backdrop{background:#0b1624a6}
+.pronto-credentials-dialog h2{margin:0 0 10px;font-size:1.35rem}
+.pronto-credentials-dialog p{line-height:1.5}
+.pronto-credentials-dialog label{display:block;margin:12px 0;font-weight:600;font-size:.94rem}
+.pronto-credentials-dialog input{display:block;margin-top:6px;width:100%;box-sizing:border-box;padding:12px;border:1px solid #ced8e0;border-radius:10px;color:#20303b;background:#f8fafb;font:inherit}
+.pronto-credentials-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.pronto-credentials-actions button{flex:1;min-height:44px}
