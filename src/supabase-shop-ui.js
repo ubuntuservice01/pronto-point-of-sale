@@ -79,9 +79,19 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  const badge=()=>'<span class="shop-alert-count" data-shop-alert-count aria-label="'+notificationCount+' alerta(s)"'+(notificationCount?'':' hidden')+'>'+badgeText(notificationCount)+'</span>';
  const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" aria-label="'+esc(key==='alerts'?alertLabel:name)+'" title="'+esc(name)+'" '+(view===key?'aria-current="page"':'')+'><span class="shop-nav-icon" aria-hidden="true">'+icon(key)+'</span><span class="shop-nav-label">'+esc(name)+'</span>'+(key==='alerts'?badge():key==='held'&&heldSales.length?'<span class="shop-held-menu-count">'+heldSales.length+'</span>':'')+'</button>').join('');
  const quickKeys=['sell','products','cash','reports','inventory','history','alerts','customers','team','purchases'];
- const bottomNav=quickKeys.filter(key=>nav.some(item=>item[0]===key)).slice(0,4)
-  .map(key=>{const name={sell:'Vender',products:'Produtos',cash:'Caixa',reports:'Relatórios',inventory:'Inventário',history:'Vendas',
-   alerts:'Alertas',customers:'Clientes',team:'Equipa',purchases:'Compras'}[key];return '<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'><span class="shop-bottom-icon" aria-hidden="true">'+icon(key)+'</span><small>'+name+'</small></button>';}).join('');
+ // Five mobile slots: two secondary actions, central primary sale, one secondary action, More.
+ // Roles without sale permission keep four authorised shortcuts; no forbidden action is introduced.
+ const allowedQuick=quickKeys.filter(key=>nav.some(item=>item[0]===key));
+ const leading=['products','cash','history','inventory','alerts','customers','reports'].filter(key=>allowedQuick.includes(key)).slice(0,2);
+ const trailing=['reports','history','inventory','alerts','customers','products','cash'].filter(key=>allowedQuick.includes(key)&&!leading.includes(key)).slice(0,1);
+ const mobileKeys=allowedQuick.includes('sell')?[...leading,'sell',...trailing]:allowedQuick.slice(0,4);
+ const bottomNav=mobileKeys.map(key=>{
+  const name={sell:'Vender',products:'Produtos',cash:'Caixa',reports:'Relatórios',inventory:'Inventário',history:'Vendas',
+   alerts:'Alertas',customers:'Clientes',team:'Equipa',purchases:'Compras'}[key];
+  return '<button type="button" data-shop-view="'+key+'"'+(key==='sell'?' class="shop-bottom-sell"':'')+
+   (view===key?' aria-current="page"':'')+' aria-label="'+name+'"><span class="shop-bottom-icon" aria-hidden="true">'+
+   icon(key)+'</span><small>'+name+'</small></button>';
+ }).join('');
  const notificationRows=notificationData.items.slice(0,5).map(item=>
   '<li class="shop-notification-item shop-notification-'+item.kind+'"><strong>'+esc(item.title)+'</strong><span>'+esc(item.detail)+'</span></li>').join('');
  const notificationPopover=notificationsOpen?
