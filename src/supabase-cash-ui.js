@@ -34,7 +34,7 @@ export function cashSessionsCSV(snapshot){
   'Fundo inicial (MT)','Esperado (MT)','Contado (MT)','Diferença (MT)','Dinheiro recebido (MT)',
   'M-Pesa (MT)','e-Mola (MT)','Transferência (MT)'];
  const lines=snapshot.sessions.map(s=>[s.id,s.operator,s.terminal,stateLabels[s.status],
-  s.closeType||'',s.openedAt||'',s.closedAt||'',s.opening/100,
+  s.closeType==='administrative_unchecked'?'Fecho administrativo sem conferência':s.closeType||'',s.openedAt||'',s.closedAt||'',s.opening/100,
   s.expected===null?'':s.expected/100,s.counted===null?'':s.counted/100,
   s.difference===null?'':s.difference/100,
   s.methods?.cash===undefined?'':s.methods.cash/100,
