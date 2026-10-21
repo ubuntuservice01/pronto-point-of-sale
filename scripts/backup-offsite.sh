@@ -77,12 +77,10 @@ age -r "$PRONTO_BACKUP_AGE_RECIPIENT" \
   -o "$backup_dir/snapshot.dump.age" "$backup_dir/snapshot.dump"
 test -s "$backup_dir/snapshot.dump.age"
 
-pushd "$backup_dir" >/dev/null
-sha256sum snapshot.dump.age > snapshot.dump.age.sha256
-popd >/dev/null
-
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 object_key="pronto-pos/app-db/${stamp:0:4}/${stamp:4:2}/pronto-${stamp}.dump.age"
+checksum="$(sha256sum "$backup_dir/snapshot.dump.age" | cut -d ' ' -f 1)"
+printf '%s  %s\n' "$checksum" "${object_key##*/}" > "$backup_dir/snapshot.dump.age.sha256"
 aws_args=()
 if [[ -n "${PRONTO_BACKUP_S3_ENDPOINT:-}" ]]; then
   aws_args+=(--endpoint-url "$PRONTO_BACKUP_S3_ENDPOINT")
@@ -99,7 +97,8 @@ aws "${aws_args[@]}" s3 cp "$backup_dir/snapshot.dump.age.sha256" \
 remote_size="$(aws "${aws_args[@]}" s3api head-object \
   --bucket "$PRONTO_BACKUP_S3_BUCKET" --key "$object_key" \
   --query ContentLength --output text)"
-if [[ ! "$remote_size" =~ ^[0-9]+$ ]] || (( remote_size <= 0 )); then
+local_size="$(stat -c %s "$backup_dir/snapshot.dump.age")"
+if [[ ! "$remote_size" =~ ^[0-9]+$ ]] || (( remote_size != local_size )); then
   printf 'Erro ao confirmar a cópia encriptada no destino remoto.\n' >&2
   exit 1
 fi
