@@ -2,6 +2,7 @@
 // Data is read only through the authorised RPC; mutations are submitted separately.
 import {esc,MONEY} from './supabase-shop-core.js';
 import {DEBT_STATES,searchCustomers} from './supabase-credit-core.js';
+import {brandedDocumentHTML} from './supabase-document-branding.js';
 const input=(name,label,type='text',extra='')=>'<label>'+esc(label)+'<input name="'+esc(name)+'" type="'+type+'" '+extra+' required></label>';
 const select=(name,label,options,first='Seleccione')=>'<label>'+esc(label)+'<select name="'+esc(name)+'" required><option value="">'+esc(first)+'</option>'+options.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('')+'</select></label>';
 const blank=s=>s===null||s===undefined?'':String(s);
@@ -123,22 +124,24 @@ export function renderCreditView({view,credit,role,query='',filter='open',sessio
     esc(prettyPayment[p.method]||p.method)+'</div>').join(''),
    'Requer caixa aberto pelo próprio operador. Pagamentos digitais são confirmados manualmente.')+'</div>';
 }
-export function creditStatementHTML(credit,customerId,{debtId}={}){
+export function creditStatementHTML(credit,customerId,{debtId,branding,logoUrl=''}={}){
  const c=credit.customers.find(x=>x.id===customerId);
  if(!c)throw Error('customer_not_found');
  const debts=credit.debts.filter(d=>d.customerId===c.id&&(debtId?d.id===debtId:true));
  const payments=credit.payments.filter(p=>debts.some(d=>d.id===p.debtId));
  const sales=credit.sales.filter(s=>s.customerId===c.id);
- const style='<style>body{font-family:Arial,sans-serif;margin:28px;color:#202e33}h1{font-size:22px}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{border-bottom:1px solid #ddd;padding:8px;text-align:left}small{color:#667}strong{font-weight:700}</style>';
- return '<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Extracto não fiscal</title>'+style+'</head><body>'+
- '<h1>Pronto POS — Extracto não fiscal</h1><small>Documento informativo. Não constitui factura ou recibo fiscal.</small>'+
- '<p>Cliente: <strong>'+esc(c.name)+'</strong> · Contacto: '+esc(c.phone)+'</p>'+
- '<h2>Dívidas</h2><table><thead><tr><th>Vencimento</th><th>Valor original</th><th>Saldo</th><th>Estado</th></tr></thead><tbody>'+
- debts.map(d=>'<tr><td>'+date(d.dueOn)+'</td><td>'+money(d.original)+'</td><td>'+money(d.balance)+'</td><td>'+esc(DEBT_STATES[d.state]||d.state)+'</td></tr>').join('')+'</tbody></table>'+
- '<h2>Cobranças</h2><table><thead><tr><th>Data</th><th>Meio</th><th>Valor</th><th>Referência</th></tr></thead><tbody>'+
- payments.map(p=>'<tr><td>'+date(p.createdAt)+'</td><td>'+esc(prettyPayment[p.method]||p.method)+'</td><td>'+money(p.amount)+'</td><td>'+esc(p.reference)+'</td></tr>').join('')+'</tbody></table>'+
- (!debtId?'<h2>Compras associadas</h2><table>'+sales.map(s=>'<tr><td>'+date(s.createdAt)+'</td><td>'+esc(s.method)+'</td><td>'+money(s.amount)+'</td></tr>').join('')+'</table>':'')+
- '<p><strong>Saldo em dívida: '+money(debts.reduce((sum,d)=>sum+d.balance,0))+'</strong></p></body></html>';
+ const sections=[
+  {title:'Dívidas',columns:['Vencimento','Valor original','Saldo','Estado'],
+   rows:debts.map(d=>[date(d.dueOn),money(d.original),money(d.balance),DEBT_STATES[d.state]||d.state])},
+  {title:'Cobranças',columns:['Data','Meio','Valor','Referência'],
+   rows:payments.map(p=>[date(p.createdAt),prettyPayment[p.method]||p.method,money(p.amount),p.reference])}
+ ];
+ if(!debtId)sections.push({title:'Compras associadas',columns:['Data','Pagamento','Valor'],
+  rows:sales.map(s=>[date(s.createdAt),s.method,money(s.amount)])});
+ return brandedDocumentHTML({branding,logoUrl,title:debtId?'Extracto de dívida':'Extracto de conta corrente',
+  subtitle:'Documento informativo. Não constitui factura ou recibo fiscal.',
+  meta:[['Cliente',c.name],['Contacto do cliente',c.phone||'Não informado']],sections,
+  summary:[['Saldo em dívida',money(debts.reduce((sum,d)=>sum+d.balance,0))]]});
 }
 export function creditWhatsAppURL(credit,debtId){
  const d=credit.debts.find(x=>x.id===debtId);
