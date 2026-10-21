@@ -52,7 +52,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<button class="shop-submit" type="submit" '+((!session&&!allowNoSession)||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0}){
  const products=data?.products||[];
  const session=cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
@@ -122,7 +122,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    field('unit_cost','Custo por unidade (MT, opcional)','','type="number" min="0" step="0.01"')+
    '<button class="shop-submit" type="submit">Registar entrada de stock</button></form>','Cria um lote e um movimento de entrada, sem alterar vendas anteriores.')+'</div>';
  }else if(view==='cash'){
-  body=renderCashManagement({cash:cashState,account,role:grant.role});
+  body=renderCashManagement({cash:cashState,account,role:grant.role,pendingOffline});
  }else if(view==='audit'&&grant.role==='owner'){
   body=renderAuditView({audit,search:auditSearch});
  }else if(view==='team'&&grant.role==='owner'){
