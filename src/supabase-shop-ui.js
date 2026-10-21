@@ -52,12 +52,17 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<button class="shop-submit" type="submit" '+((!session&&!allowNoSession)||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false}){
  const products=data?.products||[];
  const session=cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
  const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['audit','Auditoria'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
- const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'>'+name+'</button>').join('');
+ const menuIcons={sell:'▣',products:'▦',cash:'◉',history:'▤',customers:'♙',debts:'◈',suppliers:'▥',purchases:'◫',expenses:'◰',
+  held:'▧',returns:'↶',inventory:'▥',alerts:'!',shopping_list:'☷',reports:'▥',team:'♧',audit:'◎',branches:'⌂',transfers:'⇄'};
+ const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" aria-label="'+esc(name)+'" title="'+esc(name)+'" '+(view===key?'aria-current="page"':'')+'><span class="shop-nav-icon" aria-hidden="true">'+menuIcons[key]+'</span><span class="shop-nav-label">'+esc(name)+'</span></button>').join('');
+ const bottomNav=[['sell','Vender','▣'],['products','Produtos','▦'],['cash','Caixa','◉'],['reports','Relatórios','▥']].filter(([key])=>nav.some(n=>n[0]===key))
+  .map(([key,name,icon])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'><span aria-hidden="true">'+icon+'</span><small>'+name+'</small></button>').join('');
+
  const prodCards=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   .map(p=>'<article class="shop-product">'+(p.photoPath?'<img class="shop-product-photo" data-shop-product-photo="'+esc(p.photoPath)+'" alt="Fotografia de '+esc(p.name)+'" loading="lazy">':'')+'<div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
  let body='';
@@ -144,13 +149,21 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
     '<p class="shop-help">Ainda não existem vendas registadas no Supabase.</p>')+'</div>',
    'Apresentação limitada às últimas 20 vendas autorizadas. Não substitui os relatórios fiscais.');
  }
- return '<div class="shop-shell"><header class="shop-header"><div class="shop-brand"><img src="/icon.svg" alt=""><span><strong>Pronto POS</strong><small>O seu negócio na palma da mão</small></span></div>'+
+ return '<div class="shop-shell shop-layout'+(menuOpen?' shop-menu-open':'')+(sidebarCollapsed?' shop-menu-collapsed':'')+'">'+
+ '<div class="shop-sidebar-shade" data-shop-menu-toggle aria-hidden="true"></div>'+
+ '<aside id="shop-sidebar" class="shop-sidebar" aria-label="Menu principal">'+
+ '<div class="shop-sidebar-brand"><img src="/icon.svg" alt=""><span class="shop-nav-label"><strong>Pronto POS</strong><small>Menos complicações, mais negócio</small></span>'+
+ '<button type="button" class="shop-sidebar-collapse" data-shop-sidebar-collapse aria-label="Recolher ou expandir menu" title="Recolher ou expandir menu">⇤</button></div>'+
+ '<div class="shop-sidebar-title shop-nav-label">MENU DO NEGÓCIO</div>'+
+ '<nav class="shop-nav" aria-label="Áreas da loja">'+menu+'</nav>'+
+ '<div class="shop-sidebar-footer shop-nav-label">Ubuntu Service, Lda.</div></aside>'+
+ '<div class="shop-workspace"><header class="shop-header"><div class="shop-brand"><button type="button" class="shop-mobile-menu-trigger" data-shop-menu-toggle aria-label="Abrir menu" aria-expanded="'+menuOpen+'">☰</button><img src="/icon.svg" alt=""><span><strong>Pronto POS</strong><small>O seu negócio na palma da mão</small></span></div>'+
  '<div class="shop-account"><strong>'+esc(grant.name)+'</strong><small>'+esc(account.email)+' · '+esc(grant.role)+'</small></div>'+
  '<button type="button" data-shop-logout class="shop-logout">Sair</button></header>'+
  '<div class="shop-toolbar"><label>Empresa<select id="shop-business-select">'+grants.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===grant.id?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
  '<label>Filial<select id="shop-branch-select">'+branches.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===branchId?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
  '<button type="button" data-shop-refresh>Actualizar dados</button><span class="shop-cash-indicator">'+(session?'Caixa aberto':cashState?.policy.openingRequired===false?'Abertura opcional':'Caixa fechado')+'</span></div>'+
- '<nav class="shop-nav">'+menu+'</nav>'+
+
  '<main class="shop-main"><div id="shop-message" role="status" aria-live="polite">'+esc(feedback||'')+'</div>'+
  '<h2>'+esc(branch?.name||'Loja')+'</h2>'+body+
  '<section class="shop-box shop-draft-section"><h3>Recuperação de carrinhos</h3><p class="shop-help">Pode guardar o carrinho encriptado neste dispositivo. Sem internet, não é possível finalizar nem cobrar uma venda pelo Supabase. Não há sincronização automática.</p>'+
@@ -158,5 +171,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  (draftAvailable?'<form data-shop-form="draft_restore" class="shop-form"><label>Frase do rascunho guardado<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Recuperar rascunho</button></form><button type="button" data-shop-draft-clear class="shop-logout">Apagar rascunho do dispositivo</button>':'')+
  '<p class="shop-help">Se uma venda foi enviada e a resposta falhou, recupere o mesmo pedido e a mesma referência antes de reenviar. Não crie uma venda nova sem conferir os registos.</p></section>'+
  (pendingFinance?'<div class="shop-pending"><strong>Operação financeira por confirmar</strong><p>Verifique o histórico no Supabase antes de tentar outra operação. Repetir o mesmo formulário reutiliza a chave original.</p><button type="button" data-finance-discard>Descartar referência local após conferir</button></div>':'')+
- '<p class="shop-footer">Piloto PostgreSQL: clientes, vendas a crédito e cobrança manual integrados. Devoluções, vendas offline sincronizadas e documentos fiscais ainda não estão homologados.</p></main></div>';
+ '<p class="shop-footer">Piloto PostgreSQL: clientes, vendas a crédito e cobrança manual integrados. Devoluções, vendas offline sincronizadas e documentos fiscais ainda não estão homologados.</p></main></div>'+
+ '<nav class="shop-mobile-bottom" aria-label="Navegação rápida">'+bottomNav+
+ '<button type="button" data-shop-menu-toggle aria-label="Mais funcionalidades" aria-expanded="'+menuOpen+'"><span aria-hidden="true">☰</span><small>Mais</small></button></nav></div>';
 }
