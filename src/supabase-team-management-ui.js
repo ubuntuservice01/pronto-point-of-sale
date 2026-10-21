@@ -17,7 +17,7 @@ export function normalizeStaffSnapshot(raw){
  }))};
 }
 export function renderStaffManagement(snapshot){
- if(!snapshot)return '<p class="shop-help">A carregar colaboradores…</p>';
+ if(!snapshot)return '<p class="shop-help"></p>';
  const staff=snapshot.staff;
  return '<div class="shop-box"><h3>Colaboradores registados</h3>'+
   '<p class="shop-help">Só o proprietário define o acesso individual. Horários seguem a hora de Moçambique. O bloqueio é aplicado no servidor, inclusive a sessões abertas. A autorização manual mantém-se até escolher «Usar horário». Suspensão da conta tem sempre prioridade.</p>'+
