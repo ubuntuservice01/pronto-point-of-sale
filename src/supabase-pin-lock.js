@@ -1,6 +1,7 @@
 // Trusted-screen PIN gate for sessions already authenticated with Supabase Auth.
 import {clearPinContinuity,rememberPinContinuity,canResumePinContinuity} from './pronto-pin-continuity.js';
 import {pinCityBackdrop,readPinKPIs,clearPinKPIs} from './pin-city-ui.js';
+import {MONEY} from './supabase-shop-core.js';
 // Not a replacement for Supabase Auth / MFA and not a cold-start login credential.
 const valid=value=>typeof value==='string'&&/^[0-9]{5}$/.test(value);
 export const PIN_IDLE_MS=600000; // 10 minutes of actual inactivity.
@@ -48,7 +49,11 @@ export function pinScreen({mode='unlock',email='',message='',metrics=null}={}){
  '<div class="pin-city-actions">'+
  (mode==='unlock'||mode==='change'?'<button class="pronto-pin-exit" type="button" id="pronto-pin-forgot">Esqueci o PIN</button>':'')+
  '<button class="pronto-pin-exit" type="button" id="pronto-pin-signout">Terminar sessão</button></div>'+
- '<small>O PIN protege o acesso à sua conta.</small></section>'+
+ '<small>O PIN protege o acesso à sua conta.</small>'+
+ '<div class="pin-city-mobile-kpis" aria-label="Resumo da loja">'+
+  '<div><span>Vendas hoje</span><strong>'+(metrics?escape(MONEY(metrics.todayCents)):'—')+'</strong></div>'+
+  '<div><span>Este mês</span><strong>'+(metrics?escape(MONEY(metrics.monthCents)):'—')+'</strong></div>'+
+ '</div></section>'+
  '<footer class="pin-city-footer">plataforma desenvolvida pelo <strong>Ubuntu Servers</strong>, criando pontes entre o físico e o digital.</footer>';
 }
 export async function mountProntoPinGate({
