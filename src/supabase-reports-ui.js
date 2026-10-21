@@ -71,7 +71,34 @@ export function renderReportsView({report,from,to,scope='branch',allAllowed=fals
   title('Despesas por categoria',rows(report.categories,[
    {title:'Categoria',print:x=>x.name},{title:'Total',print:x=>amount(x.amount)}]))+'</div>';
  return lead+cards+warning+
- '<button type="button" data-report-export class="shop-submit">Exportar relatório CSV</button>'+tables;
+ '<div class="document-export-actions">'+
+  '<button type="button" data-report-print class="shop-submit">Imprimir / PDF</button>'+
+  '<button type="button" data-report-xlsx class="secondary">Exportar Excel</button>'+
+  '<button type="button" data-report-export class="secondary">Exportar CSV</button></div>'+tables;
+}
+export function reportDocumentData(report){
+ if(!report)return {meta:[],summary:[],sections:[]};
+ const t=report.totals;
+ return {
+  meta:[['Período',String(report.start||'')+' a '+String(report.end||'')],
+   ['Abrangência',report.branchId?'Filial seleccionada':'Todas as filiais'],
+   ['Actualizado em',dateLabel(report.generatedAt)]],
+  summary:[
+   ['Vendas brutas',amount(t.gross)],['Devoluções',amount(t.returns)],
+   ['Vendas líquidas',amount(t.net)],['Recebimentos líquidos',amount(t.received)],
+   ['Despesas',amount(t.expenses)],['Custo estimado',amount(t.cost)],
+   ['Dívidas a receber',amount(t.debts)],['Vendas realizadas',t.salesCount],
+   ['Lucro bruto estimado',t.grossProfit===null?'Indisponível':amount(t.grossProfit)],
+   ['Lucro líquido estimado',t.netProfit===null?'Indisponível':amount(t.netProfit)]
+  ],
+  sections:[
+   {title:'Recebimentos por meio',columns:['Meio','Valor (MT)'],rows:report.methods.map(x=>[x.name,amount(x.amount)])},
+   {title:'Vendas por operador',columns:['Colaborador','Vendas','Montante (MT)'],rows:report.sellers.map(x=>[x.name,x.count,amount(x.amount)])},
+   {title:'Artigos mais vendidos',columns:['Produto','Quantidade','Vendas (MT)'],rows:report.products.map(x=>[x.name,x.qty,amount(x.revenue)])},
+   {title:'Filiais',columns:['Filial','Vendas','Montante (MT)'],rows:report.branches.map(x=>[x.name,x.count,amount(x.amount)])},
+   {title:'Despesas por categoria',columns:['Categoria','Total (MT)'],rows:report.categories.map(x=>[x.name,amount(x.amount)])}
+  ]
+ };
 }
 export function reportsCSV(report){
  if(!report)return '';
