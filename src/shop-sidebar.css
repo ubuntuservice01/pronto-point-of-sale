@@ -141,3 +141,58 @@
  .shop-layout .shop-main{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 }
 @media(prefers-reduced-motion:reduce){.shop-layout .shop-mobile-bottom button.shop-bottom-sell{transition:none}}
+
+
+/* Proprietário: Definições, um ponto central com separadores utilizáveis no telemóvel. */
+.shop-layout .owner-settings{max-width:1220px;margin:0 auto 28px}
+.shop-layout .owner-settings-heading{padding:20px 24px 22px;margin-bottom:16px;background:linear-gradient(115deg,#e6f7ef,#f7fafc 68%);border:1px solid #d6eadd;border-radius:18px}
+.shop-layout .owner-settings-eyebrow{font-size:10px;letter-spacing:1.5px;color:#087b61;font-weight:900}
+.shop-layout .owner-settings-heading h2{margin:6px 0;color:#18392f;font-size:clamp(24px,2.4vw,32px)}
+.shop-layout .owner-settings-heading p{font-size:14px;color:#516b61;margin:0;line-height:1.5}
+.shop-layout .owner-settings-layout{display:grid;grid-template-columns:225px minmax(0,1fr);gap:16px;align-items:start}
+.shop-layout .owner-settings-tabs{display:grid;gap:5px;padding:9px;background:#fff;border:1px solid #e0e9e4;border-radius:15px;position:sticky;top:12px}
+.shop-layout .owner-settings-tabs button{display:grid;gap:3px;text-align:left;padding:12px 13px;background:transparent;border:1px solid transparent;border-radius:10px;color:#294c40;cursor:pointer;min-height:54px}
+.shop-layout .owner-settings-tabs button:hover{background:#f2f8f4}
+.shop-layout .owner-settings-tabs button.selected{border-color:#addcc4;background:#e6f7ef;color:#087b61;box-shadow:inset 3px 0 #0a9676}
+.shop-layout .owner-settings-tabs strong{font-size:13px;font-weight:800}
+.shop-layout .owner-settings-tabs small{font-size:11px;color:#688176}
+.shop-layout .owner-settings-body{min-width:0;display:grid;gap:14px}
+.shop-layout .owner-settings-body>.shop-box{margin:0}
+.shop-layout .owner-settings-intro{padding:3px 2px}
+.shop-layout .owner-settings-intro h3{margin:0 0 6px;font-size:19px;color:#1c4436}
+.shop-layout .owner-settings-intro p{margin:0;color:#567366;font-size:13px;line-height:1.55}
+.shop-layout .owner-settings-body .document-brand-settings{min-width:0}
+.shop-layout .owner-settings-link{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid #e9eee9}
+.shop-layout .owner-settings-link strong{font-size:14px;color:#23483a}
+.shop-layout .owner-settings-link p{margin:4px 0 0;color:#607468;font-size:12px;line-height:1.5}
+.shop-layout .owner-settings-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.shop-layout .owner-settings-next{display:flex;justify-content:flex-end}
+.shop-layout .owner-settings-actions button,.shop-layout .owner-settings-next button,.shop-layout .owner-settings-link button{background:#e8f6ed;border:1px solid #b8ddc5;border-radius:10px;color:#087357;font-size:12px;font-weight:800;padding:11px 14px;white-space:normal;cursor:pointer;min-height:42px}
+.shop-layout .owner-settings-actions button:hover,.shop-layout .owner-settings-link button:hover,.shop-layout .owner-settings-next button:hover{background:#d5eedf}
+.shop-layout .owner-settings-actions .owner-settings-danger{background:#fff3f1;border-color:#efcac4;color:#a63939}
+.shop-layout .owner-settings-fact{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:11px 0;border-top:1px solid #edf1ee}
+.shop-layout .owner-settings-fact span{font-size:12px;color:#5b7266}
+.shop-layout .owner-settings-fact strong{font-size:13px;color:#254639;text-align:right;overflow-wrap:anywhere}
+.shop-layout .owner-settings-days{display:grid;gap:8px;font-size:13px;color:#314b3e;font-weight:700;max-width:380px;margin:13px 0}
+.shop-layout .owner-settings-days select{width:100%;min-height:44px;border:1px solid #cbdcd2;border-radius:9px;background:white;padding:8px 10px;font-size:14px}
+.shop-layout .owner-settings-caution{margin-top:15px;background:#fff9eb;border:1px solid #f2dfac;border-left:4px solid #e5a531;border-radius:10px;padding:14px;color:#5d4a2b}
+.shop-layout .owner-settings-caution strong{font-size:13px}
+.shop-layout .owner-settings-caution p{font-size:12px;line-height:1.6;margin:7px 0 0}
+.shop-layout .owner-settings button:focus-visible{outline:3px solid #3eaaec;outline-offset:2px}
+@media(max-width:1060px){.shop-layout .owner-settings-layout{grid-template-columns:190px minmax(0,1fr)}}
+@media(max-width:830px){
+ .shop-layout .owner-settings-heading{padding:17px}
+ .shop-layout .owner-settings-layout{grid-template-columns:1fr}
+ .shop-layout .owner-settings-tabs{position:static;display:flex;overflow-x:auto;gap:8px;scroll-snap-type:x proximity;overscroll-behavior-x:contain;padding:8px;-webkit-overflow-scrolling:touch}
+ .shop-layout .owner-settings-tabs button{flex:0 0 142px;scroll-snap-align:start;min-height:62px;padding:9px 10px}
+ .shop-layout .owner-settings-tabs button.selected{box-shadow:inset 0 -3px #0a9676}
+ .shop-layout .owner-settings-link{align-items:stretch;flex-direction:column}
+ .shop-layout .owner-settings-link button{align-self:flex-start}
+ .shop-layout .owner-settings-fact{align-items:flex-start}
+}
+@media(max-width:420px){
+ .shop-layout .owner-settings-heading{padding:15px}
+ .shop-layout .owner-settings-heading h2{font-size:23px}
+ .shop-layout .owner-settings-body>.shop-box{padding:14px}
+ .shop-layout .owner-settings-actions button{flex:1 1 auto}
+}
