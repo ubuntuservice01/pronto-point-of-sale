@@ -28,7 +28,8 @@ test('Production onboarding asks only the admin to create access, not to send in
 });
 test('User-facing login avoids infrastructure, internal technical references and admin onboarding',()=>{
  const login=readFileSync(new URL('../src/supabase-auth-check-ui.js',import.meta.url),'utf8');
- assert.match(login,/Bem-vindo ao Pronto POS/);
+ assert.match(login,/<h2>Bem-vindo<\/h2>/);
+ assert.match(login,/Pronto <span>POS<\/span>/);
  assert.doesNotMatch(login,/<label>Email da conta Supabase/);
  assert.doesNotMatch(login,/Para registar a primeira loja, entre com a conta/);
  assert.doesNotMatch(login,/Os acessos são verificados no Supabase/);
