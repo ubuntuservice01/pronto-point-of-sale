@@ -157,7 +157,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    'license_cancel','member_deactivate','member_reactivate','plan_toggle'];
   if(!known.includes(action))return;
   let payload={},request=action==='business_suspend'||action==='business_activate'||
-   action==='license_cancel'||action==='member_deactivate'?'adminMutate':'adminControl';
+   action==='license_cancel'||action==='member_deactivate'?'adminCritical':'adminControl';
   if(action.startsWith('member_')){
    const ids=String(id||'').split('|');
    if(ids.length!==2){message.textContent='Utilizador não identificado.';return;}
@@ -176,7 +176,14 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    const reason=prompt('Indique o motivo, com pelo menos 10 caracteres:');
    if(!reason||reason.trim().length<10)return;
    payload.reason=reason.trim();
-  }else if(!confirm('Confirmar '+action.replace(/_/g,' ')+' para '+(business?.name||'este registo')+'?'))return;
+  }else{
+   if(!confirm('Confirmar '+action.replace(/_/g,' ')+' para '+(business?.name||'este registo')+'?'))return;
+   if(request==='adminCritical'){
+    const reason=prompt('Indique o motivo da intervenção, com pelo menos 10 caracteres:');
+    if(!reason||reason.trim().length<10)return;
+    payload.reason=reason.trim();
+   }
+  }
   toggleBusy(true);message.textContent='A executar operação protegida…';
   try{
    await client[request](action,payload);
