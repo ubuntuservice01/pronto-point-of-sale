@@ -48,7 +48,7 @@ test('SQL transactions protect tenant scope, optional sales, blind close, blocke
  const legacy=readFileSync(new URL('../supabase/migrations/20261021113000_cash_legacy_integration.sql',import.meta.url),'utf8');
  for(const key of [/pronto_cash_policies/,/opening_required/,/blind_close/,/close_requested_at/,
   /blocked_at/,/for update/,/cash_totals/,/administrative_unchecked/,/expected_at_close_cents/,
-  /cash\.\|\|p_action/,/pronto_cash_control/,/pronto_cash_difference_notes/]){
+  /cash\\.'\\|\\|p_action/,/pronto_cash_control/,/pronto_cash_difference_notes/]){
   if(!key.test(policy))throw Error('Missing cash protection '+String(key));
  }
  assert.match(legacy,/cash_open_required/);
