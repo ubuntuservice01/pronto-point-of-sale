@@ -1,0 +1,32 @@
+/* Brand-coloured confirmed checkout decision and thermal-printer receipt. */
+dialog.pronto-sale-success-dialog{max-width:480px;text-align:center;padding:26px 26px 24px}
+.pronto-sale-success-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px}
+.pronto-sale-success-icon{width:56px;height:56px;display:grid;place-items:center;color:#078063;background:#e1f6e9;border-radius:50%;font-size:30px;font-weight:900}
+.pronto-sale-success-dialog h2{margin:12px 0 6px;font-size:27px;color:#153d30;line-height:1.15}
+.pronto-sale-success-copy{font-size:14px;color:#52685b;line-height:1.5}
+.pronto-sale-success-total{font-size:clamp(28px,6vw,39px);font-weight:900;color:#087f68;margin:15px 0 5px}
+.pronto-sale-success-ref{font-size:13px;color:#738278}
+.pronto-sale-success-note{font-size:12px;color:#92540b;background:#fff6e4;border-radius:8px;padding:9px}
+.pronto-sale-success-actions{display:grid;gap:10px;margin-top:25px}
+.pronto-sale-success-actions button{width:100%;min-height:50px}
+.pronto-sale-print-action{border:1px solid #96cfb7;background:#e8f5ed;color:#076e53}
+.pronto-sale-print-action:hover{background:#d6eee0}
+#pronto-sale-print{display:none}
+.pronto-receipt-content{max-width:74mm;margin:0 auto;padding:8px;font:12px/1.45 ui-monospace,monospace;color:#000;background:#fff}
+.pronto-receipt-content header,.pronto-receipt-content footer{text-align:center}
+.pronto-receipt-content header strong{font-size:20px}
+.pronto-receipt-content header p,.pronto-receipt-content footer p{margin:3px 0}
+.pronto-receipt-content table{width:100%;border-collapse:collapse;margin:14px 0;text-align:left}
+.pronto-receipt-content th,.pronto-receipt-content td{border-bottom:1px dashed #555;padding:5px 1px}
+.pronto-receipt-content td:last-child,.pronto-receipt-content th:last-child{text-align:right;white-space:nowrap}
+.pronto-receipt-content small{display:block;font-size:10px}
+.pronto-receipt-totals{border-top:1px dashed #333;padding-top:7px}
+.pronto-receipt-totals>div{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
+.pronto-receipt-grand{border-top:1px solid #333;border-bottom:1px solid #333;font-size:16px;font-weight:800;margin:5px 0;padding:6px 0!important}
+@media print{
+ @page{size:80mm auto;margin:3mm}
+ body> :not(#pronto-sale-print){display:none!important}
+ html,body{margin:0!important;padding:0!important;width:auto!important;background:#fff!important}
+ #pronto-sale-print{display:block!important;position:static!important;margin:0!important;padding:0!important}
+ .pronto-receipt-content{max-width:74mm!important;padding:0!important}
+}
