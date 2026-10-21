@@ -28,7 +28,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,accessBlocked=false,accessCheckBusy=false;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,menuOpen=false,sidebarCollapsed=false,accessBlocked=false,accessCheckBusy=false;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
@@ -47,7 +47,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data||accessBlocked)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
    if(!path||!client.productPhotoUrl)continue;
@@ -222,6 +222,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  root.addEventListener('click',async event=>{
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
+  if(el.hasAttribute('data-shop-menu-toggle')){menuOpen=!menuOpen;render();return;}
+  if(el.hasAttribute('data-shop-sidebar-collapse')){sidebarCollapsed=!sidebarCollapsed;render();return;}
   if(el.hasAttribute('data-shop-logout'))return void leave();
   if(el.hasAttribute('data-cash-export')){
    if(!['owner','manager'].includes(grant.role)||!cashState)return;
@@ -409,7 +411,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    cart=cart.filter(x=>x.productId!==el.dataset.remove);render();return;
   }
   if(el.hasAttribute('data-qty'))return void add(el.dataset.id,Number(el.dataset.qty));
-  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
+  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;menuOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
   if(el.hasAttribute('data-shop-discard')){
@@ -483,8 +485,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  },{signal});
  root.addEventListener('submit',async event=>{
   const form=event.target;
-  if(!(form instanceof HTMLFormElement)||busy)return;
+  if(!(form instanceof HTMLFormElement))return;
+  // Prevent browser navigation on every submit, including duplicate taps during an async save.
   event.preventDefault();
+  if(busy)return;
   if(form.id==='shop-reports-form'){
    const fields=new FormData(form);
    const from=String(fields.get('from')||''),to=String(fields.get('to')||'');

@@ -1,7 +1,7 @@
 // Trusted-screen PIN gate for sessions already authenticated with Supabase Auth.
 // Not a replacement for Supabase Auth / MFA and not a cold-start login credential.
 const valid=value=>typeof value==='string'&&/^[0-9]{5}$/.test(value);
-export const PIN_IDLE_MS=180000;
+export const PIN_IDLE_MS=600000; // 10 minutes of actual inactivity.
 export function pinError(result){
  if(result?.reason==='incorrect_pin')return 'PIN incorrecto. Restam '+(result.remaining_attempts??'?')+' tentativas.';
  if(result?.reason==='temporarily_blocked'){
@@ -156,7 +156,8 @@ export async function mountProntoPinGate({
  // Screen was obscured, device slept or another app was opened: lock immediately.
  doc.addEventListener('visibilitychange',()=>{if(doc.hidden&&opened&&!locking)show('unlock');},{signal});
  win.addEventListener('pagehide',()=>{if(opened&&!locking)show('unlock');},{signal});
- for(const type of ['pointerdown','keydown','touchstart','wheel']){
+ // Track actual editing/autofill as interaction, without relaxing background locking.
+ for(const type of ['pointerdown','keydown','touchstart','wheel','input','change','submit','focusin']){
   doc.addEventListener(type,resetIdle,{signal,passive:true});
  }
  try{

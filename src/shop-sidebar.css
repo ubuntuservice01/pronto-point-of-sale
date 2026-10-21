@@ -1,0 +1,42 @@
+/* Pronto POS merchant navigation. Desktop: fixed-layout sidebar. Mobile: five quick actions + drawer. */
+.shop-layout{--shop-sidebar-width:250px;display:grid;grid-template-columns:var(--shop-sidebar-width) minmax(0,1fr);min-height:100dvh;align-items:start;background:#f4f8f6}
+.shop-layout.shop-menu-collapsed{--shop-sidebar-width:78px}
+.shop-layout .shop-workspace{min-width:0;min-height:100dvh}
+.shop-layout .shop-sidebar{height:100dvh;position:sticky;top:0;display:flex;flex-direction:column;min-width:0;overflow:hidden;background:#fff;border-right:1px solid #dcebe2;z-index:7}
+.shop-layout .shop-sidebar-brand{display:flex;align-items:center;gap:12px;padding:22px 14px 19px 19px;border-bottom:1px solid #edf2ee}
+.shop-layout .shop-sidebar-brand img{width:38px;height:38px;flex:none}
+.shop-layout .shop-sidebar-brand strong{display:block;font-size:18px;font-weight:850;color:#087f68;white-space:nowrap}
+.shop-layout .shop-sidebar-brand small{display:block;font-size:10px;line-height:1.4;color:#749086;white-space:nowrap}
+.shop-layout .shop-sidebar-collapse{margin-left:auto;width:32px;min-width:32px;height:34px;min-height:34px;background:#eff6f2;border:0;border-radius:9px;color:#087f68;font-size:18px}
+.shop-layout .shop-sidebar-title{padding:22px 17px 8px;font-size:10px;letter-spacing:1.4px;font-weight:800;color:#779487}
+.shop-layout .shop-nav{display:grid;align-content:start;gap:4px;flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 12px 24px;background:transparent;scrollbar-width:thin}
+.shop-layout .shop-nav button{display:flex;align-items:center;text-align:left;gap:12px;padding:11px 12px;min-height:46px;background:transparent;border:1px solid transparent;white-space:normal;border-radius:10px;color:#455e54;font-size:13px;font-weight:675}
+.shop-layout .shop-nav button:hover{background:#ecf6f0}
+.shop-layout .shop-nav button[aria-current=page]{background:#e4f5eb;border-color:#b8e4cc;color:#087f68}
+.shop-layout .shop-nav-icon{display:inline-grid;place-items:center;width:24px;min-width:24px;height:24px;color:#087f68;font-size:20px;line-height:1}
+.shop-layout .shop-sidebar-footer{padding:14px 22px;font-size:11px;color:#8ea399;border-top:1px solid #edf2ee}
+.shop-layout .shop-menu-collapsed .shop-nav-label{display:none}
+.shop-layout.shop-menu-collapsed .shop-nav-label{display:none}
+.shop-layout.shop-menu-collapsed .shop-sidebar-brand{justify-content:center;padding:18px 6px;flex-wrap:wrap;gap:6px}
+.shop-layout.shop-menu-collapsed .shop-sidebar-collapse{margin:0}
+.shop-layout.shop-menu-collapsed .shop-nav{padding:10px 8px}
+.shop-layout.shop-menu-collapsed .shop-nav button{justify-content:center;padding:11px 5px}
+.shop-layout .shop-mobile-bottom,.shop-layout .shop-mobile-menu-trigger,.shop-layout .shop-sidebar-shade{display:none}
+.shop-layout .shop-main{max-width:1500px}
+@media(max-width:830px){
+ .shop-layout,.shop-layout.shop-menu-collapsed{display:block;min-height:100dvh}
+ .shop-layout .shop-sidebar{width:min(320px,85vw);position:fixed;top:0;left:0;bottom:0;height:100dvh;z-index:1003;transform:translateX(-105%);visibility:hidden;transition:transform .2s ease,visibility .2s ease;box-shadow:0 24px 60px #0b2b1f24}
+ .shop-layout.shop-menu-open .shop-sidebar{transform:translateX(0);visibility:visible}
+ .shop-layout.shop-menu-collapsed .shop-nav-label{display:initial}
+ .shop-layout .shop-sidebar-collapse{display:none}
+ .shop-layout .shop-sidebar-shade{display:block;position:fixed;inset:0;opacity:0;visibility:hidden;pointer-events:none;z-index:1002;background:#0f2d23a8;backdrop-filter:blur(3px);transition:opacity .2s ease}
+ .shop-layout.shop-menu-open .shop-sidebar-shade{opacity:1;visibility:visible;pointer-events:auto}
+ .shop-layout .shop-mobile-menu-trigger{display:inline-grid;place-items:center;border:0;background:#e8f5ee;color:#087f68;min-height:43px;min-width:43px;font-size:23px;border-radius:10px;padding:5px}
+ .shop-layout .shop-mobile-bottom{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;z-index:90;background:#fff;border-top:1px solid #dcebe2;padding:7px 7px max(7px,env(safe-area-inset-bottom));box-shadow:0 -5px 25px #1946341a}
+ .shop-layout .shop-mobile-bottom button{border:0;background:transparent;border-radius:10px;min-width:0;min-height:54px;padding:5px 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#5b7366}
+ .shop-layout .shop-mobile-bottom button[aria-current=page]{background:#e6f5ee;color:#087f68}
+ .shop-layout .shop-mobile-bottom button>span{font-size:23px;line-height:1}
+ .shop-layout .shop-mobile-bottom button>small{font-size:10px;font-weight:750;color:inherit;white-space:nowrap}
+ .shop-layout .shop-main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+}
+@media(prefers-reduced-motion:reduce){.shop-layout .shop-sidebar,.shop-layout .shop-sidebar-shade{transition:none}}
