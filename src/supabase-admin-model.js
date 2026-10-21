@@ -3,7 +3,7 @@ const uuid = value=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{
 const safeText=(value,max=200)=>typeof value==='string'?value.slice(0,max):'';
 const nonNegativeInteger=value=>Number.isSafeInteger(value)&&value>=0?value:0;
 const validDate=value=>typeof value==='string'&&Number.isFinite(new Date(value).getTime());
-export const ADMIN_TABS=['overview','businesses','members','licenses','plans','security'];
+export const ADMIN_TABS=['overview','businesses','members','licenses','plans','finance','audit','security'];
 
 export function normalizeAdminOverview(raw){
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||!Array.isArray(raw.businesses)||!Array.isArray(raw.plans))throw Error('supabase_response');
