@@ -97,7 +97,11 @@ export function printSaleReceipt(r,{doc=document,win=window}={}){
  page.id='pronto-sale-print';page.className='pronto-sale-print-page';
  page.innerHTML=receiptMarkup(r);
  doc.body.append(page);
- const cleanup=()=>page.remove();
+ const pageStyle=doc.createElement('style');
+ pageStyle.textContent='@page{size:80mm auto;margin:3mm}';
+ doc.head.append(pageStyle);
+ doc.body.classList.add('pronto-printing');
+ const cleanup=()=>{page.remove();pageStyle.remove();doc.body.classList.remove('pronto-printing');};
  win.addEventListener('afterprint',cleanup,{once:true});
  try{win.print();}catch(e){cleanup();throw e;}
  // Some mobile PWA engines don't emit afterprint after cancelling printing.
