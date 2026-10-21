@@ -100,13 +100,11 @@ test('SQL provisioning checks auth.uid, logs each operation and never writes che
  assert.match(sql,/grant execute on function public\.pronto_admin_mutation\(text,jsonb\) to authenticated/);
  assert.doesNotMatch(sql,/insert into public\.pronto_sales|update public\.pronto_products/i);
 });
-test('Supabase Edge invitation authorizes identity and role before invoking admin user creation',()=>{
- const script=readFileSync(new URL('../supabase/functions/pronto-admin-invite/index.ts',import.meta.url),'utf8');
- const role=script.indexOf('pronto_admin_status');
- const invite=script.indexOf('auth/v1/invite');
- assert.ok(role>0&&invite>role);
- assert.ok(script.includes('SUPABASE_SERVICE_ROLE_KEY'));
- assert.ok(script.includes('auth/v1/user'));
- assert.ok(script.includes('pronto_admin_mutation'));
- assert.ok(script.includes('admin_required'));
+test('Legacy Edge invitation is disabled and will never send automatic emails',()=>{
+ for(const name of ['pronto-admin-invite','pronto-owner-invite']){
+  const code=readFileSync(new URL('../supabase/functions/'+name+'/index.ts',import.meta.url),'utf8');
+  assert.match(code,/legacy_invitation_disabled/);
+  assert.match(code,/status:410/);
+  assert.doesNotMatch(code,/auth\\/v1\\/invite|sendEmail\\(/);
+ }
 });
