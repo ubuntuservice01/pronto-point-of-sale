@@ -57,7 +57,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
  const expiresAt=data=>Number.isFinite(Number(data?.expires_in))&&Number(data.expires_in)>0?Date.now()+Number(data.expires_in)*1000:0;
  async function ensureFresh(){
   if(!session)throw Error('supabase_unauthorized');
-  if(session.access_token&&session.expiresAt>Date.now()+30000)return;
+  if(session.access_token&&(!session.expiresAt||session.expiresAt>Date.now()+30000))return;
   if(!session.refresh_token){clearSession();throw Error('supabase_unauthorized');}
   if(!refreshJob){
    refreshJob=(async()=>{
