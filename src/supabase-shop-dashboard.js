@@ -694,7 +694,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     return showMessage('Revise o horário e seleccione pelo menos um dia.',true);
    const enabled=fields.has('schedule_enabled');
    if(!await confirmShop('Guardar horário para '+employee.name+'? Os horários seguem Africa/Maputo e podem bloquear uma sessão já aberta.'))return;
-   busy=true;showMessage('A guardar horário no servidor…');
+   busy=true;showMessage('');
    try{
     await client.ownerStaffAccessAction('schedule',{business_id:grant.id,user_id:id,
      schedule_enabled:enabled,start_time:start,end_time:end,weekdays});
