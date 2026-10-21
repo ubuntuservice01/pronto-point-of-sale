@@ -97,6 +97,14 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   const result=await call('/rest/v1/rpc/pronto_admin_overview',{method:'POST',payload:{}});
   return normalizeAdminOverview(result);
  }
+ async function adminControl(action,data){
+  if(!session)throw Error('supabase_unauthorized');
+  return call('/rest/v1/rpc/pronto_ubuntu_admin_control',{method:'POST',payload:{p_action:action,p_data:data}});
+ }
+ async function adminInsights(){
+  if(!session)throw Error('supabase_unauthorized');
+  return call('/rest/v1/rpc/pronto_ubuntu_admin_insights',{method:'POST',payload:{}});
+ }
  async function adminMutate(action,data){
   if(!session)throw Error('supabase_unauthorized');
   const allowed=['plan_create','business_create','member_assign','member_deactivate','license_assign','license_renew','license_cancel','business_suspend','business_activate'];
@@ -428,5 +436,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,provisionMember,provisionShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminInsights,provisionMember,provisionShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
