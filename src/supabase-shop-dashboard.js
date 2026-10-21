@@ -104,9 +104,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
-  branding=await client.documentSettings(grant.id);
+  // A falha no carregamento da imagem/configuração não pode bloquear o caixa.
+  try{branding=typeof client.documentSettings==='function'?await client.documentSettings(grant.id):normalizeDocumentBranding({},grant.name);}
+  catch{branding=normalizeDocumentBranding({},grant.name);}
   brandLogoUrl='';
-  if(branding.logoPath){try{brandLogoUrl=await client.documentLogoUrl(branding.logoPath);}catch{/* A imagem pode não estar temporariamente disponível. */}}
+  if(branding.logoPath&&typeof client.documentLogoUrl==='function'){
+   try{brandLogoUrl=await client.documentLogoUrl(branding.logoPath);}catch{/* Apenas a imagem fica indisponível. */}
+  }
   cashState=typeof client.cashControl==='function'?normalizeCashControl(await client.cashControl('snapshot',cashData({}))):null;
   pendingCashOffline=offlineCount();
   branchManagement=grant.role==='owner'?await client.manageBranch('list',{business_id:grant.id}):null;
