@@ -315,10 +315,10 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
 
  '<main class="shop-main"><div id="shop-message" role="status" aria-live="polite">'+esc(feedback||'')+'</div>'+
  '<h2>'+esc(branch?.name||'Loja')+'</h2>'+body+
- '<section class="shop-box shop-draft-section"><h3>Recuperação de carrinhos</h3><p class="shop-help">Pode guardar o carrinho encriptado neste dispositivo. Sem Internet, pode guardar o carrinho para recuperar mais tarde. A venda só é concluída com ligação. Os carrinhos guardados só podem ser finalizados com Internet.</p>'+
+ (view==='sell'||view==='held'?'<section class="shop-box shop-draft-section"><h3>Recuperação de carrinhos</h3><p class="shop-help">Pode guardar o carrinho encriptado neste dispositivo. Sem Internet, pode guardar o carrinho para recuperar mais tarde. A venda só é concluída com ligação. Os carrinhos guardados só podem ser finalizados com Internet.</p>'+
  (cart.length||pending?'<form data-shop-form="draft_save" class="shop-form"><label>Frase de recuperação (mínimo 12 caracteres)<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Guardar rascunho encriptado</button></form>':'')+
  (draftAvailable?'<form data-shop-form="draft_restore" class="shop-form"><label>Frase do rascunho guardado<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Recuperar rascunho</button></form><button type="button" data-shop-draft-clear class="shop-logout">Apagar rascunho do dispositivo</button>':'')+
- '<p class="shop-help">Se uma venda foi enviada e a resposta falhou, recupere o mesmo pedido e a mesma referência antes de reenviar. Não crie uma venda nova sem conferir os registos.</p></section>'+
+ '<p class="shop-help">Se uma venda foi enviada e a resposta falhou, recupere o mesmo pedido e a mesma referência antes de reenviar. Não crie uma venda nova sem conferir os registos.</p></section>':'')+
  (pendingFinance?'<div class="shop-pending"><strong>Operação financeira por confirmar</strong><p>Confira o histórico da loja antes de tentar outra operação. Repetir o mesmo formulário reutiliza a chave original.</p><button type="button" data-finance-discard>Descartar referência local após conferir</button></div>':'')+
  '<p class="shop-footer">Pronto POS — Menos complicações, mais negócio. © Ubuntu Service, Lda.</p></main></div>'+
  '<nav class="shop-mobile-bottom" aria-label="Navegação rápida">'+bottomNav+
