@@ -1,6 +1,18 @@
 // PIN scene: dynamic, scoped aggregate values. Never invent sales figures.
 // Data are held in RAM for the current authenticated session only.
 import {MONEY,esc} from './supabase-shop-core.js';
+// Runtime-only cache. No KPIs or business identifiers survive closing this tab.
+let activeMetrics=null;
+export function setPinKPIs(value){
+ activeMetrics=value&&validatePinKPIs(value,value.userId)?value:null;
+ return activeMetrics;
+}
+export function readPinKPIs(userId){
+ return validatePinKPIs(activeMetrics,userId);
+}
+export function clearPinKPIs(userId){
+ if(!userId||activeMetrics?.userId===userId)activeMetrics=null;
+}
 const fmtCount=n=>new Intl.NumberFormat('pt-PT',{maximumFractionDigits:0}).format(n);
 const positive=n=>Number.isSafeInteger(n)&&n>=0;
 export function getPinKPIs({today,month,businessId,branchId,userId,shopName,role}={}){
