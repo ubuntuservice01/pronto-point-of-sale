@@ -113,7 +113,7 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
    'const sidebar=document.querySelector(".shop-sidebar");',
    'const computed=getComputedStyle(bottom);',
    'const initial={bottomVisible:computed.display!=="none",fixed:computed.position==="fixed",',
-   'bottomButtons:bottom.querySelectorAll("button").length,sidebarHidden:getComputedStyle(sidebar).visibility==="hidden" || sidebar.getBoundingClientRect().right<=0};',
+   'bottomButtons:bottom.querySelectorAll("button").length,centralSell:bottom.children[2]?.dataset.shopView==="sell",sidebarHidden:getComputedStyle(sidebar).visibility==="hidden" || sidebar.getBoundingClientRect().right<=0};',
    'document.querySelector("[data-shop-menu-toggle]").click();',
    'initial.open=!!document.querySelector(".shop-layout.shop-menu-open");',
    'initial.sideVisible=getComputedStyle(document.querySelector(".shop-sidebar")).visibility==="visible";',
@@ -122,7 +122,7 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
    'return initial;})()'
   ].join(''));
   assert.deepEqual(mobile,{
-   bottomVisible:true,fixed:true,bottomButtons:5,sidebarHidden:true,open:true,sideVisible:true,closed:true
+   bottomVisible:true,fixed:true,bottomButtons:5,centralSell:true,sidebarHidden:true,open:true,sideVisible:true,closed:true
   });
   await debug.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await wait(80);
@@ -177,6 +177,11 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
    'return {opened:!!protectedNode,toolbar:!!document.querySelector("[data-pin-lock]"),locked:window.__pinChecks.locked};})()'
   ].join(''));
   assert.deepEqual(enrolled,{opened:true,toolbar:true,locked:false});
+  // The desktop PIN shortcuts must disappear on mobile without disabling the PIN gate.
+  await debug.send('Emulation.setDeviceMetricsOverride',{width:360,height:800,deviceScaleFactor:2,mobile:true});
+  const mobilePinControl=await js('getComputedStyle(document.querySelector(".pronto-pin-controls")).display');
+  assert.equal(mobilePinControl,'none');
+  await debug.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   const locked=await js([
    '(()=>{document.querySelector("[data-pin-lock]").click();',
    'return {inert:document.querySelector("#app").inert,overlay:!!document.querySelector(".pronto-pin-backdrop"),',
