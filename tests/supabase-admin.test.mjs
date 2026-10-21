@@ -52,13 +52,13 @@ test('Administrative RPC is server-protected, returns only permitted read-only d
  await assert.rejects(client.adminOverview(),/supabase_unauthorized/);
 });
 
-test('Revoked or ordinary user cannot receive the global administration snapshot',async()=>{
+test('Ordinary user is forbidden from global administration but remains signed in',async()=>{
  const m=mock({admin:false});
  const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:m.fetchImpl});
  const user=await client.signIn('test@example.org','password');
  assert.equal(user.ubuntuAdmin,false);
- await assert.rejects(client.adminOverview(),/supabase_unauthorized/);
- await assert.rejects(client.account(),/supabase_unauthorized/);
+ await assert.rejects(client.adminOverview(),/supabase_forbidden/);
+ assert.equal((await client.account()).ubuntuAdmin,false);
 });
 
 test('A short-lived token is automatically refreshed in memory, preserving the user identity',async()=>{
