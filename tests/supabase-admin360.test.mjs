@@ -67,6 +67,7 @@ test('Authorized client calls protected admin APIs, not anonymous direct table w
   if(url.includes('/rest/v1/pronto_memberships?'))return json(200,[]);
   if(url.endsWith('/rest/v1/rpc/pronto_ubuntu_admin_insights'))return json(200,insights);
   if(url.endsWith('/rest/v1/rpc/pronto_ubuntu_admin_control'))return json(200,{business_id:B,state:'suspended'});
+  if(url.endsWith('/rest/v1/rpc/pronto_ubuntu_admin_critical'))return json(200,{business_id:B,status:'suspended'});
   return json(404,{});
  };
  const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl});
@@ -74,4 +75,7 @@ test('Authorized client calls protected admin APIs, not anonymous direct table w
  assert.deepEqual(await client.adminInsights(),insights);
  assert.deepEqual(await client.adminControl('business_archive',{business_id:B,reason:'Admin test event'}),{business_id:B,state:'suspended'});
  assert.ok(calls.some(x=>x.url.endsWith('/rpc/pronto_ubuntu_admin_control')&&x.headers.Authorization==='Bearer valid-session'));
+ assert.deepEqual(await client.adminCritical('business_suspend',{business_id:B,reason:'Suspeita de acesso indevido'}),{business_id:B,status:'suspended'});
+ await assert.rejects(()=>client.adminCritical('business_suspend',{business_id:B,reason:''}),/admin_invalid_action/);
+ assert.ok(calls.some(x=>x.url.endsWith('/rpc/pronto_ubuntu_admin_critical')));
 });
