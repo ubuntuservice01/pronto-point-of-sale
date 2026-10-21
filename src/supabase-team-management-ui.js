@@ -53,6 +53,6 @@ export function renderStaffManagement(snapshot){
    '<button type="submit">Guardar horário</button>'+
    '<small>Turnos que passam da meia-noite também são permitidos. O horário só actua no modo automático.</small></form>'+
    '</article>').join(''):
-   '<p class="shop-help">Ainda não existem colaboradores associados. Utilize o convite acima.</p>')+
+   '<p class="shop-help">Ainda não existem colaboradores associados. Utilize o formulário de criação de acesso acima.</p>')+
   '</div>';
 }
