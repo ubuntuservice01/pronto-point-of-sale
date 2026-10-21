@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {getPinKPIs,validatePinKPIs,setPinKPIs,readPinKPIs,clearPinKPIs,pinCityBackdrop,updatePinCityBackdrop} from '../src/pin-city-ui.js';
-import {PIN_IDLE_MS,pinScreen} from '../src/supabase-pin-lock.js';
+import {PIN_IDLE_MS,PIN_FOOTER_TEXT,pinScreen,pinKeyboardKey,editUnlockPin} from '../src/supabase-pin-lock.js';
 const file=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const U='11111111-1111-4111-8111-111111111111';
@@ -19,13 +19,37 @@ test('PIN scene uses the brand, five digits, city landscape, Mozambique map and 
  assert.match(file('src/pin-city.css'),/\.pronto-pin-backdrop\.pin-city-theme/);
  assert.match(markup,/Ecrã bloqueado/);
  assert.match(markup,/Desbloquear/);
- assert.match(markup,/Ubuntu Servers/);
- assert.match(markup,/criando pontes entre o físico e o digital/);
+ assert.match(markup,/Ubuntu Service, Lda\./);
+ assert.doesNotMatch(markup,/Ubuntu Servers/);
+ assert.equal(PIN_FOOTER_TEXT,'Plataforma desenvolvida pela Ubuntu Service, Lda. — Criando pontes entre o físico e o digital.');
+ assert.match(markup,/Criando pontes entre o físico e o digital/);
  assert.equal((markup.match(/data-pin-key=/g)||[]).length,12);
  assert.equal((markup.match(/<span><\/span>/g)||[]).length,5);
  assert.equal(PIN_IDLE_MS,600000);
  for(const mode of ['create','change','recover'])assert.match(pinScreen({mode}),/pronto-pin-form/);
  assert.doesNotMatch(pinScreen({email:'<img src=x onerror=alert(1)>'}),/<img src=x onerror/);
+});
+
+test('Physical keyboard PIN accepts number row and Numpad without duplicate digits',()=>{
+ assert.equal(pinKeyboardKey({key:'1',code:'Digit1'}),'1');
+ assert.equal(pinKeyboardKey({key:'2',code:'Numpad2'}),'2');
+ assert.equal(pinKeyboardKey({key:'Backspace'}),'Backspace');
+ assert.equal(pinKeyboardKey({key:'Delete'}),'Delete');
+ assert.equal(pinKeyboardKey({key:'Enter'}),'Enter');
+ for(const event of [{key:'3',ctrlKey:true},{key:'4',metaKey:true},{key:'5',altKey:true},{key:'6',isComposing:true},{key:'Tab'}])
+  assert.equal(pinKeyboardKey(event),null);
+ let pin='';
+ for(const key of ['1','2','3','4','5','6'])pin=editUnlockPin(pin,key);
+ assert.equal(pin,'12345');
+ assert.equal(editUnlockPin(pin,'Backspace'),'1234');
+ assert.equal(editUnlockPin(pin,'Delete'),'');
+ assert.equal(editUnlockPin(pin,'Escape'),'');
+ assert.equal(editUnlockPin('12X','3'),'123');
+ const lock=file('src/supabase-pin-lock.js');
+ assert.match(lock,/doc\.addEventListener\('keydown',onPinKeyboard,\{signal,capture:true\}\)/);
+ assert.match(lock,/if\(e\.target===entry&&key!=='Delete'&&key!=='Escape'\)return/);
+ assert.match(lock,/if\(!entry\|\|destroyed\|\|processing\|\|e\.defaultPrevented\)return/);
+ assert.match(lock,/form id="pronto-pin-form" autocomplete="off" novalidate/);
 });
 
 test('Daily and monthly figures are actual branch aggregates, not mocked display values',()=>{
@@ -96,6 +120,9 @@ test('Background image, isolated styles and PWA assets are wired',()=>{
  assert.match(css,/backdrop-filter:blur/);
  assert.match(css,/pin-city-landscape/);
  assert.match(css,/pin-city-footer/);
+ assert.match(css,/flex-direction:column/);
+ assert.match(css,/margin:30px auto 0/);
+ assert.doesNotMatch(css,/\.pin-city-footer\{position:absolute/);
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(css,/@media\(max-width:550px\)/);
  assert.match(css,/pin-city-mobile-kpis/);
