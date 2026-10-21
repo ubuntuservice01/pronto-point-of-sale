@@ -73,7 +73,7 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
    box('Lista automática de compras',
     '<p class="shop-help">Sugestões para cerca de 14 dias de vendas, considerando o consumo dos últimos 30 dias, stock disponível não vencido e stock mínimo. É uma estimativa, não uma encomenda.</p>'+
     '<div class="credit-list"><table class="shop-table"><thead><tr><th>Produto</th><th>Disponível</th><th>Vendas 30 dias</th><th>Comprar</th></tr></thead><tbody>'+table+'</tbody></table></div>'+
-    '<button type="button" data-inventory-export>Exportar sugestões CSV</button>',
+    '<div class="document-export-actions"><button type="button" data-inventory-xlsx class="shop-submit">Exportar sugestões Excel</button><button type="button" data-inventory-export class="secondary">Exportar CSV</button></div>',
     'Reveja e confirme quantidades antes de comprar. O sistema não envia encomendas automaticamente.')+'</div>';
  }
  return '<div class="shop-two">'+box('Produtos e inventário',
