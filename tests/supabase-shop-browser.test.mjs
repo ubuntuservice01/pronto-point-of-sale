@@ -101,6 +101,28 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
    '})()'
   ].join(''));
   assert.deepEqual(switched,{same:true,mixed:true,active:'true'});
+  // Homologação 11: responsive merchant navigation at Android-size viewport.
+  await debug.send('Emulation.setDeviceMetricsOverride',{width:360,height:800,deviceScaleFactor:2,mobile:true});
+  await wait(120);
+  const mobile=await js([
+   '(()=>{const app=document.querySelector(".shop-layout");',
+   'const bottom=document.querySelector(".shop-mobile-bottom");',
+   'const sidebar=document.querySelector(".shop-sidebar");',
+   'const computed=getComputedStyle(bottom);',
+   'const initial={bottomVisible:computed.display!=="none",fixed:computed.position==="fixed",',
+   'bottomButtons:bottom.querySelectorAll("button").length,sidebarHidden:getComputedStyle(sidebar).visibility==="hidden"};',
+   'document.querySelector("[data-shop-menu-toggle]").click();',
+   'initial.open=!!document.querySelector(".shop-layout.shop-menu-open");',
+   'initial.sideVisible=getComputedStyle(document.querySelector(".shop-sidebar")).visibility==="visible";',
+   'document.querySelector(".shop-sidebar-shade").click();',
+   'initial.closed=!document.querySelector(".shop-layout.shop-menu-open");',
+   'return initial;})()'
+  ].join(''));
+  assert.deepEqual(mobile,{
+   bottomVisible:true,fixed:true,bottomButtons:5,sidebarHidden:true,open:true,sideVisible:true,closed:true
+  });
+  await debug.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await wait(80);
   await js('document.querySelector("[data-shop-add]").click()');
   const sale=await js([
    '(async()=>{document.querySelector("[data-shop-method=mixed]").click();',
