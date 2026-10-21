@@ -1,3 +1,4 @@
+import {admin360AuditCSV} from './supabase-admin-360.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderUbuntuAdminShell,renderUbuntuAdminTab} from './supabase-admin-ui.js';
 import {renderProvisioningForms} from './supabase-admin-forms.js';
@@ -50,7 +51,7 @@ const errorMessages={
 export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  if(!account?.ubuntuAdmin)throw Error('admin_required');
  root.innerHTML=renderUbuntuAdminShell(account);
- let data=null,tab='overview',busy=false;
+ let data=null,insights=null,tab='overview',busy=false;
  const message=root.querySelector('#pronto-admin-message');
  const content=root.querySelector('#pronto-admin-content');
  const refreshButton=root.querySelector('#pronto-admin-refresh');
@@ -60,13 +61,13 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  const toggleBusy=state=>{
   busy=state;refreshButton.disabled=state;
   tabs.forEach(button=>button.disabled=state);
-  content.querySelectorAll('button[type="submit"]').forEach(button=>button.disabled=state);
+  content.querySelectorAll('button').forEach(button=>button.disabled=state);
  };
  const render=()=>{
   if(!data)return;
   searchWrap.hidden=tab!=='businesses';
   const query=tab==='businesses'?search.value:'';
-  content.innerHTML=renderUbuntuAdminTab(tab,data,{query})+renderProvisioningForms(tab,data);
+  content.innerHTML=renderUbuntuAdminTab(tab,data,{query,insights:insights||{}})+renderProvisioningForms(tab,data);
   tabs.forEach(button=>{
    const selected=button.dataset.adminTab===tab;
    button.setAttribute('aria-current',selected?'page':'false');
@@ -91,7 +92,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   if(busy||!ADMIN_TABS.includes(nextTab))return;
   toggleBusy(true);message.textContent='A actualizar informações autorizadas…';
   try{
-   data=await client.adminOverview();tab=nextTab;
+   [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);tab=nextTab;
    message.textContent='';render();
   }catch(error){
    if(await failure(error))return;
@@ -111,7 +112,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
     const account=await client.provisionMember(item.data);
     showProntoCredentials(account);
    }else await client.adminMutate(item.action,item.data);
-   data=await client.adminOverview();
+   [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
    render();
    message.textContent=item.action==='member_create'?
     'A conta foi criada. Copie as credenciais antes de fechar a janela.':
@@ -119,6 +120,85 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   }catch(e){await failure(e);}
   finally{if(root.querySelector('#pronto-admin-refresh')===refreshButton)toggleBusy(false);}
  };
+ const controlForm=async event=>{
+  const form=event.target.closest('form[data-admin-control]');
+  if(!form||busy)return;
+  event.preventDefault();
+  const action=form.dataset.adminControl,fd=new FormData(form),val=n=>String(fd.get(n)||'').trim();
+  const moneyCents=name=>{
+   const value=val(name);
+   if(!/^\d+(?:\.\d{1,2})?$/.test(value))throw Error('invalid_price');
+   const n=Math.round(Number(value)*100);
+   if(!Number.isSafeInteger(n)||n<0)throw Error('invalid_price');
+   return n;
+  };
+  let data;
+  try{
+   if(action==='business_edit')data={business_id:val('business_id'),name:val('name'),phone:val('phone'),address:val('address')};
+   else if(action==='branch_edit')data={business_id:val('business_id'),branch_id:val('branch_id'),name:val('name'),active:fd.has('active')};
+   else if(action==='member_edit')data={business_id:val('business_id'),user_id:val('user_id'),display_name:val('display_name'),role:val('role')};
+   else if(action==='plan_edit')data={plan_id:val('plan_id'),name:val('name'),price_cents:moneyCents('price_mzn'),duration_days:Number(val('duration_days'))};
+   else if(action==='payment_record')data={business_id:val('business_id'),plan_id:val('plan_id')||null,
+    amount_cents:moneyCents('amount_mzn'),method:val('method'),external_reference:val('external_reference'),reason:val('reason')};
+   else throw Error('admin_invalid_action');
+  }catch(e){message.textContent=errorMessages[e.message]||'Confira todos os campos.';return;}
+  if(!confirm(action==='payment_record'?'Confirma que a Ubuntu RECEBEU efectivamente este pagamento?':'Guardar estas alterações na plataforma?'))return;
+  toggleBusy(true);message.textContent='A guardar no servidor…';
+  try{
+   await client.adminControl(action,data);
+   [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
+   render();message.textContent='Operação confirmada e auditada.';
+  }catch(e){await failure(e);}finally{toggleBusy(false);}
+ };
+ const quickOperation=async button=>{
+  if(busy)return;
+  const action=button.dataset.adminOperation,id=button.dataset.adminId;
+  const known=['business_suspend','business_activate','business_archive','business_restore','business_remove',
+   'license_cancel','member_deactivate','member_reactivate','plan_toggle'];
+  if(!known.includes(action))return;
+  let payload={},request=action==='business_suspend'||action==='business_activate'||
+   action==='license_cancel'||action==='member_deactivate'?'adminMutate':'adminControl';
+  if(action.startsWith('member_')){
+   const ids=String(id||'').split('|');
+   if(ids.length!==2){message.textContent='Utilizador não identificado.';return;}
+   payload={business_id:ids[0],user_id:ids[1]};
+  }else if(action.startsWith('plan_')){
+   const plan=data.plans.find(x=>x.id===id);
+   if(!plan)return;
+   payload={plan_id:id,active:!plan.active};
+  }else payload={business_id:id};
+  const business=data.businesses.find(x=>x.id===payload.business_id);
+  if(['business_remove','business_archive','business_restore'].includes(action)){
+   const safety=action==='business_remove'?'RETIRAR':'CONFIRMAR';
+   const typed=prompt('Para '+(action==='business_remove'?'retirar esta empresa da lista (sem apagar as vendas)':'executar esta operação')+
+    ', escreva '+safety+':');
+   if(typed!==safety)return;
+   const reason=prompt('Indique o motivo, com pelo menos 10 caracteres:');
+   if(!reason||reason.trim().length<10)return;
+   payload.reason=reason.trim();
+  }else if(!confirm('Confirmar '+action.replace(/_/g,' ')+' para '+(business?.name||'este registo')+'?'))return;
+  toggleBusy(true);message.textContent='A executar operação protegida…';
+  try{
+   await client[request](action,payload);
+   [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
+   render();message.textContent='Estado actualizado e registado.';
+  }catch(e){await failure(e);}finally{toggleBusy(false);}
+ };
+ content.addEventListener('submit',controlForm);
+ content.addEventListener('click',event=>{
+  const navigate=event.target.closest('[data-admin-navigate]');
+  if(navigate){search.value='';load(navigate.dataset.adminNavigate);return;}
+  const operation=event.target.closest('[data-admin-operation]');
+  if(operation){void quickOperation(operation);return;}
+  const exporter=event.target.closest('[data-admin-export="audit"]');
+  if(exporter&&insights){
+   const blob=new Blob([admin360AuditCSV(insights)],{type:'text/csv;charset=utf-8'});
+   const uri=URL.createObjectURL(blob),anchor=document.createElement('a');
+   anchor.href=uri;anchor.download='pronto-admin-auditoria.csv';document.body.append(anchor);
+   anchor.click();anchor.remove();URL.revokeObjectURL(uri);
+  }
+ });
+
  tabs.forEach(button=>button.addEventListener('click',()=>{if(busy)return;search.value='';load(button.dataset.adminTab);}));
  refreshButton.addEventListener('click',()=>load(tab));
  root.querySelector('#pronto-admin-logout').addEventListener('click',logout);
