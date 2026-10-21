@@ -66,8 +66,7 @@ test('UI produces correct integer prices and refuses invalid payment input',()=>
 test('Supabase privileged operations require authenticated bearer and never ship admin keys',async()=>{
  const m=mock();
  const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:m.fetchImpl});
- await assert.rejects(()=>client.adminMutate('business_create',{}),/supabase_forbidden/);
- assert.equal((await client.account()).ubuntuAdmin,false);
+ await assert.rejects(()=>client.adminMutate('business_create',{}),/supabase_unauthorized/);
  await assert.rejects(()=>client.provisionMember({}),/supabase_unauthorized/);
  const account=await client.signIn('owner@example.com','demo-password');
  assert.equal(account.ubuntuAdmin,true);
@@ -87,7 +86,8 @@ test('A non-admin cannot perform mutations even with a valid JWT',async()=>{
  const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:m.fetchImpl});
  const account=await client.signIn('owner@example.com','demo-password');
  assert.equal(account.ubuntuAdmin,false);
- await assert.rejects(()=>client.adminMutate('business_create',{}),/supabase_unauthorized/);
+ await assert.rejects(()=>client.adminMutate('business_create',{}),/supabase_forbidden/);
+ assert.equal((await client.account()).ubuntuAdmin,false);
 });
 test('SQL provisioning checks auth.uid, logs each operation and never writes checkout sales',()=>{
  const sql=readFileSync(new URL('../supabase/migrations/20261015142000_pronto_admin_provisioning.sql',import.meta.url),'utf8');
