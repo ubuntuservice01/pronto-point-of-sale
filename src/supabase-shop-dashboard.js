@@ -510,7 +510,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      method:m,amount:String(f.get('pay_'+m)||'0')
     })).filter(p=>toCents(p.amount)>0):[{method,amount:totalText}];
     if(allocations.some(x=>x.method!=='cash')&&f.get('confirmed')!=='yes')throw Error('digital_unconfirmed');
-    pending=makeSaleRequest({businessId:grant.id,branchId,sessionId:shift.id,
+    pending=makeSaleRequest({businessId:grant.id,branchId,sessionId:shift?.id||null,
      cart,products:data.products,discount:disc,allocations,idempotencyKey:idem,
      cashReceived:String(f.get('cash_received')||'0')});
     if(selectedCustomerId)pending.customer_id=selectedCustomerId;
