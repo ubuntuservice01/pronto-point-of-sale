@@ -106,14 +106,14 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
   // The test fixture is not an installed PWA; supply its viewport meta so
   // Chromium emulates the same CSS viewport as a normal Android installation.
   await js('(()=>{let m=document.querySelector("meta[name=viewport]");if(!m){m=document.createElement("meta");m.name="viewport";document.head.append(m);}m.content="width=device-width,initial-scale=1";return true;})()');
-  await wait(170);
+  await wait(310); // mobile drawer has a 200ms visibility transition
   const mobile=await js([
    '(()=>{const app=document.querySelector(".shop-layout");',
    'const bottom=document.querySelector(".shop-mobile-bottom");',
    'const sidebar=document.querySelector(".shop-sidebar");',
    'const computed=getComputedStyle(bottom);',
    'const initial={bottomVisible:computed.display!=="none",fixed:computed.position==="fixed",',
-   'bottomButtons:bottom.querySelectorAll("button").length,sidebarHidden:getComputedStyle(sidebar).visibility==="hidden"};',
+   'bottomButtons:bottom.querySelectorAll("button").length,sidebarHidden:getComputedStyle(sidebar).visibility==="hidden" || sidebar.getBoundingClientRect().right<=0};',
    'document.querySelector("[data-shop-menu-toggle]").click();',
    'initial.open=!!document.querySelector(".shop-layout.shop-menu-open");',
    'initial.sideVisible=getComputedStyle(document.querySelector(".shop-sidebar")).visibility==="visible";',
