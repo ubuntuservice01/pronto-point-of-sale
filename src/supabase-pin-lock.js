@@ -1,4 +1,5 @@
 // Trusted-screen PIN gate for sessions already authenticated with Supabase Auth.
+import {clearPinContinuity,rememberPinContinuity,canResumePinContinuity} from './pronto-pin-continuity.js';
 // Not a replacement for Supabase Auth / MFA and not a cold-start login credential.
 const valid=value=>typeof value==='string'&&/^[0-9]{5}$/.test(value);
 export const PIN_IDLE_MS=600000; // 10 minutes of actual inactivity.
@@ -45,18 +46,29 @@ export function pinScreen({mode='unlock',email='',message=''}={}){
 }
 export async function mountProntoPinGate({
  root,client,account,open,onLogout,
- idleMs=PIN_IDLE_MS,
- doc=document,win=window
+ idleMs=PIN_IDLE_MS,allowReloadResume=false,
+ doc=document,win=window,tabStorage=null
 }){
  if(!root||!account?.userId||typeof client?.sessionPin!=='function')throw Error('pin_gate_invalid');
  const controller=new AbortController();
  const {signal}=controller;
  let overlay=null,toolbar=null,timer=null,opened=false,locking=false,destroyed=false,processing=false;
+ let unloading=false,lastRemembered=0;
+ let tabs=tabStorage;
+ if(!tabs){try{tabs=win.sessionStorage;}catch{/* private mode */}}
+ const forget=()=>clearPinContinuity(tabs,account.userId);
+ const remember=()=>{
+  const now=Date.now();
+  if(now-lastRemembered<12000)return;
+  lastRemembered=now;
+  rememberPinContinuity(tabs,account.userId,now);
+ };
  const cleanup=()=>{
   destroyed=true;controller.abort();
   if(timer!==null)win.clearTimeout(timer);
   overlay?.remove();toolbar?.remove();overlay=null;toolbar=null;
   root.inert=false;root.removeAttribute('aria-hidden');
+  forget();
  };
  const signout=async()=>{
   cleanup();
@@ -65,11 +77,12 @@ export async function mountProntoPinGate({
  const resetIdle=()=>{
   if(destroyed||locking||!opened)return;
   if(timer!==null)win.clearTimeout(timer);
+  remember();
   timer=win.setTimeout(()=>show('unlock'),idleMs);
  };
  const show=mode=>{
   if(destroyed||processing&&mode==='unlock')return;
-  locking=true;client.lockScreen();
+  locking=true;forget();client.lockScreen();
   if(timer!==null)win.clearTimeout(timer);timer=null;
   root.inert=true;root.setAttribute('aria-hidden','true');
   toolbar?.remove();toolbar=null;
@@ -151,11 +164,20 @@ export async function mountProntoPinGate({
   doc.body.appendChild(toolbar);
   toolbar.querySelector('[data-pin-lock]').onclick=()=>show('unlock');
   toolbar.querySelector('[data-pin-change]').onclick=()=>show('change');
+  lastRemembered=0;
   resetIdle();
  };
- // Screen was obscured, device slept or another app was opened: lock immediately.
- doc.addEventListener('visibilitychange',()=>{if(doc.hidden&&opened&&!locking)show('unlock');},{signal});
- win.addEventListener('pagehide',()=>{if(opened&&!locking)show('unlock');},{signal});
+ // Close/background: always require PIN next time; a genuine refresh is different.
+ // beforeunload happens on reload AND tab close. Only a browser-confirmed
+ // navigation.type=reload on the next load may use the recent per-tab unlock.
+ win.addEventListener('beforeunload',()=>{unloading=true;},{signal});
+ win.addEventListener('pageshow',()=>{unloading=false;},{signal});
+ doc.addEventListener('visibilitychange',()=>{
+  if(doc.hidden&&opened&&!locking&&!unloading)show('unlock');
+ },{signal});
+ win.addEventListener('pagehide',()=>{
+  if(opened&&!locking&&!unloading)show('unlock');
+ },{signal});
  // Track actual editing/autofill as interaction, without relaxing background locking.
  for(const type of ['pointerdown','keydown','touchstart','wheel','input','change','submit','focusin']){
   doc.addEventListener(type,resetIdle,{signal,passive:true});
@@ -163,8 +185,18 @@ export async function mountProntoPinGate({
  try{
   const status=await client.sessionPin('status');
   if(destroyed)return {cleanup,lock:()=>{}};
-  if(status.configured){show('unlock');}
-  else{show('create');}
+  if(status.configured){
+   let navigationType='';
+   try{navigationType=win.performance?.getEntriesByType('navigation')?.[0]?.type||'';}catch{/* browser */}
+   const resumable=allowReloadResume&&
+    canResumePinContinuity({storage:tabs,userId:account.userId,navigationType,idleMs});
+   if(resumable){
+    try{
+     client.unlockReloadedScreen();
+     await open();opened=true;close();
+    }catch(error){forget();show('unlock');}
+   }else{forget();show('unlock');}
+  }else{forget();show('create');}
  }catch(error){
   cleanup();throw error;
  }
