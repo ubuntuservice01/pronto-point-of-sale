@@ -335,6 +335,12 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
    throw Error('csv_import_invalid');
   return call('/rest/v1/rpc/pronto_import_products_csv',{method:'POST',payload:{p_data:data}});
  }
+ async function cashControl(action,data){
+  if(!['settings','configure','snapshot','open','request_close','close','block','unblock','admin_close'].includes(action)||
+   !data||typeof data!=='object'||Array.isArray(data)||!uuid(data.business_id)||!uuid(data.branch_id))
+   throw Error('cash_action_invalid');
+  return call('/rest/v1/rpc/pronto_cash_control',{method:'POST',payload:{p_action:action,p_data:data}});
+ }
  async function merchantAction(action,data){
   if(!['product_create','stock_receive','cash_open','cash_close','sale_complete','customer_save','credit_policy','credit_sale','debt_payment'].includes(action))
    throw Error('shop_action_invalid');
@@ -422,5 +428,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,provisionMember,provisionShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,provisionMember,provisionShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
