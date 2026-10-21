@@ -31,6 +31,7 @@ Deno.serve(async request=>{
  const bearer=request.headers.get("Authorization")||"";
  const token=bearer.match(/^Bearer ([-\w.]+)$/)?.[1];
  if(!token)return json({error:"unauthorized"},401);
+ let createdId:string|null=null;
  try{
   const inbound=await request.json().catch(()=>null);
   if(!inbound||typeof inbound!=="object"||JSON.stringify(inbound).length>3000)return json({error:"invalid_input"},400);
@@ -70,6 +71,7 @@ Deno.serve(async request=>{
    created.status===422?409:502);
   const uid=createdUser?.id??createdUser?.user?.id;
   if(!uuid(uid))return json({error:"provision_partial_contact_support"},503);
+  createdId=uid;
   const assigned=scope==="admin"?
    await rpc("pronto_admin_mutation",{p_action:"member_assign",
     p_data:{business_id,user_id:uid,display_name,role}}):
@@ -86,7 +88,8 @@ Deno.serve(async request=>{
   return json({ok:true,email,temporary_password:password,
    account_code:"POS-"+uid.slice(0,8).toUpperCase(),user_id:uid,role,business_id},201);
  }catch{
-  // Never include passwords, secrets, request bodies or tokens in responses or logs.
-  return json({error:"provision_unavailable"},503);
+  // A network failure after creation may leave an incomplete association.
+  // Never suggest blindly repeating that action or expose credentials/secrets.
+  return json({error:createdId?"provision_partial_contact_support":"provision_unavailable"},503);
  }
 });
