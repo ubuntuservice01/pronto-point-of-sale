@@ -4,7 +4,7 @@ begin;
 select set_config('request.jwt.claim.sub',(select user_id::text from public.pronto_memberships where role='owner' and active limit 1),true);
 set local role authenticated;
 do $$
-declare b uuid; br uuid; prod uuid; cash_session uuid; key1 uuid:=gen_random_uuid(); result jsonb; sal uuid; n integer;
+declare b uuid; br uuid; prod uuid; cash_session uuid; key1 uuid:=gen_random_uuid(); movement_key uuid:=gen_random_uuid(); result jsonb; sal uuid; n integer;
 begin
  select business_id into b from public.pronto_memberships where user_id=auth.uid() and role='owner' and active limit 1;
  select id into br from public.pronto_branches where business_id=b and active limit 1;
@@ -35,7 +35,7 @@ begin
  perform public.pronto_merchant_action('sale_complete',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'idempotency_key',gen_random_uuid(),'items',jsonb_build_array(jsonb_build_object('product_id',prod,'quantity',1)),'allocations',jsonb_build_array(jsonb_build_object('method','cash','amount_cents',7000)),'cash_received_cents',7000));
  -- Digital payment must appear in reports without increasing physical drawer cash.
  perform public.pronto_merchant_action('sale_complete',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'idempotency_key',gen_random_uuid(),'items',jsonb_build_array(jsonb_build_object('product_id',prod,'quantity',1)),'allocations',jsonb_build_array(jsonb_build_object('method','mpesa','amount_cents',7000)),'cash_received_cents',0));
- perform public.pronto_hold_action('cash_move',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'direction','in','amount_cents',5000,'reason','Reforço de fundo','idempotency_key',gen_random_uuid()));
+ perform public.pronto_hold_action('cash_move',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'direction','in','amount_cents',5000,'reason','Reforço de fundo','idempotency_key',movement_key));
  perform public.pronto_hold_action('cash_move',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'direction','out','amount_cents',1000,'reason','Retirada de fundo','idempotency_key',gen_random_uuid()));
  perform public.pronto_cash_control('request_close',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session));
  begin
@@ -47,6 +47,13 @@ begin
  if (result->>'expected_cents')::bigint<>211000 or (result->>'difference_cents')::bigint<>-1000 or result->>'close_type'<>'blind' or
   (result->'payments_by_method'->>'mpesa')::bigint<>7000 then
   raise exception 'wrong_blind_reconciliation: %',result;end if;
+ result:=public.pronto_hold_action('cash_move',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'direction','in','amount_cents',5000,'reason','Reforço de fundo','idempotency_key',movement_key));
+ if result->>'duplicate'<>'true' then raise exception 'retry_after_close_not_idempotent';end if;
+ begin
+  perform public.pronto_hold_action('cash_move',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'direction','in','amount_cents',5000,'reason','Movimento tardio não autorizado','idempotency_key',gen_random_uuid()));
+  raise exception 'late_movement_after_close_was_allowed';
+ exception when sqlstate '22023' then null;
+ end;
  result:=public.pronto_cash_control('note_difference',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'reason','Justificação de diferença de caixa'));
  if result->>'note_added'<>'true' then raise exception 'missing_immutable_note';end if;
 end $$;
