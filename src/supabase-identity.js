@@ -1,5 +1,6 @@
-// Pronto POS Supabase identity smoke-test (no POS writes and no persistent tokens).
-// Keeps tokens in memory; pages must be re-authenticated on reload.
+// Pronto POS identity: the refresh credential persists locally, but access and roles
+// are revalidated against Supabase after every browser restart or page reload.
+// No passwords or PINs are stored by the application.
 const validEmail = value => typeof value === 'string' && value.length > 3 && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 import {normalizeAdminOverview} from './supabase-admin-model.js';
 import {normalizeMerchantSnapshot} from './supabase-shop-core.js';
@@ -14,29 +15,74 @@ import {normalizeSuspendedCash} from './supabase-staff-cash-ui.js';
 import {normalizeAuditSnapshot} from './supabase-audit-ui.js';
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
-export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } = {}) {
+export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, storage } = {}) {
  const apiURL=new URL(url||'');
  if(apiURL.protocol!=='https:' || apiURL.hostname!=='xgtpvszwzvkwysrswkek.supabase.co' || apiURL.pathname!=='/') throw Error('supabase_project');
  if(typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(publishableKey)) throw Error('supabase_publishable_key');
  let session=null;
  let sessionLocked=false;
  let refreshJob=null;
+ // Refresh tokens stay in first-party browser storage, never in URLs or logs.
+ // An unavailable/blocked storage provider means the current login still works
+ // but cannot persist across a full browser restart.
+ let persistent=null;
+ try{persistent=storage===undefined?(typeof window!=='undefined'?window.localStorage:null):storage;}
+ catch{/* Private browsing or browser policy can disable persistent storage. */}
+ const storageKey='pronto.auth.refresh.v1:'+apiURL.hostname;
+ const forget=()=>{
+  try{persistent?.removeItem(storageKey);}catch{/* storage unavailable */}
+ };
+ const remember=()=>{
+  try{
+   if(session?.refresh_token&&uuid(session.user?.id)){
+    persistent?.setItem(storageKey,JSON.stringify({
+     version:1,user_id:session.user.id,refresh_token:session.refresh_token
+    }));
+   }
+  }catch{/* A full/disabled store must never abort a successful authenticated write. */}
+ };
+ const clearSession=()=>{session=null;sessionLocked=false;forget();};
+ const readSaved=()=>{
+  let raw;
+  try{raw=persistent?.getItem(storageKey);}catch{return null;}
+  if(!raw)return null;
+  try{
+   if(raw.length>6000)throw Error();
+   const value=JSON.parse(raw);
+   if(value.version!==1||!uuid(value.user_id)||typeof value.refresh_token!=='string'
+     ||value.refresh_token.length<8||value.refresh_token.length>4096)throw Error();
+   return value;
+  }catch{forget();return null;}
+ };
  const expiresAt=data=>Number.isFinite(Number(data?.expires_in))&&Number(data.expires_in)>0?Date.now()+Number(data.expires_in)*1000:0;
  async function ensureFresh(){
   if(!session)throw Error('supabase_unauthorized');
-  if(!session.expiresAt||Date.now()<session.expiresAt-30000)return;
-  if(!session.refresh_token){session=null;throw Error('supabase_unauthorized');}
+  if(session.access_token&&session.expiresAt>Date.now()+30000)return;
+  if(!session.refresh_token){clearSession();throw Error('supabase_unauthorized');}
   if(!refreshJob){
    refreshJob=(async()=>{
     const previous=session;
-    const response=await fetchImpl(apiURL.origin+'/auth/v1/token?grant_type=refresh_token',{
-     method:'POST',headers:{apikey:publishableKey,Accept:'application/json','Content-Type':'application/json'},
-     cache:'no-store',credentials:'omit',redirect:'error',body:JSON.stringify({refresh_token:previous.refresh_token})
-    });
-    if(!response.ok){session=null;throw Error('supabase_unauthorized');}
-    let data;try{data=await response.json();}catch{session=null;throw Error('supabase_unavailable');}
-    if(!data||typeof data.access_token!=='string'||!uuid(data.user?.id)||data.user.id!==previous.user.id){session=null;throw Error('supabase_identity_mismatch');}
-    session={access_token:data.access_token,refresh_token:data.refresh_token||previous.refresh_token,user:{id:data.user.id},expiresAt:expiresAt(data)};
+    let response;
+    try{
+     response=await fetchImpl(apiURL.origin+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',headers:{apikey:publishableKey,Accept:'application/json','Content-Type':'application/json'},
+      cache:'no-store',credentials:'omit',redirect:'error',
+      body:JSON.stringify({refresh_token:previous.refresh_token})
+     });
+    }catch{throw Error('supabase_unavailable');}
+    // A temporarily unreachable server must not erase a valid saved session.
+    if(!response.ok){
+     if([400,401,403].includes(response.status)){clearSession();throw Error('supabase_unauthorized');}
+     if(response.status===429)throw Error('supabase_rate_limit');
+     throw Error('supabase_unavailable');
+    }
+    let data;try{data=await response.json();}catch{throw Error('supabase_unavailable');}
+    if(!data||typeof data.access_token!=='string'||!uuid(data.user?.id)||data.user.id!==previous.user.id){
+     clearSession();throw Error('supabase_identity_mismatch');
+    }
+    session={access_token:data.access_token,refresh_token:data.refresh_token||previous.refresh_token,
+     user:{id:data.user.id},expiresAt:expiresAt(data)};
+    remember(); // Refresh-token rotation: persist replacement before the next page load.
    })().finally(()=>{refreshJob=null;});
   }
   await refreshJob;
@@ -54,7 +100,9 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   let data;
   try { data=await response.json(); } catch { throw Error('supabase_unavailable'); }
   if(!response.ok) {
-   if(response.status===401||response.status===403){if(authenticated)session=null;throw Error('supabase_unauthorized');}
+   if(response.status===401){if(authenticated)clearSession();throw Error('supabase_unauthorized');}
+   // A forbidden business action does not mean the person's login has expired.
+   if(response.status===403)throw Error('supabase_forbidden');
    if(response.status===429)throw Error('supabase_rate_limit');
    throw Error('supabase_request_failed');
   }
@@ -85,12 +133,34 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
  }
  async function signIn(email,password){
   if(!validEmail(email)||typeof password!=='string'||password.length<1||password.length>200)throw Error('supabase_invalid_credentials');
-  session=null;sessionLocked=false;
+  clearSession();
   const result=await call('/auth/v1/token?grant_type=password',{authenticated:false,method:'POST',payload:{email,password}});
   if(typeof result.access_token!=='string'||!uuid(result.user?.id))throw Error('supabase_response');
-  session={access_token:result.access_token,refresh_token:result.refresh_token||null,user:{id:result.user.id},expiresAt:expiresAt(result)};
-  try{return await account();}
-  catch(error){session=null;throw error;}
+  session={access_token:result.access_token,refresh_token:result.refresh_token||null,
+   user:{id:result.user.id},expiresAt:expiresAt(result)};
+  try{const profile=await account();remember();return profile;}
+  catch(error){clearSession();throw error;}
+ }
+ // Runs only after startup. The saved refresh credential is exchanged with Supabase,
+ // then roles and store permissions are fetched afresh; stored roles are never trusted.
+ async function restoreSession(){
+  if(session)return account();
+  const saved=readSaved();
+  if(!saved)return null;
+  session={access_token:null,refresh_token:saved.refresh_token,user:{id:saved.user_id},expiresAt:0};
+  try{
+   const profile=await account();
+   // A restored login requires the PIN gate before it can access merchant operations.
+   sessionLocked=true;
+   return profile;
+  }catch(e){
+   if(!['supabase_unavailable','supabase_rate_limit'].includes(e.message))clearSession();
+   throw e;
+  }
+ }
+ function unlockReloadedScreen(){
+  if(!session)throw Error('supabase_unauthorized');
+  sessionLocked=false;
  }
  async function adminOverview(){
   if(!session)throw Error('supabase_unauthorized');
@@ -135,7 +205,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   });
   let result;try{result=await response.json();}catch{throw Error('account_unavailable');}
   if(!response.ok){
-   if(response.status===401){session=null;throw Error('supabase_unauthorized');}
+   if(response.status===401){clearSession();throw Error('supabase_unauthorized');}
    const known=['account_exists','not_authorized','invalid_input','association_failed','provision_partial_contact_support'];
    if(known.includes(result?.error))throw Error(result.error);
    throw Error('account_unavailable');
@@ -398,7 +468,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
    if(updated.status===401||updated.status===403)throw Error('recovery_invalid');
    throw Error('recovery_rejected');
   }
-  session=null;
+  clearSession();
   return true;
  }
  async function recoverPinWithPassword({password,pin}){
@@ -442,7 +512,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   if(session){
    try{await call('/auth/v1/logout',{method:'POST'});}catch{/* Clear local token even when service unavailable. */}
   }
-  session=null;sessionLocked=false;
+  clearSession();
  }
- return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {restoreSession,unlockReloadedScreen,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
