@@ -36,7 +36,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   field('pay_'+m,methodLabels[m]+' (MT)','0.00','type="number" min="0" step="0.01" inputmode="decimal"')).join('')+'</div>':
   '<p class="shop-help">Pagamento único: '+esc(methodLabels[method])+' · '+MONEY(total)+'.</p>';
  const cash=method==='cash'||method==='mixed'?
-  field('cash_received','Dinheiro recebido (MT)',method==='cash'?(total/100).toFixed(2):'0.00','type="number" min="0" step="0.01" inputmode="decimal" required'):'';
+  field('cash_received','Dinheiro recebido (MT)','','type="number" min="0" step="0.01" inputmode="decimal" placeholder="Introduza o valor entregue" autocomplete="off" required'):'';
  return '<div id="shop-checkout-panel">'+
   section('A sua venda','<div class="shop-cart-list">'+(cart.length?cart.map(x=>cartRow(x,products)).join(''):'<p class="shop-help">Seleccione um produto à esquerda.</p>')+'</div>'+
   '<div class="shop-totals"><span>Subtotal</span><strong>'+MONEY(subtotal)+'</strong></div>'+
@@ -59,7 +59,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['audit','Auditoria'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
  const menuIcons={sell:'▣',products:'▦',cash:'◉',history:'▤',customers:'♙',debts:'◈',suppliers:'▥',purchases:'◫',expenses:'◰',
   held:'▧',returns:'↶',inventory:'▥',alerts:'!',shopping_list:'☷',reports:'▥',team:'♧',audit:'◎',branches:'⌂',transfers:'⇄'};
- const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" aria-label="'+esc(name)+'" title="'+esc(name)+'" '+(view===key?'aria-current="page"':'')+'><span class="shop-nav-icon" aria-hidden="true">'+menuIcons[key]+'</span><span class="shop-nav-label">'+esc(name)+'</span></button>').join('');
+ const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" aria-label="'+esc(name)+'" title="'+esc(name)+'" '+(view===key?'aria-current="page"':'')+'><span class="shop-nav-icon" aria-hidden="true">'+menuIcons[key]+'</span><span class="shop-nav-label">'+esc(name)+'</span>'+(key==='held'&&heldSales.length?'<span class="shop-held-menu-count">'+heldSales.length+'</span>':'')+'</button>').join('');
  const quickKeys=['sell','products','cash','reports','inventory','history','alerts','customers','team','purchases'];
  const bottomNav=quickKeys.filter(key=>nav.some(item=>item[0]===key)).slice(0,4)
   .map(key=>{const name={sell:'Vender',products:'Produtos',cash:'Caixa',reports:'Relatórios',inventory:'Inventário',history:'Vendas',
@@ -69,18 +69,35 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
   .map(p=>'<article class="shop-product">'+(p.photoPath?'<img class="shop-product-photo" data-shop-product-photo="'+esc(p.photoPath)+'" alt="Fotografia de '+esc(p.name)+'" loading="lazy">':'')+'<div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
  let body='';
  if(view==='sell'){
-  body='<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><label class="shop-search"><span>Pesquisar por nome ou código</span>'+
+  body='<div class="shop-sales-tabs" role="group" aria-label="Vendas e carrinhos em espera">'+
+   '<button type="button" class="shop-sales-tab selected" aria-current="page">Venda actual</button>'+
+   '<button type="button" class="shop-sales-tab" data-shop-held-tab>Em espera <span>'+heldSales.length+'</span></button></div>'+
+   '<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><label class="shop-search"><span>Pesquisar por nome ou código</span>'+
    '<input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Pesquisar ou ler o código"></label>'+
    '<div id="shop-product-results" class="shop-products">'+(prodCards||'<p class="shop-help">Não há produtos encontrados.</p>')+'</div></section>'+
-   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue,allowNoSession:cashState?.policy.openingRequired===false})+'</div>'+   (cart.length?'<div class="shop-hold-actions"><button type="button" data-shop-hold>Suspender esta venda</button><small>A venda em espera não reserva stock nem confirma pagamentos.</small></div>':'');
+   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue,allowNoSession:cashState?.policy.openingRequired===false})+'</div>'+
+   '<section class="shop-box shop-held-in-sales"><div class="shop-held-heading"><h3>Vendas em espera <span>'+heldSales.length+'</span></h3>'+
+   '<button type="button" data-shop-held-tab>Ver todas</button></div>'+
+   (heldSales.length?heldSales.slice(0,3).map(h=>'<div class="shop-held-mini-item"><div><strong>'+
+     esc(h.cart.map(i=>products.find(p=>p.id===i.productId)?.name||'Artigo').join(', '))+
+     '</strong><small>'+esc(h.cart.length)+' artigo(s) · '+esc(safeDate(h.createdAt))+'</small></div>'+
+     '<button type="button" data-shop-hold-resume="'+esc(h.id)+'">Retomar</button></div>').join(''):
+     '<p class="shop-help">Ainda não há vendas suspensas. Pode guardar o carrinho para atender outro cliente.</p>')+
+   '</section>'+
+   (cart.length?'<div class="shop-hold-actions"><button type="button" data-shop-hold>Suspender esta venda</button><small>A venda em espera não reserva stock nem confirma pagamentos.</small></div>':'');
   if(pending)body+='<div class="shop-pending"><strong>Venda com confirmação pendente</strong><p>Não crie outra venda antes de verificar se esta foi concluída. Pode repetir o mesmo pedido sem duplicar o registo ou descartá-lo após conferência.</p><button type="button" data-shop-retry>Repetir o mesmo pedido</button><button type="button" data-shop-discard>Descartar pedido pendente</button></div>';
  }else if(view==='customers'||view==='debts'){
   body=renderCreditView({view,credit,role:grant.role,query:customerQuery,filter:debtFilter,session,selectedCustomerId});
  }else if(['suppliers','purchases','expenses'].includes(view)){
   body=renderFinanceView({view,finance,products,supplierId,lines:purchaseLines,role:grant.role,session});
  }else if(view==='held'){
-  body='<section class="shop-box"><h3>Vendas em espera</h3><p class="shop-help">Os carrinhos ficam guardados na filial. Ao recuperar, o stock e os preços são revalidados no servidor.</p>'+
-   (heldSales.length?heldSales.map(h=>'<article class="credit-debt-item"><strong>'+esc(h.cart.length)+' artigo(s)</strong><small> · '+esc(String(h.createdAt||''))+'</small><div class="credit-debt-actions"><button type="button" data-shop-hold-resume="'+esc(h.id)+'">Retomar</button><button type="button" data-shop-hold-delete="'+esc(h.id)+'">Eliminar</button></div></article>').join(''):'<p class="shop-help">Não existem vendas suspensas nesta filial.</p>')+'</section>';
+  body='<div class="shop-sales-tabs" role="group" aria-label="Vendas e carrinhos em espera">'+
+   '<button type="button" class="shop-sales-tab" data-shop-sell-tab>Venda actual</button>'+
+   '<button type="button" class="shop-sales-tab selected" aria-current="page">Em espera <span>'+heldSales.length+'</span></button></div>'+
+   '<section class="shop-box"><h3>Vendas em espera</h3><p class="shop-help">Os carrinhos ficam guardados na filial. Ao recuperar, o stock e os preços são revalidados no servidor.</p>'+
+   (heldSales.length?heldSales.map(h=>'<article class="credit-debt-item"><strong>'+esc(h.cart.length)+' artigo(s)</strong><small> · '+esc(safeDate(h.createdAt))+'</small>'+
+    '<p>'+esc(h.cart.map(i=>products.find(p=>p.id===i.productId)?.name||'Artigo').join(', '))+'</p>'+
+    '<div class="credit-debt-actions"><button type="button" data-shop-hold-resume="'+esc(h.id)+'">Retomar</button><button type="button" data-shop-hold-delete="'+esc(h.id)+'">Eliminar</button></div></article>').join(''):'<p class="shop-help">Não existem vendas suspensas nesta filial.</p>')+'</section>';
  }else if(view==='returns'){
   body=renderReturnView({returns,selectedSaleId:selectedReturnSaleId,session});
  }else if(['inventory','alerts','shopping_list'].includes(view)){
