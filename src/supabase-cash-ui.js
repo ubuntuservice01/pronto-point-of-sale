@@ -94,11 +94,11 @@ function sessionCard(s,{owner,blind,userId}){
 }
 export function renderCashManagement({cash,account,role='cashier'}){
  if(!cash)return '<section class="shop-box"><h3>Gestão de caixa</h3><p>A actualizar sessões…</p></section>';
- const owner=role==='owner',canOperate=['owner','manager','cashier'].includes(role);
+ const owner=role==='owner',canReview=role==='owner'||role==='manager',canOperate=['owner','manager','cashier'].includes(role);
  const ownOpen=ownOpenSession(cash,account.userId);
  const mine=cash.sessions.filter(s=>s.operatorId===account.userId);
  const activeMine=mine.find(s=>['pending','blocked'].includes(s.status));
- const selected=cash.sessions.filter(s=>owner||s.operatorId===account.userId);
+ const selected=cash.sessions.filter(s=>canReview||s.operatorId===account.userId);
  return '<div class="cash-control">'+
   (owner?'<section class="shop-box"><h3>Definições do caixa nesta filial</h3>'+
    '<form data-shop-form="cash_configure" class="shop-form">'+
@@ -114,7 +114,7 @@ export function renderCashManagement({cash,account,role='cashier'}){
    '<button class="shop-submit" type="submit">Confirmar abertura</button></form></section>':'')+
   (!cash.policy.openingRequired?'<p class="shop-help">Abertura opcional: pode vender sem caixa aberto; os pagamentos ficam no histórico financeiro da loja.</p>':'')+
   '<section class="shop-box"><h3>'+(owner?'Supervisão e histórico de sessões':'As minhas sessões')+'</h3>'+
-  (owner?'<button type="button" data-cash-export class="secondary">Exportar histórico CSV</button>':'')+
+  (canReview?'<button type="button" data-cash-export class="secondary">Exportar histórico CSV</button>':'')+
   (selected.length?selected.map(s=>sessionCard(s,{owner,blind:cash.policy.blindClose,userId:account.userId})).join(''):
    '<p class="shop-help">Ainda não existem sessões de caixa nesta filial.</p>')+
   '</section></div>';
