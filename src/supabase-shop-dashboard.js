@@ -8,6 +8,7 @@ import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
 import {toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
 import {checkoutCashPreview} from './supabase-checkout-change.js';
+import {getPinKPIs,setPinKPIs,clearPinKPIs} from './pin-city-ui.js';
 import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
 import {creditStatementHTML,creditWhatsAppURL} from './supabase-credit-ui.js';
 import {shoppingListCSV} from './supabase-inventory-ui.js';
@@ -34,9 +35,35 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
   transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,menuOpen=false,sidebarCollapsed=false,accessBlocked=false,accessCheckBusy=false;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
+ let pinMetricCheckedAt=0,pinMetricBusy=false;
+ // Read only the branch and business currently authorised for this signed-in user.
+ // PIN KPIs are aggregates retrieved AFTER PIN unlock; never query while locked.
+ const refreshPinMetrics=async(force=false)=>{
+  if(signal.aborted||pinMetricBusy||accessBlocked||disconnected()||!branchId||
+   !['owner','manager','cashier','finance'].includes(grant.role)||
+   typeof client.reportsSnapshot!=='function'||client.isScreenLocked?.())return;
+  if(!force&&Date.now()-pinMetricCheckedAt<120000)return;
+  pinMetricBusy=true;pinMetricCheckedAt=Date.now();
+  const initialUser=account.userId,initialBusiness=grant.id,initialBranch=branchId;
+  const today=maputoDate(),firstDay=today.slice(0,8)+'01';
+  try{
+   const [dayReport,monthReport]=await Promise.all([
+    client.reportsSnapshot(initialBusiness,initialBranch,today,today),
+    client.reportsSnapshot(initialBusiness,initialBranch,firstDay,today)
+   ]);
+   if(signal.aborted||accessBlocked||client.isScreenLocked?.()||
+      account.userId!==initialUser||grant.id!==initialBusiness||branchId!==initialBranch)return;
+   setPinKPIs(getPinKPIs({today:dayReport,month:monthReport,
+     userId:initialUser,businessId:initialBusiness,branchId:initialBranch,
+     shopName:grant.name,role:grant.role}));
+  }catch{/* Hide figures rather than fabricating metrics on an unauthorised/offline request. */}
+  finally{pinMetricBusy=false;}
+ };
+
  const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
+  clearPinKPIs(account.userId);
   aborter.abort();root.innerHTML='';
   try{await client.signOut();}finally{onLogout();}
  };
@@ -86,6 +113,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   inventory=typeof client.inventorySnapshot==='function'&&['owner','manager','stock','finance'].includes(grant.role)?await client.inventorySnapshot(grant.id,branchId):null;
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
+  void refreshPinMetrics();
  };
  const safeLoad=async(first=false,fullScreen=false)=>{
   if(busy)return;busy=true;
@@ -112,6 +140,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    business_unavailable:'A loja não está disponível. Contacte o responsável.',
    not_associated:'A sua conta já não está associada a esta loja.'
   }[reason]||'Não é possível confirmar o acesso. Aguarde a ligação à internet.';
+  clearPinKPIs(account.userId);
   accessBlocked=true;data=null;cart=[];pending=null;credit=null;finance=null;returns=null;inventory=null;photoCache.clear();
   root.innerHTML='<section class="login-shell pronto-auth-test"><div class="panel login-panel">'+
    '<h2>Acesso ao Pronto POS encerrado</h2><p role="alert">'+esc(message)+'</p>'+
@@ -228,6 +257,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }
    cart=[];pending=null;discount='0';method='cash';query='';creditDue='';
    try{await refresh();}catch{render();}
+   void refreshPinMetrics(true);
    showMessage((wasRepeated?'Venda anteriormente registada, sem duplicação. ':result.debt_id?'Venda a crédito registada. ':'Venda concluída. ')+
     'Referência: '+String(result.sale_id||'').slice(0,8)+'.');
    // The decision appears only after a confirmed server commit, never on failure.
@@ -507,12 +537,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const next=account.grants.find(x=>x.id===el.value);
    if(!next||busy)return;
    if(pending)return showMessage('Resolva a venda pendente antes de mudar de empresa.',true);
-   grant=next;void safeLoad(true);return;
+   clearPinKPIs(account.userId);pinMetricCheckedAt=0;grant=next;void safeLoad(true);return;
   }
   if(el.id==='shop-branch-select'){
    if(pending)return showMessage('Resolva a venda pendente antes de mudar de filial.',true);
    if(!branches.some(b=>b.id===el.value))return;
-   branchId=el.value;cart=[];method='cash';discount='0';query='';report=null;void safeLoad();return;
+   clearPinKPIs(account.userId);pinMetricCheckedAt=0;branchId=el.value;cart=[];method='cash';discount='0';query='';report=null;void safeLoad();return;
   }
   if(el.id==='shop-audit-search'){auditSearch=el.value;render();return;}
   if(el.id==='shop-sale-customer'){if(lockPending())return;selectedCustomerId=el.value;updatePanel();return;}
