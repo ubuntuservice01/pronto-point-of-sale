@@ -32,19 +32,14 @@
 .pin-city-float small{color:#dfefe8;font-size:clamp(12px,1.1vw,15px);font-weight:650;letter-spacing:.03em}
 .pin-city-float strong{font-size:clamp(19px,2.5vw,34px);font-variant-numeric:tabular-nums;line-height:1.18;font-weight:800;color:#f4fff8;overflow-wrap:anywhere;}
 .pin-city-float p,.pin-city-float span{margin:0;color:#a4ebcd;font-size:12px}
-.pin-city-sparkline{color:#29e7a6!important;font-size:clamp(13px,2vw,27px)!important;letter-spacing:2px;font-weight:850;white-space:nowrap}
+.pin-city-ambient-line{display:block;width:min(130px,80%);height:3px;border-radius:99px;background:linear-gradient(90deg,#15ce9d,rgba(21,206,157,0));animation:pin-city-signal 3s ease-in-out infinite alternate}
 .pin-city-map{flex-direction:row;align-items:center;gap:18px;padding:17px 18px}
 .pin-city-map svg{width:clamp(76px,8vw,119px);height:auto;flex:none;filter:drop-shadow(0 0 9px #00c98b88)}
 .pin-city-map>div{display:flex;flex-direction:column;gap:10px}
 .pin-city-map strong{font-size:clamp(17px,1.6vw,22px)}
 .pin-city-map span{font-size:12px;color:#d9f4e7}
 .pin-city-map .pin-city-green{color:#4dffc4;font-weight:750}
-.pin-city-transactions .pin-city-steps{display:flex;align-items:flex-end;gap:5px;height:31px;width:100%}
-.pin-city-steps i{display:block;flex:1;background:linear-gradient(#3df4b5,#0c987e);border-radius:3px 3px 0 0;opacity:.78;animation:pin-bars 3s ease-in-out infinite alternate}
-.pin-city-steps i:nth-child(1){height:40%}.pin-city-steps i:nth-child(2){height:65%;animation-delay:.2s}
-.pin-city-steps i:nth-child(3){height:58%;animation-delay:.7s}.pin-city-steps i:nth-child(4){height:80%;animation-delay:1s}
-.pin-city-steps i:nth-child(5){height:62%;animation-delay:.5s}.pin-city-steps i:nth-child(6){height:97%;animation-delay:1.2s}
-.pin-city-steps i:nth-child(7){height:72%;animation-delay:.4s}
+.pin-city-metric-rule{height:4px;width:min(130px,85%);display:block;border-radius:9px;background:linear-gradient(90deg,#31deac,#1f8479,#186c6d);opacity:.62;animation:pin-city-signal 4.5s ease-in-out infinite alternate}
 .pin-city-message strong{font-size:clamp(18px,2.2vw,27px);font-weight:550;line-height:1.4}
 .pin-city-message-rule{display:block!important;width:64px;height:3px;background:#20d59b;margin-top:7px}
 .pin-city-transactions-month{align-self:end;max-width:220px;opacity:.92}
@@ -99,7 +94,7 @@
 @keyframes pin-city-pan{0%{transform:scale(1) translate(-.8%,-.6%)}100%{transform:scale(1.075) translate(.8%,.4%)}}
 @keyframes pin-stars-pulse{to{opacity:.58}}
 @keyframes pin-card-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-@keyframes pin-bars{to{transform:scaleY(.77);opacity:.65}}
+@keyframes pin-city-signal{to{opacity:.4}}
 @media(max-width:1050px){.pin-city-layout{gap:47%}.pin-city-float{padding:15px 12px}.pin-city-map svg{width:70px}.pin-city-map{gap:7px}.pin-city-map span{display:none}}
 @media(max-width:820px){.pronto-pin-backdrop.pin-city-theme{padding:32px 12px 57px}
  .pin-city-layout{inset:0;gap:0;display:flex;align-items:stretch;justify-content:space-between;padding:18px}
@@ -125,4 +120,4 @@
  .pin-city-theme .pronto-pin-panel h2{margin:5px 0 0}
  .pin-city-theme .pronto-pin-primary{min-height:43px}
 }
-@media(prefers-reduced-motion:reduce){.pin-city-landscape,.pin-city-stars,.pin-city-float,.pin-city-steps i{animation:none!important}.pin-city-theme .pronto-pin-keypad button{transition:none}}
+@media(prefers-reduced-motion:reduce){.pin-city-landscape,.pin-city-stars,.pin-city-float,.pin-city-ambient-line,.pin-city-metric-rule{animation:none!important}.pin-city-theme .pronto-pin-keypad button{transition:none}}
