@@ -24,9 +24,8 @@ dialog.pronto-sale-success-dialog{max-width:480px;text-align:center;padding:26px
 .pronto-receipt-totals>div{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
 .pronto-receipt-grand{border-top:1px solid #333;border-bottom:1px solid #333;font-size:16px;font-weight:800;margin:5px 0;padding:6px 0!important}
 @media print{
- @page{size:80mm auto;margin:3mm}
- body> :not(#pronto-sale-print){display:none!important}
- html,body{margin:0!important;padding:0!important;width:auto!important;background:#fff!important}
- #pronto-sale-print{display:block!important;position:static!important;margin:0!important;padding:0!important}
- .pronto-receipt-content{max-width:74mm!important;padding:0!important}
+ body.pronto-printing > :not(#pronto-sale-print){display:none!important}
+ body.pronto-printing{margin:0!important;padding:0!important;background:#fff!important}
+ body.pronto-printing #pronto-sale-print{display:block!important;position:static!important;margin:0!important;padding:0!important}
+ body.pronto-printing .pronto-receipt-content{max-width:74mm!important;padding:0!important}
 }
