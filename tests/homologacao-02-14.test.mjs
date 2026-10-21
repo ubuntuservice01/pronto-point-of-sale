@@ -27,7 +27,7 @@ test('H02 — caixa: fundo inicial e diferença ficam separados das vendas',()=>
   sessions:[{id:S,operator_id:U,branch_id:BR,status:'closed',opening_cash_cents:200000,
    expected_cash_cents:700000,counted_cash_cents:685000,difference_cents:-15000,
    opened_at:'2026-10-21T07:00:00Z',closed_at:'2026-10-21T18:00:00Z',close_type:'blind'}]});
- assert.equal(snapshot.sessions[0].openingCash,200000);
+ assert.equal(snapshot.sessions[0].opening,200000);
  assert.equal(snapshot.sessions[0].difference,-15000);
  assert.match(cashSessionsCSV(snapshot),/150/);
  assert.match(file('supabase/migrations/20261021111500_cash_control_v2.sql'),/administrative_unchecked/);
