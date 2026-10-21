@@ -18,7 +18,7 @@ export function mountPasswordRecovery({root,client,token,onBack,kind='recovery'}
  const back=()=>onBack();
  if(token){
   root.innerHTML=content('<h2>'+(kind==='invite'?'Activar conta de colaborador':'Definir nova palavra-passe')+'</h2>'+
-   '<p>'+(kind==='invite'?'Confirme a sua identidade através do convite e defina a palavra-passe inicial. Depois poderá criar o PIN pessoal de cinco dígitos.':'Introduza uma palavra-passe forte para a sua conta Supabase.')+'</p>'+
+   '<p>'+(kind==='invite'?'Confirme a sua identidade através do convite e defina a palavra-passe inicial. Depois poderá criar o PIN pessoal de cinco dígitos.':'Introduza uma palavra-passe forte para a sua conta.')+'</p>'+
    '<form id="recovery-confirm-form">'+
    '<label>Nova palavra-passe<input type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>'+
    '<label>Confirmar palavra-passe<input type="password" name="confirm" minlength="12" maxlength="128" autocomplete="new-password" required></label>'+
