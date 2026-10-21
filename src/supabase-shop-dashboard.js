@@ -1,4 +1,5 @@
 import {normalizeCashControl,ownOpenSession,cashSessionsCSV} from './supabase-cash-ui.js';
+import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
 import {toCents,toQuantity,makeSaleRequest,cartTotal,esc} from './supabase-shop-core.js';
@@ -21,7 +22,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,accessBlocked=false,accessCheckBusy=false;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,accessBlocked=false,accessCheckBusy=false;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
@@ -35,11 +36,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el){el.textContent=text;el.classList.toggle('shop-error',warning);}
  };
  const session=()=>cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
+ const offlineCount=()=>offlineCashKeys(localStorage,scope()).length;
  const photoCache=new Map();
  const render=()=>{
   if(!data||accessBlocked)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
    if(!path||!client.productPhotoUrl)continue;
@@ -60,6 +62,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   data=await client.merchantSnapshot(grant.id,branchId);
   cashState=typeof client.cashControl==='function'?normalizeCashControl(await client.cashControl('snapshot',cashData({}))):null;
+  pendingCashOffline=offlineCount();
   branchManagement=grant.role==='owner'?await client.manageBranch('list',{business_id:grant.id}):null;
   staffManagement=grant.role==='owner'?await client.ownerStaffSnapshot(grant.id):null;
   staffCash=grant.role==='owner'?await client.ownerSuspendedCash(grant.id):null;
@@ -99,6 +102,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  };
  const checkStaffAccess=async()=>{
   if(signal.aborted||grant.role==='owner'||accessCheckBusy)return !accessBlocked;
+  if(disconnected())return !accessBlocked;
   accessCheckBusy=true;
   try{
    const state=await client.myAccessStatus(grant.id);
@@ -529,6 +533,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const action=form.dataset.shopForm;
   if(!action)return;
   if(['cash_configure','cash_request_close','cash_remote','cash_note_difference'].includes(action)){
+   if(['cash_request_close','cash_remote'].includes(action)&&offlineCount()>0)
+    return showMessage('Este dispositivo tem movimentos por reconciliar. Sincronize antes de fechar ou bloquear. Podem existir movimentos noutros dispositivos que não são visíveis.',true);
    if(disconnected()||typeof client.cashControl!=='function'||lockPending())
     return showMessage('A gestão do caixa exige ligação e não pode ficar pendente.',true);
    const f=new FormData(form);let command,payload;
@@ -794,20 +800,72 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }finally{busy=false;}
    return;
   }
-  if(action==='cash_move'){
-   if(lockPending()||disconnected())return showMessage('Sem ligação para registar movimento.',true);
-   if(!session())return showMessage('Abra o caixa para registar o movimento.',true);
-   const f=new FormData(form),direction=String(f.get('direction')||''),reason=String(f.get('reason')||'').trim();
-   let payload;try{payload=pendingCashMove||{session_id:session().id,direction,reason,
-    amount_cents:toCents(f.get('amount')),idempotency_key:crypto.randomUUID()};
-    pendingCashMove=payload;}
-   catch(error){return showMessage('Verifique o valor e motivo: '+error.message,true);}
-   busy=true;
-   try{await client.holdAction('cash_move',cashData(payload));pendingCashMove=null;await refresh();
-    showMessage('Movimento de caixa registado e auditado.');}
-   catch{showMessage('Movimento por confirmar: confira o caixa antes de repetir. Não lance novamente sem verificar.',true);}
-   finally{busy=false;}
+  if(action==='cash_offline_sync'){
+   if(disconnected())return showMessage('É necessário ter Internet para sincronizar.',true);
+   if(lockPending()||busy)return;
+   const pass=String(new FormData(form).get('offline_passphrase')||'');
+   const keys=offlineCashKeys(localStorage,scope());
+   if(!keys.length)return showMessage('Não há movimentos offline pendentes neste dispositivo.');
+   if(!confirm('Sincronizar '+keys.length+' movimento(s)? Cada lançamento mantém a sua referência original.'))return;
+   busy=true;showMessage('A verificar acesso e sincronizar movimentos…');
+   let done=0;
+   try{
+    const access=await client.myAccessStatus(grant.id);
+    if(!access.allowed)throw Error('cash_access_denied');
+    for(const key of keys){
+     const payload=await restoreOfflineCash(localStorage,scope(),pass,key);
+     const latest=normalizeCashControl(await client.cashControl('snapshot',cashData({})));
+     if(!latest.sessions.some(s=>s.id===payload.session_id&&s.operatorId===account.userId&&s.status==='open'))
+      throw Error('cash_session_not_open');
+     const result=await client.holdAction('cash_move',payload);
+     if(result?.duplicate!==true&&typeof result?.movement_id!=='string')throw Error('cash_unconfirmed');
+     clearOfflineCash(localStorage,scope(),key);done++;
+    }
+    await refresh();showMessage(done+' movimento(s) sincronizado(s) e confirmado(s).');
+   }catch(error){
+    pendingCashOffline=offlineCount();render();
+    showMessage('Sincronizados '+done+' de '+keys.length+'. Os restantes continuam guardados. ('+error.message+')',true);
+   }finally{busy=false;}
    return;
+  }
+  if(action==='cash_move'){
+   if(lockPending())return;
+   if(!session())return showMessage('Abra o caixa para registar o movimento.',true);
+   const fields=new FormData(form),direction=String(fields.get('direction')||''),reason=String(fields.get('reason')||'').trim();
+   if(!fields.has('physical_confirmed'))return showMessage('Confirme a movimentação física do dinheiro.',true);
+   const pass=String(fields.get('offline_passphrase')||'');
+   let payload;
+   try{
+    payload=pendingCashMove||cashData({session_id:session().id,direction,reason,
+     amount_cents:toCents(fields.get('amount')),idempotency_key:crypto.randomUUID()});
+    if(!['in','out'].includes(payload.direction)||payload.amount_cents<=0||payload.reason.length<3||payload.reason.length>180)
+     throw Error('cash_movement_invalid');
+    pendingCashMove=payload;
+   }catch(error){return showMessage('Verifique o valor e motivo. ('+error.message+')',true);}
+   if(disconnected()){
+    if(pass.length<12)return showMessage('Introduza uma frase de protecção de pelo menos 12 caracteres.',true);
+    busy=true;
+    try{
+     await saveOfflineCash(localStorage,scope(),pass,payload);
+     pendingCashMove=null;pendingCashOffline=offlineCount();render();
+     showMessage('Movimento guardado encriptado. Não foi somado ao caixa. Sincronize assim que tiver Internet.');
+    }catch(error){showMessage('Não foi possível guardar o movimento. ('+error.message+')',true);}
+    finally{busy=false;}return;
+   }
+   busy=true;showMessage('A enviar movimento…');
+   try{
+    const result=await client.holdAction('cash_move',payload);
+    if(result?.duplicate!==true&&typeof result?.movement_id!=='string')throw Error('cash_unconfirmed');
+    pendingCashMove=null;await refresh();showMessage('Movimento registado e auditado.');
+   }catch(error){
+    if(pass.length>=12){
+     try{
+      await saveOfflineCash(localStorage,scope(),pass,payload);
+      pendingCashMove=null;pendingCashOffline=offlineCount();render();
+      showMessage('Confirmação incerta. Pedido encriptado com a mesma referência para reenvio seguro.',true);
+     }catch{showMessage('Confirmação incerta e gravação offline falhou. Não crie outro pedido.',true);}
+    }else showMessage('Movimento por confirmar. Mantenha a referência e confira antes de repetir. ('+error.message+')',true);
+   }finally{busy=false;}return;
   }
   if(['supplier_save','purchase_receive','purchase_payment','expense_add','expense_schedule_save'].includes(action)){
    if(lockPending())return;
@@ -956,6 +1014,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }finally{busy=false;}
    return;
   }
+  if(action==='cash_close'&&offlineCount()>0)return showMessage('Sincronize os movimentos pendentes antes do fecho definitivo.',true);
   if(pending)return void lockPending();
   if(disconnected())return showMessage('Sem ligação: não é possível abrir/fechar o caixa ou alterar stock. Guarde um rascunho e aguarde a ligação.',true);
   const f=new FormData(form);
@@ -985,7 +1044,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }catch(e){showMessage('Confira os dados introduzidos. '+String(e.message||''),true);}
  },{signal});
  window.addEventListener('offline',()=>showMessage('Sem internet: as vendas não podem ser concluídas. Guarde um rascunho encriptado e recupere-o depois de entrar novamente com ligação.',true),{signal});
- window.addEventListener('online',()=>showMessage('Ligação restabelecida. Confira o stock actualizado antes de concluir.'),{signal});
+ window.addEventListener('online',()=>showMessage('Ligação restabelecida. Sincronize os movimentos offline pendentes em Caixa, se existirem.'),{signal});
  root.innerHTML='<main class="shop-loading">A consultar filiais e permissões reais no Supabase…</main>';
  if(await checkStaffAccess())await safeLoad(true);
 }
