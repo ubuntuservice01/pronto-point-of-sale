@@ -593,12 +593,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    busy=true;showMessage('A preparar a lista Excel...');
    try{
     const suggestions=inventoryAlerts(inventory,alertDays).suggestions;
-    const fmt=x=>new Intl.NumberFormat('pt-MZ',{maximumFractionDigits:3}).format(Number(x)||0);
     await downloadBrandedExcel({
      title:'Lista automática de compras',period:'Gerado em '+maputoDate(),
      summary:[['Artigos sugeridos',suggestions.length],['Filial',branches.find(b=>b.id===branchId)?.name||'Filial']],
      sections:[{title:'Sugestões de compra · estimativa',columns:['Produto','Disponível','Vendido em 30 dias','Comprar'],
-      rows:suggestions.map(x=>[x.name,fmt(x.available),fmt(x.sold30),fmt(x.suggested)])}],
+      rows:suggestions.map(x=>[x.name,x.available,x.sold30,x.suggested])}],
      filename:'lista-compras-pronto-pos-'+maputoDate()+'.xlsx'
     });
     showMessage('Lista de compras Excel preparada. Confirme as quantidades antes de encomendar.');
