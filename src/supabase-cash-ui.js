@@ -82,6 +82,8 @@ function sessionCard(s,{owner,blind,userId}){
    '<label>Valor (MT)<input type="number" name="amount" min="0.01" step="0.01" required></label>'+
    '<label>Motivo<input name="reason" minlength="3" maxlength="180" required></label>'+
    '<label>Frase de protecção (para guardar offline)<input type="password" name="offline_passphrase" minlength="12" maxlength="128" autocomplete="off" placeholder="Obrigatória apenas sem Internet"></label>'+
+   '<p class="shop-help">Quando não houver Internet, o movimento será guardado de forma encriptada, mas só afectará o saldo depois da sincronização confirmada. Guarde a frase.</p>'+
+   '<label><input name="physical_confirmed" type="checkbox" required> Confirmo que o dinheiro foi efectivamente movimentado</label>'+
    '<button type="submit" class="shop-submit">Registar movimento</button></form>':'')+
   (owner&&canOperate?
    '<form data-shop-form="cash_remote" class="shop-form">'+
