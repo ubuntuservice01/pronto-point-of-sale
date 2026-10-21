@@ -14,16 +14,20 @@ const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
 });
 const uuid=(v:unknown):v is string=>typeof v==="string"&&/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(v);
 const emailOk=(v:unknown):v is string=>typeof v==="string"&&v.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-function randomPassword():string{
- const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
- const out:string[]=[];
- // Rejection sampling removes modulo bias; the result has >120 bits of entropy.
- while(out.length<24){
-  const bytes=crypto.getRandomValues(new Uint8Array(40));
-  for(const byte of bytes){if(byte<alphabet.length*Math.floor(256/alphabet.length))out.push(alphabet[byte%alphabet.length]);if(out.length===24)break;}
- }
- return out.join("");
+function secureIndex(max:number):number{
+ const limit=Math.floor(256/max)*max;
+ for(;;){const value=crypto.getRandomValues(new Uint8Array(1))[0];if(value<limit)return value%max;}
 }
+function randomPassword():string{
+ const groups=["ABCDEFGHJKLMNPQRSTUVWXYZ","abcdefghjkmnpqrstuvwxyz","23456789","!@#_-."];
+ const chars=groups.map(group=>group[secureIndex(group.length)]);
+ const alphabet=groups.join("");
+ while(chars.length<24)chars.push(alphabet[secureIndex(alphabet.length)]);
+ // Shuffle so required character classes cannot be inferred from fixed positions.
+ for(let i=chars.length-1;i>0;i--){const j=secureIndex(i+1);[chars[i],chars[j]]=[chars[j],chars[i]];}
+ return chars.join("");
+}
+
 Deno.serve(async request=>{
  if(request.method==="OPTIONS")return new Response(null,{status:204,headers:cors});
  if(request.method!=="POST")return json({error:"method"},405);
