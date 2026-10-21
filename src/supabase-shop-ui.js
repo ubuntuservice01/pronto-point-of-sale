@@ -66,11 +66,99 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<button class="shop-submit" type="submit" '+((!session&&!allowNoSession)||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,branding=null,logoUrl=''}){
+
+// Centralised, owner-only settings. Actions reuse the existing audited forms and routes.
+export const OWNER_SETTINGS_TABS=Object.freeze([
+ ['personalizacao','Personalização','Identidade e marca'],
+ ['documentos','Documentos','PDF e Excel'],
+ ['caixa','Caixa e pagamentos','Regras da filial'],
+ ['equipa','Equipa e acessos','Utilizadores'],
+ ['filiais','Filiais','Estabelecimentos'],
+ ['stock','Stock e alertas','Monitorização'],
+ ['seguranca','Segurança e conta','PIN e sessões'],
+ ['dados','Dados e backup','Histórico e exportações']
+]);
+export function renderOwnerSettings({selected='personalizacao',branding=null,logoUrl='',businessName='',email='',branchName='',cashState=null,staffManagement=null,branches=[],alertDays=30,pendingOffline=0}={}){
+ const active=OWNER_SETTINGS_TABS.some(([key])=>key===selected)?selected:'personalizacao';
+ const choose=(key,label)=>'<button type="button" data-shop-settings-section="'+key+'">'+esc(label)+' →</button>';
+ const linked=(title,description,target,label)=>'<div class="owner-settings-link"><div><strong>'+esc(title)+'</strong><p>'+esc(description)+'</p></div>'+
+  '<button type="button" data-shop-view="'+target+'">'+esc(label)+' →</button></div>';
+ const textLine=(label,value)=>'<div class="owner-settings-fact"><span>'+esc(label)+'</span><strong>'+esc(value||'—')+'</strong></div>';
+ const tabButtons=OWNER_SETTINGS_TABS.map(([key,label,description])=>
+  '<button type="button" role="tab" id="owner-settings-tab-'+key+'" aria-controls="owner-settings-panel" aria-selected="'+(active===key)+'" data-shop-settings-section="'+key+'" class="'+(active===key?'selected':'')+'">'+
+  '<strong>'+esc(label)+'</strong><small>'+esc(description)+'</small></button>').join('');
+ let body='';
+ if(active==='personalizacao'){
+  body='<div class="owner-settings-intro"><h3>Identidade do seu negócio</h3><p>Defina uma vez o nome, endereço, contacto, e-mail, logótipo e cores. Os dados são guardados por negócio e utilizados nos documentos suportados.</p></div>'+
+   renderDocumentBrandingSettings({branding,logoUrl,businessName})+
+   '<div class="owner-settings-next">'+choose('documentos','Configuração dos documentos')+'</div>';
+ }else if(active==='documentos'){
+  body='<section class="shop-box"><h3>Modelos, cabeçalhos e rodapés</h3>'+
+   '<p class="shop-help">Os documentos usam a identidade guardada em Personalização. Os modelos disponíveis são Moderno, Clássico e Compacto, com logótipo, endereço, contactos, cores e mensagem de rodapé.</p>'+
+   textLine('Modelo escolhido',({modern:'Moderno',classic:'Clássico',compact:'Compacto'})[branding?.template]||'Moderno')+
+   textLine('Nome usado nos documentos',branding?.displayName||businessName)+
+   '<div class="owner-settings-actions">'+choose('personalizacao','Alterar modelo e pré-visualizar')+'</div></section>'+
+   '<section class="shop-box"><h3>Exportações</h3><p class="shop-help">Relatórios PDF (através de Imprimir/Guardar como PDF) e Excel aplicam os dados visuais do negócio. CSV é um formato simples de dados e não contém formatação nem logótipo.</p>'+
+   linked('Relatórios e históricos','Escolha o mês, ano ou intervalo pretendido. Os registos existentes não são substituídos ao mudar de período.','reports','Abrir relatórios')+'</section>';
+ }else if(active==='caixa'){
+  body='<section class="shop-box"><h3>Configuração do caixa</h3><p class="shop-help">Estas regras aplicam-se à filial '+esc(branchName||'seleccionada')+'. Outros operadores só podem gerir as sessões permitidas pelo seu perfil.</p>'+
+   (cashState?.policy?'<form data-shop-form="cash_configure" class="shop-form">'+
+    '<label><input type="checkbox" name="opening_required"'+(cashState.policy.openingRequired?' checked':'')+'> Exigir abertura de caixa antes das vendas</label>'+
+    '<label><input type="checkbox" name="blind_close"'+(cashState.policy.blindClose?' checked':'')+'> Fecho cego: ocultar valor esperado antes da contagem</label>'+
+    '<p class="shop-help">As vendas sem sessão, quando autorizadas, continuam no histórico; não são atribuídas a uma gaveta. Alterações ficam sujeitas às permissões de proprietário.</p>'+
+    '<button type="submit" class="shop-submit">Guardar regras do caixa</button></form>':
+    '<p class="shop-help">Não foi possível carregar as regras do caixa. Actualize os dados quando tiver ligação.</p>')+
+   linked('Sessões e movimentos','Abertura, fecho, reforços, retiradas e supervisão de vendedores.','cash','Gerir caixa')+'</section>'+
+   '<section class="shop-box"><h3>Meios de pagamento</h3><p class="shop-help">Dinheiro, M-Pesa, e-Mola e transferência são meios registados no POS. A confirmação de carteiras móveis ainda é manual; o sistema não valida recebimentos junto das operadoras.</p></section>';
+ }else if(active==='equipa'){
+  const staff=staffManagement?.staff||[];
+  body='<section class="shop-box"><h3>Colaboradores e permissões</h3>'+
+   '<p class="shop-help">Apenas o proprietário pode criar, suspender ou configurar colaboradores e respectivos horários. O acesso é limitado às funções autorizadas para este negócio.</p>'+
+   textLine('Colaboradores registados',String(staff.length))+
+   textLine('Colaboradores activos',String(staff.filter(p=>p.active).length))+
+   linked('Gestão da equipa','Criar acessos, definir funções, activar ou suspender contas, e programar horários.','team','Gerir colaboradores')+
+   linked('Histórico de alterações','Consultar quem realizou as operações registadas no sistema.','audit','Ver auditoria')+'</section>';
+ }else if(active==='filiais'){
+  body='<section class="shop-box"><h3>Filiais e estabelecimentos</h3><p class="shop-help">Os produtos, caixas e registos respeitam a filial e as permissões do negócio. Escolha a filial na barra superior antes de alterar regras específicas do caixa.</p>'+
+   textLine('Filiais disponíveis',String(branches.length))+
+   linked('Gestão de filiais','Criar, renomear, activar ou desactivar uma filial sujeita às verificações do sistema.','branches','Gerir filiais')+
+   linked('Transferências de stock','Movimentar produtos entre filiais com o procedimento de aceite.','transfers','Abrir transferências')+'</section>';
+ }else if(active==='stock'){
+  body='<section class="shop-box"><h3>Stock, validade e alertas</h3>'+
+   '<p class="shop-help">Acompanhe stocks mínimos, artigos perto da validade e sugestões de reposição. O número de dias abaixo é um filtro deste navegador; não altera os lotes nem as regras de acesso.</p>'+
+   '<label class="owner-settings-days">Avisar sobre validade nos próximos dias<select id="shop-alert-days">'+
+   [7,15,30,60,90,180,365].map(days=>'<option value="'+days+'"'+(alertDays===days?' selected':'')+'>'+days+' dias</option>').join('')+
+   '</select></label><p class="shop-help">A escolha é guardada neste dispositivo para este negócio.</p>'+
+   linked('Alertas de inventário','Ver avisos e produtos que precisam de atenção.','alerts','Consultar alertas')+
+   linked('Inventário','Contar, corrigir e acompanhar o stock e os lotes autorizados.','inventory','Gerir inventário')+
+   linked('Lista de compras','Gerar sugestões e exportar para Excel.','shopping_list','Abrir lista de compras')+'</section>';
+ }else if(active==='seguranca'){
+  body='<section class="shop-box"><h3>Segurança da conta</h3>'+
+   textLine('Conta de acesso',email)+textLine('Perfil','Proprietário')+
+   '<p class="shop-help">O PIN de cinco dígitos protege a sessão neste dispositivo; não substitui a autenticação da conta. Nunca partilhe o seu PIN com colaboradores.</p>'+
+   '<div class="owner-settings-actions"><button type="button" data-shop-pin-change>Alterar o meu PIN</button>'+
+   '<button type="button" data-shop-pin-lock>Bloquear agora</button></div>'+
+   linked('Auditoria e controlo','Ver operações, autorizações e alterações efectuadas no negócio.','audit','Abrir auditoria')+
+   '<div class="owner-settings-actions"><button type="button" data-shop-logout class="owner-settings-danger">Terminar sessão</button></div></section>';
+ }else if(active==='dados'){
+  body='<section class="shop-box"><h3>Dados na nuvem e cópias de segurança</h3>'+
+   '<p class="shop-help">As vendas confirmadas são registadas na base de dados do negócio, não apenas no telemóvel. A consulta do mês passado, do ano ou de outro período é feita pelos relatórios com filtros de datas.</p>'+
+   linked('Histórico e exportação','Consultar períodos e exportar resumos para CSV, Excel ou PDF.','reports','Consultar relatórios')+
+   linked('Rastreabilidade','Conferir operações e responsáveis através dos registos disponíveis.','audit','Ver auditoria')+
+   '<div class="owner-settings-caution"><strong>Sobre o backup</strong><p>As cópias de segurança da infraestrutura são administradas pela equipa técnica. O proprietário não pode restaurar a base completa a partir desta página. A cópia externa independente e um ensaio de restauração ainda requerem validação; uma exportação Excel/CSV não é um backup integral.</p></div>'+
+   (pendingOffline?'<p class="owner-settings-caution">Existem '+esc(String(pendingOffline))+' movimentos de caixa offline por sincronizar. Verifique-os antes de fechar o caixa.</p>':'')+'</section>';
+ }
+ return '<div class="owner-settings"><div class="owner-settings-heading"><span class="owner-settings-eyebrow">ADMINISTRAÇÃO DO NEGÓCIO</span><h2>Definições</h2>'+
+  '<p>Um único lugar para configurar e controlar o seu estabelecimento.</p></div>'+
+  '<div class="owner-settings-layout"><nav class="owner-settings-tabs" role="tablist" aria-label="Secções das definições">'+tabButtons+'</nav>'+
+  '<div class="owner-settings-body" id="owner-settings-panel" role="tabpanel" aria-labelledby="owner-settings-tab-'+active+'">'+body+'</div></div></div>';
+}
+
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,branding=null,logoUrl='',settingsSection='personalizacao'}){
  const products=data?.products||[];
  const session=cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
- const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['branding','Personalização'],['audit','Auditoria'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],branding:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
+ const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['settings','Definições'],['audit','Auditoria'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],settings:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
  const canViewAlerts=nav.some(([key])=>key==='alerts');
  const notificationData=canViewAlerts?inventoryNotificationSummary(inventory,alertDays):{total:0,items:[]};
  const notificationCount=notificationData.total;
@@ -141,6 +229,8 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  }else if(view==='reports'){
   body=renderReportsView({report,from:reportFrom,to:reportTo,scope:reportScope,
    allAllowed:['owner','manager','finance'].includes(grant.role)});
+ }else if(view==='settings'&&grant.role==='owner'){
+  body=renderOwnerSettings({selected:settingsSection,branding,logoUrl,businessName:grant.name,email:account.email,branchName:branch?.name,cashState,staffManagement,branches,alertDays,pendingOffline});
  }else if(view==='branding'&&grant.role==='owner'){
   body=renderDocumentBrandingSettings({branding,logoUrl,businessName:grant.name});
  }else if(view==='transfers'){
