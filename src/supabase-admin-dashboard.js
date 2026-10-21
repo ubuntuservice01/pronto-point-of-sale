@@ -159,7 +159,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
     'Guardar estas alterações na plataforma?',
    confirmText:action==='payment_record'?'Registar recebimento':'Guardar'
   }))return;
-  toggleBusy(true);message.textContent='A guardar no servidor…';
+  toggleBusy(true);message.textContent='';
   try{
    await client.adminControl(action,payload);
    [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
