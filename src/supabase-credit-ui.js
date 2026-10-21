@@ -46,7 +46,7 @@ export function customerPicker(credit,selected=''){
 export function creditCheckoutFields({credit,selected='',today='',method='cash'}={}){
  if(!credit)return '<p class="shop-help"></p>';
  const customer=credit.customers.find(c=>c.id===selected);
- const outstanding=customer?credit.debts.filter(d=>d.customerId===selected&&d.status==='open')
+ const outstanding=customer?credit.debts.filter(d=>d.customerId===selected&&d.balance>0)
   .reduce((n,d)=>n+d.balance,0):0;
  const credits=customer?'<p class="shop-help">Limite: '+money(customer.creditLimit)+
   ' · Em dívida: '+money(outstanding)+(customer.creditBlocked?' · Crédito bloqueado':'')+'</p>':'';
