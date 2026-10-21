@@ -1,3 +1,4 @@
+import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderUbuntuAdminShell,renderUbuntuAdminTab} from './supabase-admin-ui.js';
 import {renderProvisioningForms} from './supabase-admin-forms.js';
 import {ADMIN_TABS} from './supabase-admin-model.js';
@@ -23,7 +24,7 @@ export function prepareAdminProvisioning(form,FormDataImpl=FormData){
   if(!['license_assign','license_renew'].includes(selected))throw Error('admin_invalid_action');
   return {action:selected,data:{business_id:value('business_id'),plan_id:value('plan_id')}};
  }
- if(action==='member_invite')return {action,data:{
+ if(action==='member_create')return {action,data:{
   business_id:value('business_id'),email:value('email').toLowerCase(),
   display_name:value('display_name'),role:value('role')
  }};
@@ -34,11 +35,14 @@ export function prepareAdminProvisioning(form,FormDataImpl=FormData){
  throw Error('admin_invalid_action');
 }
 const errorMessages={
- invalid_price:'O valor do plano ou o prazo não são válidos.',
- account_exists_use_existing_user:'Este email já tem uma conta Supabase. Utilize a opção «Associar conta já existente» com o UID da conta.',
- invited_but_membership_failed:'Convite enviado, mas a associação falhou. Verifique o utilizador em Authentication → Users e associe-o pelo UID antes de repetir o convite.',
- invitation_created_check_auth_dashboard:'O convite foi criado, mas não foi possível identificar a conta. Confirme em Authentication → Users.',
- invitation_unavailable:'Não foi possível enviar o convite. Confirme o estado do Supabase Auth e tente novamente.',
+ invalid_price:'O preço ou o prazo do plano não são válidos.',
+ account_exists:'Este email já tem uma conta. Utilize «Associação avançada» para relacioná-la com a loja.',
+ association_failed:'A conta não foi associada à loja. Nenhuma senha será apresentada. Tente novamente ou contacte o suporte.',
+ provision_partial_contact_support:'Não foi possível concluir a criação com segurança. Contacte o suporte antes de repetir.',
+ account_unavailable:'Não foi possível criar o acesso. Verifique a ligação e tente novamente.',
+ not_authorized:'Não tem autorização para esta operação.',
+ account_invalid:'Confira o email, o nome e o perfil escolhido.',
+ account_response_invalid:'Não foi possível confirmar as credenciais geradas. Contacte o suporte.',
  supabase_request_failed:'Não foi possível concluir a operação. Verifique os dados e evite duplicar registos.',
  admin_invalid_action:'Operação administrativa inválida.',
  invalid_input:'Preencha os campos obrigatórios correctamente.'
@@ -101,15 +105,17 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   let item;
   try{item=prepareAdminProvisioning(form);}
   catch(e){message.textContent=errorMessages[e.message]||'Confira os dados introduzidos.';return;}
-  toggleBusy(true);message.textContent='A guardar no Supabase…';
+  toggleBusy(true);message.textContent='A guardar alterações…';
   try{
-   if(item.action==='member_invite')await client.inviteMember(item.data);
-   else await client.adminMutate(item.action,item.data);
+   if(item.action==='member_create'){
+    const account=await client.provisionMember(item.data);
+    showProntoCredentials(account);
+   }else await client.adminMutate(item.action,item.data);
    data=await client.adminOverview();
    render();
-   message.textContent=item.action==='member_invite'?
-    'Convite solicitado ao Supabase. Confirme que o colaborador recebeu o email e completou o registo.':
-    'Operação registada no Supabase com sucesso.';
+   message.textContent=item.action==='member_create'?
+    'A conta foi criada. Copie as credenciais antes de fechar a janela.':
+    'Operação guardada com sucesso.';
   }catch(e){await failure(e);}
   finally{if(root.querySelector('#pronto-admin-refresh')===refreshButton)toggleBusy(false);}
  };
