@@ -33,7 +33,7 @@ export function inventoryAlerts(inventory,days=30){
 }
 const options=items=>items.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+esc(p.code)+'</option>').join('');
 export function renderInventoryView({view,inventory,role,selectedProductId='',alertDays=30,query=''}) {
- if(!inventory)return box('Inventário','<p>A consultar dados de stock no Supabase…</p>');
+ if(!inventory)return box('Inventário','<p></p>');
  const products=inventory.products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()));
  const chosen=inventory.products.find(p=>p.id===selectedProductId);
  const alert=inventoryAlerts(inventory,alertDays);
