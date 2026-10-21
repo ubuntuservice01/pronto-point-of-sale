@@ -105,6 +105,6 @@ test('Legacy Edge invitation is disabled and will never send automatic emails',(
   const code=readFileSync(new URL('../supabase/functions/'+name+'/index.ts',import.meta.url),'utf8');
   assert.match(code,/legacy_invitation_disabled/);
   assert.match(code,/status:410/);
-  assert.doesNotMatch(code,/auth\\/v1\\/invite|sendEmail\\(/);
+  assert.equal(code.includes('/auth/v1/invite'),false); assert.equal(code.includes('sendEmail('),false);
  }
 });
