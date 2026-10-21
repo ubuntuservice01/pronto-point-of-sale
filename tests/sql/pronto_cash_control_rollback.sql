@@ -33,6 +33,8 @@ begin
  exception when unique_violation then null;
  end;
  perform public.pronto_merchant_action('sale_complete',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'idempotency_key',gen_random_uuid(),'items',jsonb_build_array(jsonb_build_object('product_id',prod,'quantity',1)),'allocations',jsonb_build_array(jsonb_build_object('method','cash','amount_cents',7000)),'cash_received_cents',7000));
+ -- Digital payment must appear in reports without increasing physical drawer cash.
+ perform public.pronto_merchant_action('sale_complete',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'idempotency_key',gen_random_uuid(),'items',jsonb_build_array(jsonb_build_object('product_id',prod,'quantity',1)),'allocations',jsonb_build_array(jsonb_build_object('method','mpesa','amount_cents',7000)),'cash_received_cents',0));
  perform public.pronto_hold_action('cash_move',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'direction','in','amount_cents',5000,'reason','Reforço de fundo','idempotency_key',gen_random_uuid()));
  perform public.pronto_hold_action('cash_move',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'direction','out','amount_cents',1000,'reason','Retirada de fundo','idempotency_key',gen_random_uuid()));
  perform public.pronto_cash_control('request_close',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session));
@@ -42,7 +44,8 @@ begin
  exception when sqlstate '22023' then null;
  end;
  result:=public.pronto_cash_control('close',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'counted_cash_cents',210000));
- if (result->>'expected_cents')::bigint<>211000 or (result->>'difference_cents')::bigint<>-1000 or result->>'close_type'<>'blind' then
+ if (result->>'expected_cents')::bigint<>211000 or (result->>'difference_cents')::bigint<>-1000 or result->>'close_type'<>'blind' or
+  (result->'payments_by_method'->>'mpesa')::bigint<>7000 then
   raise exception 'wrong_blind_reconciliation: %',result;end if;
  result:=public.pronto_cash_control('note_difference',jsonb_build_object('business_id',b,'branch_id',br,'session_id',cash_session,'reason','Justificação de diferença de caixa'));
  if result->>'note_added'<>'true' then raise exception 'missing_immutable_note';end if;
