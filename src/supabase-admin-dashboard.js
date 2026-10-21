@@ -1,4 +1,5 @@
 import {admin360AuditCSV} from './supabase-admin-360.js';
+import {showConfirmModal,showPromptModal} from './ui/pronto-modal.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderUbuntuAdminShell,renderUbuntuAdminTab} from './supabase-admin-ui.js';
 import {renderProvisioningForms} from './supabase-admin-forms.js';
@@ -142,7 +143,13 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
     amount_cents:moneyCents('amount_mzn'),method:val('method'),external_reference:val('external_reference'),reason:val('reason')};
    else throw Error('admin_invalid_action');
   }catch(e){message.textContent=errorMessages[e.message]||'Confira todos os campos.';return;}
-  if(!confirm(action==='payment_record'?'Confirma que a Ubuntu RECEBEU efectivamente este pagamento?':'Guardar estas alterações na plataforma?'))return;
+  if(!await showConfirmModal({
+   title:action==='payment_record'?'Confirmar recebimento':'Guardar alterações',
+   message:action==='payment_record'?
+    'Confirma que a Ubuntu recebeu efectivamente este pagamento? Este registo financeiro será auditado.':
+    'Guardar estas alterações na plataforma?',
+   confirmText:action==='payment_record'?'Registar recebimento':'Guardar'
+  }))return;
   toggleBusy(true);message.textContent='A guardar no servidor…';
   try{
    await client.adminControl(action,payload);
@@ -168,20 +175,45 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    payload={plan_id:id,active:!plan.active};
   }else payload={business_id:id};
   const business=data.businesses.find(x=>x.id===payload.business_id);
+  const label={
+   business_suspend:'Suspender comerciante',business_activate:'Reactivar comerciante',
+   business_archive:'Arquivar comerciante',business_restore:'Restaurar comerciante',
+   business_remove:'Retirar comerciante da lista',license_cancel:'Cancelar licença',
+   member_deactivate:'Bloquear utilizador',member_reactivate:'Reactivar utilizador',
+   plan_toggle:'Alterar disponibilidade do plano'
+  }[action]||'Confirmar operação';
+  const dangerous=['business_suspend','business_archive','business_remove','license_cancel','member_deactivate'].includes(action);
+  const resourceName=business?.name||'este registo';
   if(['business_remove','business_archive','business_restore'].includes(action)){
    const safety=action==='business_remove'?'RETIRAR':'CONFIRMAR';
-   const typed=prompt('Para '+(action==='business_remove'?'retirar esta empresa da lista (sem apagar as vendas)':'executar esta operação')+
-    ', escreva '+safety+':');
+   const typed=await showPromptModal({
+    title:label,message:'Para '+label.toLowerCase()+' de '+resourceName+', escreva '+safety+'. O histórico financeiro não será apagado.',
+    placeholder:'Escreva '+safety,minLength:safety.length,maxLength:16,danger:dangerous,
+    confirmText:'Continuar'
+   });
    if(typed!==safety)return;
-   const reason=prompt('Indique o motivo, com pelo menos 10 caracteres:');
-   if(!reason||reason.trim().length<10)return;
-   payload.reason=reason.trim();
+   const reason=await showPromptModal({
+    title:'Motivo da intervenção',
+    message:'Indique o motivo desta operação. Será guardado no histórico administrativo.',
+    placeholder:'Justifique a intervenção (mínimo de 10 caracteres)',minLength:10,maxLength:500,
+    danger:dangerous,confirmText:'Confirmar intervenção'
+   });
+   if(reason===null)return;
+   payload.reason=reason;
   }else{
-   if(!confirm('Confirmar '+action.replace(/_/g,' ')+' para '+(business?.name||'este registo')+'?'))return;
+   if(!await showConfirmModal({
+    title:label,message:'Confirmar '+label.toLowerCase()+' para '+resourceName+'?',
+    danger:dangerous,confirmText:dangerous?'Sim, continuar':'Confirmar'
+   }))return;
    if(request==='adminCritical'){
-    const reason=prompt('Indique o motivo da intervenção, com pelo menos 10 caracteres:');
-    if(!reason||reason.trim().length<10)return;
-    payload.reason=reason.trim();
+    const reason=await showPromptModal({
+     title:'Motivo obrigatório',
+     message:'Registe a justificação desta intervenção crítica. O registo ficará disponível na auditoria.',
+     placeholder:'Escreva o motivo (mínimo de 10 caracteres)',minLength:10,maxLength:500,
+     danger:true,confirmText:'Executar operação'
+    });
+    if(reason===null)return;
+    payload.reason=reason;
    }
   }
   toggleBusy(true);message.textContent='A executar operação protegida…';
