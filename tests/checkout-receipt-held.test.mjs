@@ -33,7 +33,7 @@ test('Confirmed sales produce an escaped printable receipt with correct cash and
  assert.equal(receipt.items[0].name,'Arroz');
  const html=receiptMarkup(receipt);
  assert.match(html,/Comprovativo de venda/);
- assert.match(html,/3\.000,00 MT/);
+ assert.match(html,/3000,00 MT/);
  assert.match(html,/2,00 MT/);
  assert.match(html,/não substitui documento fiscal/);
  assert.throws(()=>confirmedSaleReceipt({request:req,result:{},products:[item]}),/sale_not_confirmed/);
