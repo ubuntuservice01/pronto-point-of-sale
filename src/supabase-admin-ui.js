@@ -9,7 +9,7 @@ const currency=cents=>{const whole=String(Math.floor(cents/100)).replace(/\B(?=(
 const status=s=>({active:'Activo',suspended:'Suspenso',unassigned:'Sem licença',cancelled:'Cancelada',expired:'Expirada'})[s]||'—';
 const badge=s=>'<span class="pronto-admin-chip pronto-admin-'+esc(s)+'">'+esc(status(s))+'</span>';
 const empty=(title,help)=>'<div class="pronto-admin-empty"><strong>'+esc(title)+'</strong><p>'+esc(help)+'</p></div>';
-const sub='Nesta fase, os dados apresentados são lidos do Supabase. O cadastro, a edição e a suspensão serão activados apenas após a conclusão da API administrativa segura.';
+const sub='Registos, associações e licenças são efectuados por operações protegidas no Supabase, com verificação das permissões e auditoria.';
 const tabs=[
  ['overview','Visão geral','layout-dashboard'],['businesses','Comerciantes','store'],['members','Utilizadores','users'],
  ['licenses','Licenças','shield-check'],['plans','Planos','package'],['security','Segurança','lock-keyhole']
@@ -24,7 +24,7 @@ export function renderUbuntuAdminShell(account){
   '<div class="pronto-admin-sidebar-bottom"><span class="pronto-admin-secure">Acesso validado por Supabase Auth</span>'+
   '<button type="button" class="secondary" id="pronto-admin-logout">Terminar sessão</button></div></aside>'+
   '<div class="pronto-admin-workspace"><header class="pronto-admin-topbar"><div><span>UBUNTU SERVICE</span><h1>Administração Pronto POS</h1></div>'+
-  '<div class="pronto-admin-top-actions"><label class="pronto-admin-search" id="pronto-admin-search-wrap" hidden><span class="pronto-admin-sr-only">Pesquisar comerciantes</span><input id="pronto-admin-search" autocomplete="off" placeholder="Pesquisar comerciante ou contacto"></label><span class="pronto-admin-live">Consulta protegida</span>'+
+  '<div class="pronto-admin-top-actions"><label class="pronto-admin-search" id="pronto-admin-search-wrap" hidden><span class="pronto-admin-sr-only">Pesquisar comerciantes</span><input id="pronto-admin-search" autocomplete="off" placeholder="Pesquisar comerciante ou contacto"></label><span class="pronto-admin-live">Ligado ao Supabase</span>'+
   '<button type="button" class="secondary" id="pronto-admin-refresh">Actualizar dados</button></div></header>'+
   '<main class="pronto-admin-main"><div id="pronto-admin-message" role="status" aria-live="polite"></div>'+
   '<div id="pronto-admin-content"></div></main></div></div>';
@@ -44,8 +44,8 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date()}={}){
    '<section class="pronto-admin-grid"><article class="pronto-admin-panel"><h3>Estado das licenças</h3>'+
    '<div class="pronto-admin-status-grid"><p>Sem licença <strong>'+summary.unassignedLicenses+'</strong></p>'+
    '<p>Expiradas <strong>'+summary.expiredLicenses+'</strong></p><p>Canceladas <strong>'+summary.cancelledLicenses+'</strong></p></div></article>'+
-   '<article class="pronto-admin-panel"><h3>Próximas etapas</h3>'+
-   '<p>Cadastro real de comerciantes, activação de licenças e configuração de colaboradores dependem de operações seguras no servidor.</p>'+
+   '<article class="pronto-admin-panel"><h3>Começar a utilizar</h3>'+
+   '<p>1. Em Comerciantes, registe a mercearia. 2. Em Planos, crie um plano de teste. 3. Em Utilizadores, convide o proprietário com outra conta de email. 4. Em Licenças, atribua o plano à mercearia. 5. O proprietário entra, define o PIN e começa a cadastrar produtos.</p>'+
    '<p class="pronto-admin-note">Não estão disponíveis operações de alteração ou acesso às vendas dos comerciantes neste painel.</p></article></section>';
  }
  if(key==='businesses'){
@@ -54,12 +54,12 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date()}={}){
    '<section class="pronto-admin-panel"><h3>Lista de comerciantes <span class="pronto-admin-count">'+rows.length+'</span></h3>'+
    (rows.length?'<div class="pronto-admin-table-wrap"><table class="pronto-admin-table"><thead><tr><th>Empresa</th><th>Estado</th><th>Filiais</th><th>Colaboradores</th><th>Criada em</th></tr></thead><tbody>'+
    rows.map(b=>'<tr><td><strong>'+esc(b.name)+'</strong><small>'+esc(b.phone||b.address||'Sem contacto registado')+'</small></td><td>'+badge(b.status)+'</td><td>'+b.branches+'</td><td>'+b.operators+'</td><td>'+date(b.createdAt)+'</td></tr>').join('')+'</tbody></table></div>':
-   empty('Nenhum comerciante encontrado',query?'Experimente outro nome, contacto ou código.':'O cadastro de comerciantes será activado na fase seguinte.'))+
+   empty('Nenhum comerciante encontrado',query?'Experimente outro nome, contacto ou código.':'Utilize o formulário «Registar comerciante» abaixo para criar a primeira loja.'))+
    '<p class="pronto-admin-note">'+esc(sub)+'</p></section>';
  }
  if(key==='members')return title('Utilizadores e perfis','Convidar proprietários e operadores, ou associar contas já existentes no Supabase.');
  if(key==='licenses'){
-  return title('Licenças e subscrições','Situação de licenças atribuídas aos comerciantes, em modo de consulta.')+
+  return title('Licenças e subscrições','Consulte as licenças e atribua ou renove planos através do formulário protegido.')+
    '<section class="pronto-admin-panel"><h3>Licenças por empresa</h3>'+
    (data.businesses.length?'<div class="pronto-admin-table-wrap"><table class="pronto-admin-table"><thead><tr><th>Empresa</th><th>Plano</th><th>Licença</th><th>Validade</th></tr></thead><tbody>'+
     data.businesses.map(b=>'<tr><td><strong>'+esc(b.name)+'</strong></td><td>'+esc(b.planName||'Não atribuído')+'</td><td>'+badge(licenseState(b,now))+'</td><td>'+date(b.expiresAt)+'</td></tr>').join('')+'</tbody></table></div>':
@@ -67,11 +67,11 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date()}={}){
    '<p class="pronto-admin-note">'+esc(sub)+'</p></section>';
  }
  if(key==='plans'){
-  return title('Planos comerciais','Condições dos planos definidos na base de dados, apenas para consulta.')+
+  return title('Planos comerciais','Consulte planos existentes ou crie um novo plano no formulário abaixo.')+
    '<section class="pronto-admin-panel"><h3>Planos disponíveis <span class="pronto-admin-count">'+data.plans.length+'</span></h3>'+
    (data.plans.length?'<div class="pronto-admin-table-wrap"><table class="pronto-admin-table"><thead><tr><th>Plano</th><th>Preço</th><th>Duração</th><th>Estado</th></tr></thead><tbody>'+
     data.plans.map(p=>'<tr><td><strong>'+esc(p.name)+'</strong></td><td>'+currency(p.priceCents)+'</td><td>'+p.durationDays+' dias</td><td>'+badge(p.active?'active':'suspended')+'</td></tr>').join('')+'</tbody></table></div>':
-    empty('Nenhum plano configurado','A definição e alteração de planos ficará disponível após a API administrativa estar pronta.'))+
+    empty('Nenhum plano configurado','Utilize o formulário abaixo para criar um plano comercial.'))+
    '<p class="pronto-admin-note">'+esc(sub)+'</p></section>';
  }
  return title('Segurança e preparação','Estado técnico da migração para operação comercial.')+
@@ -79,7 +79,7 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date()}={}){
   '<div class="pronto-admin-check"><strong>Identidade do Super Administrador</strong><span>Verificada por autenticação e função protegida no Supabase</span></div>'+
   '<div class="pronto-admin-check"><strong>Leitura administrativa</strong><span>Empresas e contratos; sem acesso directo a vendas e caixas</span></div>'+
   '<div class="pronto-admin-check"><strong>Escritas financeiras</strong><span>Bloqueadas nesta fase; devem ser transaccionais no servidor</span></div>'+
-  '<div class="pronto-admin-check"><strong>Sessão</strong><span>Credenciais temporárias só na memória desta página; actualizar a página exige novo login</span></div>'+
-  '<div class="pronto-admin-check"><strong>Próxima fase</strong><span>Cadastro seguro de comerciantes, planos, licenças e utilizadores, com auditoria</span></div></section>';
+  '<div class="pronto-admin-check"><strong>Sessão</strong><span>As credenciais de sessão ficam apenas na memória desta página; actualizar a página exige novo login</span></div>'+
+  '<div class="pronto-admin-check"><strong>Próxima fase</strong><span>Validar o fluxo completo com a primeira mercearia e respectivo proprietário</span></div></section>';
 }
 export function ubuntuAdminTabTitle(key){return tabs.find(([id])=>id===key)?.[1]||'Administração';}

@@ -1,5 +1,6 @@
 const params=new URLSearchParams(location.search);
-export const isRemote=params.get('demo')!=='1'&&(params.get('mode')==='server'||document.querySelector('meta[name="pronto-mode"]')?.content==='server');
+const isLocal=['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname.toLowerCase());
+export const isRemote=!(isLocal&&params.get('demo')==='1')&&(params.get('mode')==='server'||document.querySelector('meta[name="pronto-mode"]')?.content==='server');
 let activeBranchId=null;
 export function setActiveBranch(id){activeBranchId=typeof id==='string'&&id?id:null;}
 export async function api(path,body){const headers=body===undefined?{}:{'Content-Type':'application/json'};if(activeBranchId)headers['X-Pronto-Branch']=activeBranchId;
