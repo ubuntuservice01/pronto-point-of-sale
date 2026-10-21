@@ -23,12 +23,12 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   shell('<h2>Bem-vindo ao Pronto POS</h2>'+
   '<p>Entre com o seu email e palavra-passe. O PIN pessoal de 5 dígitos protege o acesso ao painel.</p>'+
   '<form id="pronto-auth-check-form">'+
-   '<label>Email da conta Supabase<input type="email" name="email" autocomplete="username" maxlength="254" required></label>'+
+   '<label>Email<input type="email" name="email" autocomplete="username" maxlength="254" required></label>'+
    '<label>Palavra-passe<input type="password" name="password" autocomplete="current-password" maxlength="200" required></label>'+
    '<p id="pronto-auth-check-error" role="alert" aria-live="polite"></p>'+
    '<button class="primary full" type="submit">Entrar</button>'+
   '</form>'+
-  '<p class="form-hint">Acesso reservado a contas autorizadas. Para registar a primeira loja, entre com a conta de Super Administrador da Ubuntu Service.</p>'+
+  '<p class="form-hint">A sua loja na palma da mão. Entre para continuar o seu trabalho.</p>'+
   '<button type="button" class="secondary full" id="recovery-request">Esqueceu-se da palavra-passe?</button>'+
   '');
   root.querySelector('#recovery-request').onclick=()=>beginRecovery(null);
@@ -46,7 +46,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      supabase_rate_limit:'Demasiadas tentativas. Aguarde e volte a tentar.',
      supabase_unauthorized:'Não foi possível autenticar. Confira a conta e as permissões.',
      supabase_invalid_credentials:'Introduza o email e a palavra-passe.',
-     supabase_unavailable:'Não foi possível contactar o serviço Supabase.'
+     supabase_unavailable:'Não foi possível ligar ao sistema. Verifique a internet.'
     };
     error.textContent=messages[e.message]||'Não foi possível verificar a conta. Confira as credenciais e a ligação.';
     button.disabled=false;
@@ -76,9 +76,9 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
     '<p class="held-sale-warning">'+(admin?'O Super Administrador não precisa de uma associação comercial para exercer funções administrativas.':''+(staffAccess?.reason==='outside_schedule'?'Fora do horário de trabalho. Aguarde a abertura programada.':staffAccess?.reason==='blocked'?'O seu acesso foi bloqueado pelo proprietário. Contacte o responsável.':'Esta conta não tem acesso disponível neste momento. Contacte o responsável.')+'')+'</p>';
   shell('<h2>'+ (admin?'Super Administrador — Ubuntu Service':'Identidade verificada') +'</h2>'+
    '<p>Conta: <strong>'+escape(account.email)+'</strong></p>'+
-   (admin?'<p class="pronto-super-admin-status"><strong>Perfil confirmado:</strong> Super Administrador Ubuntu Service, Lda.</p><p class="form-hint">As operações de administração são realizadas no Supabase e exigem as permissões de Super Administrador.</p>':'')+
+   (admin?'<p class="pronto-super-admin-status"><strong>Perfil confirmado:</strong> Super Administrador Ubuntu Service, Lda.</p><p class="form-hint">A sua conta tem acesso à gestão das lojas e respectivos utilizadores.</p>':'')+
    '<h3>Empresas autorizadas</h3>'+grants+
-   '<p class="form-hint">Os acessos são verificados no Supabase. As operações comerciais autorizadas são efectuadas na base de dados Supabase.</p>'+
+   '<p class="form-hint">O acesso à sua conta é protegido.</p>'+
    '<button id="pronto-auth-check-logout" type="button" class="secondary full">Terminar sessão</button>');
   if(staffAccess&&['outside_schedule','blocked','suspended'].includes(staffAccess.reason)){
    if(staffWaitTimer)clearInterval(staffWaitTimer);
