@@ -64,6 +64,8 @@ export function showSaleCompleteModal(receipt,{doc=document}={}){
    '<h2 id="pronto-sale-success-title">Venda concluída!</h2>'+
    '<p class="pronto-sale-success-copy">A venda foi confirmada no sistema. Escolha o próximo passo.</p>'+
    '<div class="pronto-sale-success-total">'+MONEY(receipt.total)+'</div>'+
+   (receipt.payments.some(p=>p.name==='Dinheiro')?
+    '<div class="pronto-sale-success-change"><span>Troco a entregar</span><strong>'+MONEY(receipt.change)+'</strong></div>':'')+
    '<p class="pronto-sale-success-ref">Referência: '+esc(receipt.id.slice(0,8))+'</p>'+
    (receipt.duplicate?'<p class="pronto-sale-success-note">Esta venda já estava registada. Não foi duplicada.</p>':'')+
    '<div class="pronto-sale-success-actions">'+

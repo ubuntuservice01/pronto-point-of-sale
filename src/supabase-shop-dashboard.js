@@ -4,7 +4,8 @@ import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/
 import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
-import {toCents,toQuantity,makeSaleRequest,cartTotal,esc} from './supabase-shop-core.js';
+import {toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
+import {checkoutCashPreview} from './supabase-checkout-change.js';
 import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
 import {creditStatementHTML,creditWhatsAppURL} from './supabase-credit-ui.js';
 import {shoppingListCSV} from './supabase-inventory-ui.js';
@@ -167,6 +168,33 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   else if(item)item.quantity=q;
   else cart.push({productId:id,quantity:q});
   notice='';render();
+ };
+ const updateCashChangePreview=()=>{
+  const form=root.querySelector('#shop-sale-form');
+  const box=form?.querySelector('[data-shop-change-preview]');
+  if(!form||!box)return;
+  const preview=checkoutCashPreview({
+   method,totalCents:Number(form.dataset.shopTotalCents),
+   receivedRaw:form.elements.namedItem('cash_received')?.value??'',
+   cashPortionRaw:form.elements.namedItem('pay_cash')?.value??'0'
+  });
+  box.dataset.state=preview.state;
+  const amount=box.querySelector('[data-shop-change-amount]');
+  const note=box.querySelector('[data-shop-change-note]');
+  if(!amount||!note)return;
+  const messages={
+   waiting:['—','Introduza o valor recebido para calcular o troco.'],
+   empty:['—','Adicione produtos à venda para calcular o troco.'],
+   no_cash:['—','Este pagamento repartido não inclui dinheiro físico.'],
+   invalid:['—','Introduza um valor de dinheiro válido.'],
+   invalid_split:['—','Confira o valor da parte paga em dinheiro.'],
+   exact:[MONEY(0),'Pagamento exacto. Não há troco.'],
+   change:[MONEY(preview.change||0),'Troco a entregar ao cliente.'],
+   short:['Falta '+MONEY(preview.shortfall||0),'O dinheiro recebido é insuficiente.'],
+  };
+  const [value,description]=messages[preview.state]||messages.invalid;
+  amount.textContent=value;
+  note.textContent=description;
  };
  const updatePanel=()=>{
   const panel=root.querySelector('#shop-checkout-panel');
@@ -459,6 +487,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    root.querySelectorAll('[data-credit-customer]').forEach(btn=>{btn.hidden=!visible.includes(btn.dataset.creditCustomer);});
   }else if(el.name==='discount'){
    discount=el.value;
+  }else if(el.name==='cash_received'||(el.name==='pay_cash'&&method==='mixed')){
+   updateCashChangePreview();
   }
  },{signal});
  root.addEventListener('change',event=>{

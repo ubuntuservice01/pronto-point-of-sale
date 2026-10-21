@@ -44,7 +44,11 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   '<div class="shop-totals shop-total"><span>Total</span><strong>'+MONEY(total)+'</strong></div>'+
   (err?'<p class="shop-error">'+esc(err)+'</p>':'')+
   '<h4>Forma de pagamento</h4>'+buttons+
-  '<form id="shop-sale-form">'+creditCheckoutFields({credit,selected:selectedCustomerId,method})+amounts+cash+
+  '<form id="shop-sale-form" data-shop-total-cents="'+total+'">'+creditCheckoutFields({credit,selected:selectedCustomerId,method})+amounts+cash+
+  ((method==='cash'||method==='mixed')?'<div class="shop-change-preview" data-shop-change-preview data-state="waiting" role="status" aria-live="polite" aria-atomic="true">'+
+   '<span class="shop-change-caption">Troco a entregar</span>'+
+   '<strong data-shop-change-amount>—</strong>'+
+   '<small data-shop-change-note>Introduza o valor recebido para calcular o troco.</small></div>':'')+
   (method==='credit'?'<label>Prazo de pagamento<input type="date" id="shop-credit-due" name="credit_due" min="'+esc(credit?.today||'')+'" value="'+esc(creditDue)+'" required></label>':'')+
   (method!=='credit'?'<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>':'')+
   '<p class="shop-help">Os pagamentos M-Pesa, e-Mola e transferência não são verificados automaticamente pela operadora.</p>'+
