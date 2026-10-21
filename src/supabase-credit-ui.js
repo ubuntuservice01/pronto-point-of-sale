@@ -139,7 +139,7 @@ export function creditStatementHTML(credit,customerId,{debtId,branding,logoUrl='
  if(!debtId)sections.push({title:'Compras associadas',columns:['Data','Pagamento','Valor'],
   rows:sales.map(s=>[date(s.createdAt),s.method,money(s.amount)])});
  return brandedDocumentHTML({branding,logoUrl,title:debtId?'Extracto de dívida':'Extracto de conta corrente',
-  subtitle:'Documento informativo. Não constitui factura ou recibo fiscal.',
+  subtitle:'Extracto não fiscal, apenas informativo. Não constitui factura ou recibo fiscal.',
   meta:[['Cliente',c.name],['Contacto do cliente',c.phone||'Não informado']],sections,
   summary:[['Saldo em dívida',money(debts.reduce((sum,d)=>sum+d.balance,0))]]});
 }
