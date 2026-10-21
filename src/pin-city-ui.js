@@ -23,10 +23,13 @@ export function getPinKPIs({today,month,businessId,branchId,userId,shopName,role
  return Object.freeze({userId,businessId,branchId:String(branchId||''),
   shopName:String(shopName||'A sua loja').slice(0,80),role:String(role||''),
   todayCents:daily.gross,monthCents:monthly.gross,todayCount:daily.salesCount,monthCount:monthly.salesCount,
+  day:String(today.start||'').slice(0,10),monthStart:String(month.start||'').slice(0,10),
   at:Date.now()});
 }
 export function validatePinKPIs(value,userId){
+ const localDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  if(!value||value.userId!==userId||Date.now()-value.at>15*60*1000||value.at>Date.now()+30000||
+  value.day!==localDay||value.monthStart!==localDay.slice(0,8)+'01'||
  !positive(value.todayCents)||!positive(value.monthCents)||!positive(value.todayCount)||!positive(value.monthCount)||
  !/^[0-9a-f-]{36}$/i.test(value.businessId))return null;
  return value;
@@ -42,7 +45,7 @@ export function pinCityBackdrop({metrics}={}){
   '<aside class="pin-city-stats pin-city-stats-left">'+
    '<div class="pin-city-float pin-city-today"><small>Vendas de hoje</small>'+
     '<strong data-pin-kpi="today">'+(m?esc(MONEY(m.todayCents)):'—')+'</strong>'+
-    '<span class="pin-city-sparkline">▁ ▂ ▃ ▂ ▄ ▅ ▃ ▆ ▇</span>'+
+    '<span class="pin-city-ambient-line" aria-hidden="true"></span>'+
     '<p>Os seus resultados, todos os dias</p></div>'+
    '<div class="pin-city-float pin-city-map">'+mozMap+
     '<div><strong>Moçambique</strong><small>Sempre em movimento</small>'+
@@ -52,10 +55,10 @@ export function pinCityBackdrop({metrics}={}){
   '<aside class="pin-city-stats pin-city-stats-right">'+
    '<div class="pin-city-float pin-city-month"><small>Vendas deste mês</small>'+
     '<strong data-pin-kpi="month">'+(m?esc(MONEY(m.monthCents)):'—')+'</strong>'+
-    '<span>Os seus números, sem estimativas</span></div>'+
+    '<span>Valores reais registados na loja</span></div>'+
    '<div class="pin-city-float pin-city-transactions"><small>Transacções hoje</small>'+
     '<strong data-pin-kpi="todayCount">'+(m?esc(fmtCount(m.todayCount)):'—')+'</strong>'+
-    '<span class="pin-city-steps"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>'+
+    '<span class="pin-city-metric-rule" aria-hidden="true"></span></div>'+
    '<div class="pin-city-float pin-city-message"><strong>Negócios de hoje.<br>Um Moçambique<br>mais forte amanhã.</strong>'+
     '<span class="pin-city-message-rule"></span></div>'+
    '<div class="pin-city-float pin-city-transactions-month"><small>Transacções deste mês</small>'+
