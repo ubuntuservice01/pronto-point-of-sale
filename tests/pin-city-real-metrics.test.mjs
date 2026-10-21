@@ -16,7 +16,7 @@ test('PIN scene uses the brand, five digits, city landscape, Mozambique map and 
  const markup=pinScreen({mode:'unlock',email:'vendedor@exemplo.co.mz'});
  assert.match(markup,/pin-city-landscape/);
  assert.match(markup,/Moçambique/);
- assert.match(markup,/pin-city-theme/);
+ assert.match(file('src/pin-city.css'),/\.pronto-pin-backdrop\.pin-city-theme/);
  assert.match(markup,/Ecrã bloqueado/);
  assert.match(markup,/Desbloquear/);
  assert.match(markup,/Ubuntu Servers/);
@@ -97,5 +97,5 @@ test('Background image, isolated styles and PWA assets are wired',()=>{
  assert.match(css,/@media\(max-width:550px\)/);
  assert.match(index,/href="\/src\/pin-city\.css"/);
  assert.match(sw,/\/src\/pin-city-ui\.js/);
- assert.match(sw,/\/src\/pin-city-bg\.webp/);
+ assert.match(sw,/\/pin-city-bg\.webp/);
 });
