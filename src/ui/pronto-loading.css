@@ -1,0 +1,38 @@
+/* Welcome skeleton + animated shop assistant. UI only: it never invents completion. */
+.pronto-load-overlay{--pl-green:#087f68;position:fixed;inset:0;z-index:2147483000;background:rgba(243,250,245,.96);display:grid;place-items:center;padding:18px;overflow:auto;isolation:isolate;font-family:Inter,system-ui,-apple-system,sans-serif}
+.pronto-load-ghost{position:absolute;inset:0;display:flex;opacity:.6;filter:blur(2px);pointer-events:none;z-index:-1}
+.pronto-load-ghost-menu{width:min(240px,23vw);background:#fff;padding:25px 22px;display:flex;flex-direction:column;gap:22px;border-right:1px solid #d9ede1}
+.pronto-load-ghost-logo{width:75px;height:40px;background:#b4dcc8;border-radius:9px;margin-bottom:20px}
+.pronto-load-skeleton{display:block;border-radius:9px;background:linear-gradient(90deg,#e3efe8 10%,#f9fffb 45%,#e3efe8 85%);background-size:220% 100%;animation:pronto-skeleton-pulse 2s linear infinite}
+.pronto-load-ghost-link{height:25px;width:94%}
+.pronto-load-ghost-link:nth-child(3n){width:72%}
+.pronto-load-ghost-content{padding:9vh 5vw;flex:1;display:flex;flex-direction:column;gap:30px}
+.pronto-load-ghost-heading{height:43px;width:min(370px,65%)}
+.pronto-load-ghost-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.pronto-load-ghost-card{height:150px;border-radius:16px}
+.pronto-load-ghost-banner{height:175px}
+.pronto-load-panel{width:min(460px,100%);padding:25px 28px 19px;border:1px solid #d6ebdf;border-radius:24px;background:rgba(255,255,255,.97);box-shadow:0 24px 80px rgba(28,86,55,.16);text-align:center;position:relative}
+.pronto-load-brand{display:flex;align-items:center;justify-content:center;gap:10px;color:#087f68;font-size:18px;font-weight:900}
+.pronto-load-brand img{width:38px;height:38px}
+.pronto-load-title{font-size:clamp(22px,3.8vw,29px);color:#143d30;font-weight:850;letter-spacing:-.6px;line-height:1.25;margin:18px 0 5px}
+.pronto-load-subtitle{font-size:13px;margin:0;color:#6b8777}
+.pronto-load-illustration{width:min(385px,100%);margin:7px auto 0}
+.pronto-load-illustration svg{width:100%;height:auto;display:block}
+.pronto-load-arm{transform-origin:250px 126px;animation:pronto-stock-arm 1.85s ease-in-out infinite}
+.pronto-load-item{animation:pronto-stock-stock 1.85s ease-in-out infinite}
+.pronto-load-spark{animation:pronto-stock-glow 1.85s ease-in-out infinite;transform-origin:334px 76px}
+.pronto-load-person{animation:pronto-stock-bob 1.85s ease-in-out infinite}
+.pronto-load-progress-head{display:flex;justify-content:space-between;gap:14px;align-items:center;text-align:left;color:#4d7660;font-size:12px;font-weight:700}
+.pronto-load-number{color:#087f68;font-size:30px;font-weight:900;font-variant-numeric:tabular-nums}
+.pronto-load-track{height:12px;border-radius:99px;overflow:hidden;background:#e6f1ea;margin-top:10px}
+.pronto-load-fill{display:block;width:1%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0a916e,#45c394);transition:width .15s linear}
+.pronto-load-foot{margin:14px 0 0;color:#89a392;font-size:11px}
+.pronto-load-done{animation:pronto-loader-exit .36s ease-in forwards;pointer-events:none}
+@keyframes pronto-loader-exit{to{opacity:0;transform:scale(1.015)}}
+@keyframes pronto-skeleton-pulse{to{background-position-x:-220%}}
+@keyframes pronto-stock-arm{0%,100%{transform:rotate(0deg)}42%,62%{transform:rotate(-18deg)}}
+@keyframes pronto-stock-stock{0%,55%,100%{opacity:1}65%{opacity:.5}}
+@keyframes pronto-stock-glow{0%,100%{opacity:.5;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+@keyframes pronto-stock-bob{0%,100%{transform:translateY(0)}45%{transform:translateY(2px)}}
+@media(max-width:610px){.pronto-load-overlay{padding:12px}.pronto-load-panel{border-radius:19px;padding:22px 18px}.pronto-load-ghost-menu{display:none}.pronto-load-ghost-content{padding:10vh 5vw}.pronto-load-ghost-grid{grid-template-columns:1fr}.pronto-load-ghost-card{height:120px}.pronto-load-number{font-size:28px}}
+@media(prefers-reduced-motion:reduce){.pronto-load-overlay *{animation:none!important;transition:none!important}}
