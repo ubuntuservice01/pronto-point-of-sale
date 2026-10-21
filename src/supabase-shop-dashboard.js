@@ -814,9 +814,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     if(!access.allowed)throw Error('cash_access_denied');
     for(const key of keys){
      const payload=await restoreOfflineCash(localStorage,scope(),pass,key);
-     const latest=normalizeCashControl(await client.cashControl('snapshot',cashData({})));
-     if(!latest.sessions.some(s=>s.id===payload.session_id&&s.operatorId===account.userId&&s.status==='open'))
-      throw Error('cash_session_not_open');
+     // Send exactly the original idempotent request. The server either confirms
+     // an already applied movement (even after a remote close), applies it only
+     // to an authorised OPEN session, or safely rejects a late new movement.
      const result=await client.holdAction('cash_move',payload);
      if(result?.duplicate!==true&&typeof result?.movement_id!=='string')throw Error('cash_unconfirmed');
      clearOfflineCash(localStorage,scope(),key);done++;
