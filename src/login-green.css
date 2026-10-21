@@ -1,0 +1,100 @@
+/* Pronto POS login. Scoped to the public authentication screen only. */
+.login-shell.pronto-auth-test{
+ --pronto-login-green:#087f68;
+ --pronto-login-green-dark:#046350;
+ min-height:100dvh;
+ padding:clamp(12px,2.8vw,36px);
+ display:flex;align-items:center;justify-content:center;
+ background:radial-gradient(ellipse 75% 65% at 0% 100%,#d8efdf 0%,transparent 78%),
+  radial-gradient(ellipse 65% 70% at 100% 0%,#e0f2e7 0%,transparent 75%),#f3f9f5;
+}
+.pronto-auth-test .pronto-login-layout{
+ display:grid;grid-template-columns:minmax(370px,42%) minmax(0,58%);
+ width:min(1280px,100%);min-height:min(820px,calc(100dvh - 72px));
+ border-radius:25px;overflow:hidden;background:#fff;
+ box-shadow:0 26px 68px rgba(16,64,46,.12);
+}
+.pronto-auth-test .pronto-login-left{
+ min-width:0;display:flex;flex-direction:column;justify-content:center;
+ padding:clamp(27px,5.2vw,74px) clamp(22px,4.6vw,66px);
+}
+.pronto-auth-test .login-brand{text-align:left;margin:0 0 clamp(30px,6vh,70px)}
+.pronto-auth-test .pronto-brand-row{display:flex;align-items:center;gap:15px}
+.pronto-auth-test .pronto-brand-row img{width:55px;height:55px;flex:none}
+.pronto-auth-test .login-brand h1{font-size:clamp(26px,3vw,38px);font-weight:850;color:#16392d;line-height:1.1;letter-spacing:-1.5px;margin:0 0 6px}
+.pronto-auth-test .login-brand h1 span{color:var(--pronto-login-green)}
+.pronto-auth-test .login-brand p{margin:0;color:#6f837b;font-size:12px;letter-spacing:.08px}
+.pronto-auth-test .login-panel{max-width:unset;width:100%;padding:0;border:0;box-shadow:none;background:none;border-radius:0}
+.pronto-auth-test .pronto-login-heading{margin:0 0 28px}
+.pronto-auth-test .pronto-login-eyebrow{display:block;margin-bottom:12px;font-size:11px;font-weight:750;letter-spacing:1.35px;text-transform:uppercase;color:var(--pronto-login-green)}
+.pronto-auth-test .pronto-login-heading h2{font-size:clamp(31px,3.6vw,45px);font-weight:850;letter-spacing:-1.5px;color:#12392d;margin:0 0 13px;line-height:1.07}
+.pronto-auth-test .pronto-login-heading p{color:#62796f;font-size:14px;line-height:1.55}
+.pronto-auth-test #pronto-auth-check-form>label{font-size:12px;font-weight:700;color:#345549;margin:18px 0 8px}
+.pronto-auth-test .pronto-field{
+ display:flex;align-items:center;gap:10px;height:56px;padding:0 13px;
+ background:#fff;border:1px solid #d9e7df;border-radius:11px;
+ transition:border-color .16s,box-shadow .16s;
+}
+.pronto-auth-test .pronto-field:focus-within{border-color:var(--pronto-login-green);box-shadow:0 0 0 3px #087f681b}
+.pronto-auth-test .pronto-field-icon{color:#6e8b7d;font-size:18px;width:22px;text-align:center;flex:none;line-height:1}
+.pronto-auth-test .pronto-field input{
+ border:0!important;box-shadow:none!important;outline:0!important;
+ min-height:48px;flex:1;width:0;padding:0;margin:0;font-size:14px;
+ background:transparent;color:#203c30;border-radius:0;
+}
+.pronto-auth-test .pronto-field input::placeholder{color:#91a79c;opacity:1}
+.pronto-auth-test .pronto-password-toggle{
+ flex:none;width:auto;min-height:35px;padding:5px 6px;border:0;background:none;
+ color:var(--pronto-login-green);font-size:12px;font-weight:650;
+}
+.pronto-auth-test .pronto-login-helpers{display:flex;justify-content:flex-end;align-items:center;margin:13px 0 17px}
+.pronto-auth-test .pronto-recovery-link{
+ border:0;background:none;padding:5px 0;color:var(--pronto-login-green);
+ font-size:12px;font-weight:650;min-height:35px;
+}
+.pronto-auth-test #pronto-auth-check-error{color:#b52337;font-size:12px;min-height:16px;margin:0}
+.pronto-auth-test .pronto-login-submit{
+ width:100%;min-height:55px;margin-top:10px;position:relative;
+ border-radius:11px;background:var(--pronto-login-green);color:#fff;font-size:16px;
+ font-weight:750;box-shadow:0 8px 20px #087f6821;
+}
+.pronto-auth-test .pronto-login-submit:hover{background:var(--pronto-login-green-dark)}
+.pronto-auth-test .pronto-login-submit span{position:absolute;right:18px;font-size:22px}
+.pronto-auth-test .pronto-login-security{
+ display:flex;gap:12px;align-items:center;margin-top:30px;padding-top:23px;
+ border-top:1px solid #e4eee8;color:#637c70;font-size:11px;line-height:1.6;
+}
+.pronto-auth-test .pronto-login-security span{
+ width:31px;height:31px;background:#e8f7ec;display:inline-grid;place-items:center;
+ border-radius:50%;color:var(--pronto-login-green);font-weight:800;flex:none;
+}
+.pronto-auth-test .pronto-login-left footer{
+ margin-top:auto;padding:24px 0 0;text-align:left;font-size:10px;color:#90a69a;
+}
+.pronto-auth-test .pronto-login-right{
+ position:relative;overflow:hidden;min-height:640px;background:#e5eee5;
+}
+.pronto-auth-test .pronto-login-right img{
+ display:block;width:100%;height:100%;position:absolute;inset:0;
+ object-fit:cover;object-position:center center;
+}
+@media(max-width:920px){
+ .pronto-auth-test .pronto-login-layout{grid-template-columns:minmax(0,48%) minmax(0,52%);min-height:min(740px,calc(100dvh - 32px))}
+ .pronto-auth-test .pronto-login-left{padding:32px 24px}
+ .pronto-auth-test .login-brand{margin-bottom:32px}
+ .pronto-auth-test .pronto-login-right{min-height:600px}
+}
+@media(max-width:660px){
+ .login-shell.pronto-auth-test{padding:10px;align-items:flex-start}
+ .pronto-auth-test .pronto-login-layout{display:flex;flex-direction:column;min-height:calc(100dvh - 20px);border-radius:18px}
+ .pronto-auth-test .pronto-login-left{order:0;padding:30px 25px 18px}
+ .pronto-auth-test .login-brand{margin-bottom:36px}
+ .pronto-auth-test .pronto-login-heading h2{font-size:36px}
+ .pronto-auth-test .pronto-login-security{margin-top:22px}
+ .pronto-auth-test .pronto-login-left footer{padding:15px 0 0}
+ .pronto-auth-test .pronto-login-right{order:1;min-height:260px;height:260px;margin:0 12px 12px;border-radius:13px}
+ .pronto-auth-test .pronto-login-right img{object-position:center 43%}
+}
+@media(prefers-reduced-motion:reduce){
+ .pronto-auth-test .pronto-field{transition:none}
+}
