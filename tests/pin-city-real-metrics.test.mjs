@@ -46,6 +46,9 @@ test('Daily and monthly figures are actual branch aggregates, not mocked display
  assert.match(html,/Vendas deste mês/);
  assert.match(html,/Transacções hoje/);
  assert.match(html,/Transacções deste mês/);
+ assert.match(html,/pin-city-mobile-kpis/);
+ assert.match(html,/Vendas hoje/);
+ assert.match(html,/Este mês/);
  assert.match(html,/data-pin-kpi="month"/);
  assert.doesNotMatch(html,/▁ ▂ ▃|pin-city-steps/);
 });
@@ -95,6 +98,7 @@ test('Background image, isolated styles and PWA assets are wired',()=>{
  assert.match(css,/pin-city-footer/);
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(css,/@media\(max-width:550px\)/);
+ assert.match(css,/pin-city-mobile-kpis/);
  assert.match(index,/href="\/src\/pin-city\.css"/);
  assert.match(sw,/\/src\/pin-city-ui\.js/);
  assert.match(sw,/\/pin-city-bg\.webp/);
