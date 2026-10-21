@@ -69,7 +69,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    const data=new FormData(node);
    try{
     const account=await client.signIn(String(data.get('email')||''),String(data.get('password')||''));
-    node.reset();await ready(account);
+    node.reset();await ready(account,false);
    }catch(e){
     const messages={
      supabase_rate_limit:'Demasiadas tentativas. Aguarde e volte a tentar.',
@@ -82,7 +82,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    }
   });
  };
- const ready=async account=>{
+ const ready=async(account,restored=false)=>{
   const admin=account.ubuntuAdmin===true;
   const staffAccess=!admin&&!account.grants.length?await client.myAccessStatus():null;
   if(admin||account.grants.length){
@@ -91,7 +91,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    let gate;
    const leave=()=>{gate?.cleanup();form();};
    gate=await mountProntoPinGate({
-    root,client,account,onLogout:form,
+    root,client,account,onLogout:form,allowReloadResume:restored,
     open:()=>admin?
      mountUbuntuAdminDashboard({root,client,account,onLogout:leave}):
      mountSupabaseMerchantPilot({root,client,account,onLogout:leave})
@@ -126,6 +126,25 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    await client.signOut();form();
   };
  };
- if(recovery.token)beginRecovery(recovery.token,recovery.kind);
- else form();
+ const bootstrap=async()=>{
+  if(recovery.token){beginRecovery(recovery.token,recovery.kind);return;}
+  root.innerHTML='<section class="shop-loading" role="status" aria-live="polite">'+
+   'A recuperar a sessão segura…</section>';
+  try{
+   const account=await client.restoreSession();
+   if(account)await ready(account,true);
+   else form();
+  }catch(error){
+   if(['supabase_unavailable','supabase_rate_limit'].includes(error.message)){
+    // Do not erase the refresh token when connectivity is merely unavailable.
+    root.innerHTML='<section class="login-shell pronto-auth-test">'+
+     '<div class="panel login-panel"><h2>Ligação indisponível</h2>'+
+     '<p>A sua sessão está guardada. Verifique a Internet e tente novamente.</p>'+
+     '<button type="button" class="primary full" id="pronto-session-retry">Tentar novamente</button>'+
+     '</div></section>';
+    root.querySelector('#pronto-session-retry').onclick=()=>void bootstrap();
+   }else form();
+  }
+ };
+ void bootstrap();
 }
