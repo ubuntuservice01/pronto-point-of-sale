@@ -12,13 +12,13 @@ const block=(title,note,fields,action,submit)=>'<section class="pronto-admin-pan
  '<form data-provision-action="'+action+'" class="pronto-admin-form"><div class="pronto-admin-fields">'+fields+'</div>'+
  '<button type="submit" class="primary">'+esc(submit)+'</button></form></section>';
 const field=(label,name,type='text',extra='',required=true)=>'<label>'+esc(label)+'<input name="'+name+'" type="'+type+'" '+extra+(required?' required':'')+'></label>';
-const help='<p class="pronto-admin-note">Todas as alterações são verificadas e auditadas no Supabase. Estas acções não alteram vendas, stock ou movimentos financeiros.</p>';
+const help='<p class="pronto-admin-note">Todas as alterações são verificadas e registadas com segurança. Estas acções não alteram vendas, stock ou movimentos financeiros.</p>';
 
 export function renderProvisioningForms(tab,data){
  const businesses=data.businesses||[],plans=data.plans||[];
  if(tab==='businesses'){
   return '<div class="pronto-admin-form-sections">'+block('Registar comerciante',
-   'A empresa e a filial principal são criadas no Supabase. A loja começa suspensa até ter proprietário e licença válida.',
+   'A loja e a sua filial principal são criadas sem produtos fictícios. Ficarão disponíveis depois de atribuir um proprietário e uma licença válida.',
    field('Nome da empresa','name','text','minlength="2" maxlength="120"')+
    field('Telefone de contacto','phone','tel','maxlength="60"',false)+
    field('Localização / endereço','address','text','maxlength="250"',false)+
@@ -43,16 +43,16 @@ export function renderProvisioningForms(tab,data){
    'license_manage','Guardar licença')+'</div>'+help;
  }
  if(tab==='members'){
-  if(!businesses.length)return '<div class="pronto-admin-form-sections"><p class="pronto-admin-note">Primeiro registe uma empresa para convidar o proprietário e os colaboradores.</p></div>';
-  const invite=block('Convidar por email',
-   'O Supabase envia um convite para a conta do colaborador. Este deve aceitar e definir a palavra-passe. Não são criadas palavras-passe pelo operador.',
+  if(!businesses.length)return '<div class="pronto-admin-form-sections"><p class="pronto-admin-note">Primeiro registe uma empresa para criar o acesso do proprietário.</p></div>';
+  const invite=block('Criar acesso e gerar senha',
+   'Não será enviado nenhum email. Após guardar, poderá copiar o email de acesso, a palavra-passe inicial e a referência para entregar pessoalmente ou por mensagem.',
    '<label>Empresa'+selectBusinesses(businesses)+'</label>'+
    field('Nome do colaborador','display_name','text','minlength="2" maxlength="120"')+
    field('Email do colaborador','email','email','maxlength="254"')+
    '<label>Perfil'+selectRoles()+'</label>',
-   'member_invite','Enviar convite e associar');
+   'member_create','Criar acesso e mostrar senha');
   const associate=block('Associar conta já existente',
-   'Se a conta Supabase já existir, confirme o UUID do utilizador em Authentication → Users. Nunca copie a palavra-passe.',
+   'Apenas para contas previamente registadas: introduza o identificador do utilizador fornecido pelo suporte. Não altera a palavra-passe existente.',
    '<label>Empresa'+selectBusinesses(businesses)+'</label>'+
    field('Nome do colaborador','display_name','text','minlength="2" maxlength="120"')+
    field('UUID da conta existente','user_id','text','maxlength="36" pattern="[0-9a-fA-F-]{36}"')+
@@ -63,7 +63,7 @@ export function renderProvisioningForms(tab,data){
    (members.length?'<div class="pronto-admin-table-wrap"><table class="pronto-admin-table"><thead><tr><th>Empresa</th><th>Utilizador</th><th>Perfil</th><th>Estado</th></tr></thead><tbody>'+
    members.map(({b,m})=>'<tr><td>'+esc(b.name)+'</td><td><strong>'+esc(m.name||m.email)+'</strong><small>'+esc(m.email)+'</small></td><td>'+esc(roles.find(r=>r[0]===m.role)?.[1]||m.role)+'</td><td>'+(m.active?'Activo':'Inactivo')+'</td></tr>').join('')+
    '</tbody></table></div>':'<p>Ainda não existem contas associadas às empresas.</p>')+'</section>';
-  return '<div class="pronto-admin-form-sections">'+invite+associate+list+'</div>'+help;
+  return '<div class="pronto-admin-form-sections">'+invite+'<details class="pronto-admin-panel"><summary>Já existe uma conta? Associação avançada</summary>'+associate+'</details>'+list+'</div>'+help;
  }
  return '';
 }

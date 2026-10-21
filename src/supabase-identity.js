@@ -103,46 +103,37 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   if(!allowed.includes(action)||!data||typeof data!=='object'||Array.isArray(data))throw Error('admin_invalid_action');
   return call('/rest/v1/rpc/pronto_admin_mutation',{method:'POST',payload:{p_action:action,p_data:data}});
  }
- async function inviteMember({email,display_name,role,business_id}){
+ async function provisionAccount({businessId,email,name,role,scope}){
   if(sessionLocked)throw Error('pin_screen_locked');
   if(!session)throw Error('supabase_unauthorized');
+  if(!uuid(businessId)||!validEmail(email)||typeof name!=='string'||name.trim().length<2||name.trim().length>120||
+   !['owner','manager','cashier','stock','finance'].includes(role)||
+   !['admin','owner'].includes(scope)||(scope==='owner'&&role==='owner'))throw Error('account_invalid');
   await ensureFresh();
-  const response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-admin-invite',{
-   method:'POST',headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,Accept:'application/json','Content-Type':'application/json'},
-   cache:'no-store',credentials:'omit',redirect:'error',
-   body:JSON.stringify({email,display_name,role,business_id})
-  });
-  let result;try{result=await response.json();}catch{throw Error('invitation_unavailable');}
-  if(!response.ok){
-   const allowed=['account_exists_use_existing_user','invitation_created_check_auth_dashboard','invited_but_membership_failed','admin_required','invalid_input'];
-   if(response.status===401||response.status===403){session=null;throw Error('supabase_unauthorized');}
-   if(allowed.includes(result?.error))throw Error(result.error+(result.user_id?':'+result.user_id:''));
-   throw Error('invitation_unavailable');
-  }
-  return result;
- }
- async function inviteShopStaff({businessId,email,name,role}){
-  if(sessionLocked)throw Error('pin_screen_locked');
-  if(!session)throw Error('supabase_unauthorized');
-  if(!uuid(businessId)||!validEmail(email)||typeof name!=='string'||name.trim().length<2||
-   !['manager','cashier','stock','finance'].includes(role))throw Error('staff_invite_invalid');
-  await ensureFresh();
-  const response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-owner-invite',{
-   method:'POST',
-   headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,
+  const response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-credentials',{
+   method:'POST',headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,
     Accept:'application/json','Content-Type':'application/json'},
    cache:'no-store',credentials:'omit',redirect:'error',
    body:JSON.stringify({business_id:businessId,email:email.trim().toLowerCase(),
-    display_name:name.trim(),role})
+    display_name:name.trim(),role,scope})
   });
-  let result;try{result=await response.json();}catch{throw Error('staff_invite_unavailable');}
+  let result;try{result=await response.json();}catch{throw Error('account_unavailable');}
   if(!response.ok){
-   if(response.status===401||response.status===403){session=null;throw Error('supabase_unauthorized');}
-   if(result?.error==='account_exists_use_existing_user')throw Error('staff_exists');
-   if(result?.error==='invited_but_membership_failed')throw Error('staff_invited_not_linked');
-   throw Error('staff_invite_unavailable');
+   if(response.status===401){session=null;throw Error('supabase_unauthorized');}
+   const known=['account_exists','not_authorized','invalid_input','association_failed','provision_partial_contact_support'];
+   if(known.includes(result?.error))throw Error(result.error);
+   throw Error('account_unavailable');
   }
+  if(result?.ok!==true||result.email!==email.trim().toLowerCase()||
+   typeof result.temporary_password!=='string'||result.temporary_password.length<16||
+   typeof result.account_code!=='string'||!uuid(result.user_id))throw Error('account_response_invalid');
   return result;
+ }
+ async function provisionMember({email,display_name,role,business_id}){
+  return provisionAccount({businessId:business_id,email,name:display_name,role,scope:'admin'});
+ }
+ async function provisionShopStaff({businessId,email,name,role}){
+  return provisionAccount({businessId,email,name,role,scope:'owner'});
  }
  async function merchantBranches(businessId){
   if(!uuid(businessId))throw Error('shop_scope');
@@ -431,5 +422,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   }
   session=null;sessionLocked=false;
  }
- return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,inviteMember,inviteShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,provisionMember,provisionShopStaff,merchantBranches,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

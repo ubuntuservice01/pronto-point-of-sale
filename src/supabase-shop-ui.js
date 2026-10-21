@@ -137,16 +137,16 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  }else if(view==='audit'&&grant.role==='owner'){
   body=renderAuditView({audit,search:auditSearch});
  }else if(view==='team'&&grant.role==='owner'){
-  body=section('Convidar colaboradores',
+  body=section('Criar acesso de colaborador',
    '<form data-shop-form="team_invite" class="shop-form">'+
    field('name','Nome completo','','required minlength="2" maxlength="120"')+
    field('email','Email do colaborador','','type="email" required maxlength="254"')+
    '<label>Função<select name="role" required>'+
    '<option value="cashier">Caixa / Vendedor</option><option value="manager">Gerente</option>'+
    '<option value="stock">Stock</option><option value="finance">Financeiro</option></select></label>'+
-   '<button type="submit" class="shop-submit">Enviar convite ao colaborador</button></form>'+
-   '<p class="shop-help">Cada colaborador aceita o convite, inicia sessão na sua conta e define o próprio PIN de cinco dígitos. O proprietário não recebe nem conhece esse PIN.</p>',
-   'Apenas o proprietário pode convidar funcionários; esta página não cria novos proprietários.')+
+   '<button type="submit" class="shop-submit">Criar conta e mostrar senha</button></form>'+
+   '<p class="shop-help">Após criar a conta, copie o email e a palavra-passe inicial e envie-os por mensagem privada. O colaborador define o seu próprio PIN de cinco dígitos. Não é enviado email.</p>',
+   'Apenas o proprietário pode criar acessos de funcionários; só o administrador geral pode registar novos proprietários.')+
    renderStaffManagement(staffManagement)+renderSuspendedCash(staffCash);
  }else{
   body=section('Vendas registadas nesta filial',

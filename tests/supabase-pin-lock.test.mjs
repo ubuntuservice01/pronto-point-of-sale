@@ -38,7 +38,7 @@ function mock(){
    }
   }
   if(url.endsWith('/rest/v1/rpc/pronto_merchant_action'))return response(200,{ok:true});
-  if(url.endsWith('/functions/v1/pronto-owner-invite'))return response(201,{ok:true,invited:true});
+  if(url.endsWith('/functions/v1/pronto-credentials'))return response(201,{ok:true,email:'m@example.org',temporary_password:'Long-Temporary-Password-4455',account_code:'POS-22222222',user_id:'22222222-2222-4222-8222-222222222222'});
   if(url.endsWith('/auth/v1/logout'))return response(200,{});
   return response(404,{message:'Not Found'});
  };
@@ -66,13 +66,13 @@ test('PIN is set only after Supabase Auth; locked browser client denies POS writ
  client.lockScreen();
  assert.equal(client.isScreenLocked(),true);
  await assert.rejects(()=>client.merchantAction('product_create',{business_id:B}),/pin_screen_locked/);
- await assert.rejects(()=>client.inviteShopStaff({businessId:B,email:'m@example.org',name:'Maria',role:'cashier'}),/pin_screen_locked/);
+ await assert.rejects(()=>client.provisionShopStaff({businessId:B,email:'m@example.org',name:'Maria',role:'cashier'}),/pin_screen_locked/);
  assert.equal((await client.sessionPin('verify','00000')).ok,false);
  assert.equal(client.isScreenLocked(),true);
  assert.equal((await client.sessionPin('verify','58264')).ok,true);
  assert.equal(client.isScreenLocked(),false);
  await client.merchantAction('product_create',{business_id:B});
- await client.inviteShopStaff({businessId:B,email:'m@example.org',name:'Maria',role:'cashier'});
+ await client.provisionShopStaff({businessId:B,email:'m@example.org',name:'Maria',role:'cashier'});
  const calls=fake.calls.filter(c=>c.url.endsWith('/rpc/pronto_session_pin'));
  assert.equal(calls.length,4);
  assert.ok(calls.every(c=>c.auth==='Bearer mock-jwt'));
@@ -82,12 +82,12 @@ test('PIN is set only after Supabase Auth; locked browser client denies POS writ
  await client.signOut();
  await assert.rejects(()=>client.sessionPin('status'),/supabase_unauthorized/);
 });
-test('The owner invitation cannot assign owner or elevate to Ubuntu administrator',async()=>{
+test('Only the global admin may create owners; shop owner cannot elevate staff',async()=>{
  const fake=mock(),client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:fake.fetchImpl});
  await client.signIn('seller@example.org','password');
- await assert.rejects(()=>client.inviteShopStaff({businessId:B,email:'a@example.org',name:'Ana',role:'owner'}),/staff_invite_invalid/);
- await assert.rejects(()=>client.inviteShopStaff({businessId:B,email:'a@example.org',name:'Ana',role:'super_admin'}),/staff_invite_invalid/);
- await assert.rejects(()=>client.inviteShopStaff({businessId:'bad',email:'a@example.org',name:'Ana',role:'cashier'}),/staff_invite_invalid/);
+ await assert.rejects(()=>client.provisionShopStaff({businessId:B,email:'a@example.org',name:'Ana',role:'owner'}),/account_invalid/);
+ await assert.rejects(()=>client.provisionShopStaff({businessId:B,email:'a@example.org',name:'Ana',role:'super_admin'}),/account_invalid/);
+ await assert.rejects(()=>client.provisionShopStaff({businessId:'bad',email:'a@example.org',name:'Ana',role:'cashier'}),/account_invalid/);
  const ui=readFileSync(new URL('../src/supabase-shop-ui.js',import.meta.url),'utf8');
  assert.match(ui,/data-shop-form="team_invite"/);
  assert.match(ui,/PIN de cinco dígitos/);
@@ -106,8 +106,7 @@ test('Migrations enforce hashed PIN, 5-attempt rate limit, and owner-scoped invi
  const corrected=readFileSync(new URL('../supabase/migrations/20261015170000_owner_scope_explicit_deny.sql',import.meta.url),'utf8');
  assert.match(corrected,/coalesce\(pronto_private\.member_role\(p_business\),'\'\)/);
  assert.match(corrected,/coalesce\(pronto_private\.member_role\(p_business\)='owner',false\)/);
- const edge=readFileSync(new URL('../supabase/functions/pronto-owner-invite/index.ts',import.meta.url),'utf8');
- assert.ok(edge.indexOf('pronto_owner_invite_allowed')>0);
- assert.ok(edge.indexOf('pronto_owner_invite_allowed')<edge.indexOf('/auth/v1/invite'));
- assert.match(edge,/pronto_owner_assign_staff/);
+ const legacy=readFileSync(new URL('../supabase/functions/pronto-owner-invite/index.ts',import.meta.url),'utf8');
+ assert.match(legacy,/legacy_invitation_disabled/);
+ assert.match(legacy,/status:410/);
 });
