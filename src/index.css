@@ -12,3 +12,21 @@
 .pronto-credentials-dialog input{display:block;margin-top:6px;width:100%;box-sizing:border-box;padding:12px;border:1px solid #ced8e0;border-radius:10px;color:#20303b;background:#f8fafb;font:inherit}
 .pronto-credentials-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .pronto-credentials-actions button{flex:1;min-height:44px}
+
+/* Cash control: reuse the existing Pronto POS palette, with meaningful statuses. */
+.cash-control{display:grid;gap:14px;max-width:1040px}
+.cash-session-card{border:1px solid #dfe9e7;border-radius:13px;padding:16px;margin:14px 0;background:#fff}
+.cash-session-heading{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.cash-state{display:inline-flex;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:750}
+.cash-open{color:#087f68;background:#e6f8ef}
+.cash-blocked{color:#a71b30;background:#ffebee}
+.cash-pending{color:#a55a06;background:#fff1d8}
+.cash-closed{color:#5a6774;background:#eef1f5}
+.cash-short{color:#c31430;font-weight:850;background:#ffecf0;border-left:4px solid #c31430;padding:10px;border-radius:5px}
+.cash-extra{color:#ad6000;font-weight:850;background:#fff1da;border-left:4px solid #ee941b;padding:10px;border-radius:5px}
+.cash-match{color:#087f68;font-weight:850;background:#e5f7ed;border-left:4px solid #087f68;padding:10px;border-radius:5px}
+.cash-warning{color:#ab6010;background:#fff2dc;border-left:4px solid #e99421;padding:10px;border-radius:5px}
+.cash-session-card form{border-top:1px solid #edf0f1;margin-top:12px;padding-top:12px}
+.cash-session-card [data-shop-form="cash_remote"] button{background:#a91d35;color:#fff;border-color:#a91d35}
+.cash-control button,.cash-session-card button{min-height:48px;touch-action:manipulation}
+@media(max-width:680px){.cash-session-card{padding:12px}.cash-control input,.cash-control select,.cash-control button{font-size:16px;min-height:48px}}
