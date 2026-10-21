@@ -336,7 +336,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch } 
   return call('/rest/v1/rpc/pronto_import_products_csv',{method:'POST',payload:{p_data:data}});
  }
  async function cashControl(action,data){
-  if(!['settings','configure','snapshot','open','request_close','close','block','unblock','admin_close'].includes(action)||
+  if(!['settings','configure','snapshot','open','request_close','close','block','unblock','admin_close','note_difference'].includes(action)||
    !data||typeof data!=='object'||Array.isArray(data)||!uuid(data.business_id)||!uuid(data.branch_id))
    throw Error('cash_action_invalid');
   return call('/rest/v1/rpc/pronto_cash_control',{method:'POST',payload:{p_action:action,p_data:data}});
