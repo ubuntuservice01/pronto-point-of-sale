@@ -1,4 +1,5 @@
 import {normalizeCashControl,ownOpenSession,cashSessionsCSV} from './supabase-cash-ui.js';
+import {showConfirmModal} from './ui/pronto-modal.js';
 import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
@@ -12,6 +13,11 @@ const maputoDate=(time=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'A
 import {makeShopDraft,saveShopDraft,restoreShopDraft,hasShopDraft,clearShopDraft} from './supabase-shop-draft.js';
 import {parseProductCSV} from './product-import.js';
 
+const confirmShop=message=>{
+ const danger=/suspender|bloquear|desactiv|cancelar|eliminar|apagar|descartar|retirada|encerramento excepcional|fechar sem conferência/i.test(String(message));
+ return showConfirmModal({title:danger?'Confirmar intervenção':'Confirmar operação',message:String(message),
+  danger,confirmText:danger?'Sim, continuar':'Confirmar',cancelText:'Voltar'});
+};
 // Explicit, isolated PostgreSQL checkout pilot. The existing SQLite POS is untouched.
 export async function mountSupabaseMerchantPilot({root,client,account,onLogout}){
  if(!account?.grants?.length||account.ubuntuAdmin)throw Error('shop_access_required');
@@ -213,7 +219,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    showMessage('Operação rejeitada ou sem confirmação. Verifique os dados antes de tentar novamente. ('+String(e.message||'erro')+')',true);
   }finally{busy=false;}
  };
- root.addEventListener('click',event=>{
+ root.addEventListener('click',async event=>{
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
@@ -230,7 +236,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const employee=staffManagement?.staff.find(p=>p.id===target);
    if(!employee||!['auto','allow','block'].includes(mode))return;
    const confirmation={block:'Bloquear imediatamente',allow:'Autorizar imediatamente',auto:'Retomar o horário automático'}[mode];
-   if(!confirm(confirmation+' para '+employee.name+'?'))return;
+   if(!await confirmShop(confirmation+' para '+employee.name+'?'))return;
    busy=true;showMessage('A actualizar acesso remoto no servidor…');
    void(async()=>{
     try{
@@ -246,7 +252,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const mode=el.hasAttribute('data-staff-suspend')?'suspend':'reactivate';
    const target=mode==='suspend'?el.dataset.staffSuspend:el.dataset.staffReactivate;
    const user=staffManagement?.staff.find(p=>p.id===target);
-   if(!user||!confirm((mode==='suspend'?'Suspender':'Reactivar')+' a conta de '+user.name+
+   if(!user||!await confirmShop((mode==='suspend'?'Suspender':'Reactivar')+' a conta de '+user.name+
      '? As permissões no servidor mudam imediatamente.'))return;
    busy=true;showMessage('A actualizar permissões do colaborador…');
    void(async()=>{
@@ -271,7 +277,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return;
   }
   if(el.hasAttribute('data-transfer-clear')){
-   if(confirm('Já verificou no histórico se esta expedição foi registada?')){
+   if(await confirmShop('Já verificou no histórico se esta expedição foi registada?')){
     pendingTransfer=null;render();
     showMessage('Referência local descartada. A operação já registada no servidor permanece.');
    }
@@ -281,7 +287,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!['owner','manager','stock'].includes(grant.role)||disconnected())return showMessage('Esta acção exige ligação e permissão de gestão de stock.',true);
    const mode=el.hasAttribute('data-transfer-receive')?'receive':'cancel';
    const transferId=mode==='receive'?el.dataset.transferReceive:el.dataset.transferCancel;
-   if(!confirm(mode==='receive'?'Confirma a recepção física dos artigos nesta filial?':'Confirma o cancelamento antes da recepção e a reposição dos lotes na origem?'))return;
+   if(!await confirmShop(mode==='receive'?'Confirma a recepção física dos artigos nesta filial?':'Confirma o cancelamento antes da recepção e a reposição dos lotes na origem?'))return;
    busy=true;showMessage('A actualizar o movimento no servidor…');
    void(async()=>{
     try{
@@ -303,7 +309,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return;
   }
   if(el.hasAttribute('data-finance-discard')){
-   if(confirm('Já verificou se a operação foi registada no Supabase? Descartar uma tentativa NÃO reverte lançamentos existentes.')){pendingFinance=null;showMessage('Referência local descartada. Confirme o histórico antes de repetir.');}
+   if(await confirmShop('Já verificou se a operação foi registada no Supabase? Descartar uma tentativa NÃO reverte lançamentos existentes.')){pendingFinance=null;showMessage('Referência local descartada. Confirme o histórico antes de repetir.');}
    return;
   }
   if(el.hasAttribute('data-credit-customer')){selectedCustomerId=el.dataset.creditCustomer;render();return;}
@@ -325,7 +331,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.hasAttribute('data-branch-toggle')){
    if(grant.role!=='owner'||disconnected()||pending)return;
    const mode=el.dataset.branchActive==='true'?'deactivate':'reactivate';
-   if(!confirm('Confirmar '+(mode==='deactivate'?'desactivação':'reactivação')+' desta filial?'))return;
+   if(!await confirmShop('Confirmar '+(mode==='deactivate'?'desactivação':'reactivação')+' desta filial?'))return;
    busy=true;void(async()=>{try{
     await client.manageBranch(mode,{business_id:grant.id,branch_id:el.dataset.branchToggle});
     branches=await client.merchantBranches(grant.id);
@@ -377,13 +383,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.hasAttribute('data-shop-hold-resume')){
    if(pending)return void lockPending();
    const held=heldSales.find(x=>x.id===el.dataset.shopHoldResume);if(!held)return;
-   if(cart.length&&!confirm('Substituir o carrinho actual por esta venda em espera?'))return;
+   if(cart.length&&!await confirmShop('Substituir o carrinho actual por esta venda em espera?'))return;
    cart=held.cart.map(x=>({productId:x.productId,quantity:x.quantity}));
    selectedCustomerId=held.customerId||'';resumedHoldId=held.id;method='cash';discount='0';view='sell';render();
    showMessage('Venda retomada. O stock e os preços serão verificados novamente ao concluir.');return;
   }
   if(el.hasAttribute('data-shop-hold-delete')){
-   if(!confirm('Eliminar este carrinho em espera? Não existe venda concluída a cancelar.'))return;
+   if(!await confirmShop('Eliminar este carrinho em espera? Não existe venda concluída a cancelar.'))return;
    busy=true;void(async()=>{
     try{await client.holdAction('hold_delete',cashData({hold_id:el.dataset.shopHoldDelete}));
      await refresh();showMessage('Carrinho em espera eliminado.');}
@@ -393,7 +399,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
 
   if(el.hasAttribute('data-shop-draft-clear')){
-   if(confirm('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas no Supabase.')){
+   if(await confirmShop('Apagar o rascunho encriptado deste dispositivo? Isto não cancela vendas já registadas no Supabase.')){
     clearShopDraft(localStorage,scope());render();showMessage('Rascunho local apagado.');
    }return;
   }
@@ -407,7 +413,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
   if(el.hasAttribute('data-shop-discard')){
-   if(confirm('Verificou no histórico e no caixa se esta venda foi ou não concluída? Descartar o pedido pendente não anula uma venda já gravada.')){
+   if(await confirmShop('Verificou no histórico e no caixa se esta venda foi ou não concluída? Descartar o pedido pendente não anula uma venda já gravada.')){
     pending=null;showMessage('Pedido pendente descartado. Confira o histórico antes de uma nova venda.');render();
    }
   }
@@ -555,7 +561,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      if(!['block','unblock','admin_close'].includes(command)||payload.reason.length<12)
       return showMessage('Escolha a operação e indique um motivo detalhado.',true);
     }
-    if(!confirm(action==='cash_configure'?'Guardar as regras de caixa para esta filial?':
+    if(!await confirmShop(action==='cash_configure'?'Guardar as regras de caixa para esta filial?':
       action==='cash_request_close'?'Solicitar fecho e impedir novas vendas nesta sessão?':
       action==='cash_note_difference'?'Guardar esta justificação no histórico, sem alterar a contagem?':
       command==='admin_close'?'Fechar sem conferência? O resultado não poderá ser apresentado como dinheiro contado.':
@@ -580,7 +586,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    try{counted=toCents(String(fields.get('counted_cash')||''));}
    catch{return showMessage('Introduza o montante contado em MT.',true);}
    if(counted<0)return showMessage('O dinheiro contado não pode ser negativo.',true);
-   if(!confirm('Confirma a contagem física e encerramento excepcional deste caixa? Não será possível reabrir esta sessão.'))return;
+   if(!await confirmShop('Confirma a contagem física e encerramento excepcional deste caixa? Não será possível reabrir esta sessão.'))return;
    busy=true;showMessage('A reconciliar caixa no Supabase…');
    try{
     const result=await client.ownerCloseSuspendedCash({business_id:grant.id,session_id:target,
@@ -622,7 +628,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     weekdays.some(day=>!Number.isInteger(day)||day<0||day>6))
     return showMessage('Revise o horário e seleccione pelo menos um dia.',true);
    const enabled=fields.has('schedule_enabled');
-   if(!confirm('Guardar horário para '+employee.name+'? Os horários seguem Africa/Maputo e podem bloquear uma sessão já aberta.'))return;
+   if(!await confirmShop('Guardar horário para '+employee.name+'? Os horários seguem Africa/Maputo e podem bloquear uma sessão já aberta.'))return;
    busy=true;showMessage('A guardar horário no servidor…');
    try{
     await client.ownerStaffAccessAction('schedule',{business_id:grant.id,user_id:id,
@@ -638,7 +644,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const employee=staffManagement?.staff.find(x=>x.id===id);
    if(!employee||!['manager','cashier','stock','finance'].includes(role))
     return showMessage('Funcionário ou função inválidos.',true);
-   if(!confirm('Alterar a função de '+employee.name+' para '+role+'?'))return;
+   if(!await confirmShop('Alterar a função de '+employee.name+' para '+role+'?'))return;
    busy=true;showMessage('A actualizar a função no Supabase…');
    try{
     await client.ownerStaffAction('role_change',{business_id:grant.id,user_id:id,role});
@@ -806,7 +812,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const pass=String(new FormData(form).get('offline_passphrase')||'');
    const keys=offlineCashKeys(localStorage,scope());
    if(!keys.length)return showMessage('Não há movimentos offline pendentes neste dispositivo.');
-   if(!confirm('Sincronizar '+keys.length+' movimento(s)? Cada lançamento mantém a sua referência original.'))return;
+   if(!await confirmShop('Sincronizar '+keys.length+' movimento(s)? Cada lançamento mantém a sua referência original.'))return;
    busy=true;showMessage('A verificar acesso e sincronizar movimentos…');
    let done=0;
    try{
@@ -995,13 +1001,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    try{
     if(action==='draft_save'){
      if(!cart.length&&!pending)throw Error('draft_payload');
-     if(hasShopDraft(localStorage,scope())&&!confirm('Já existe um rascunho nesta loja e neste dispositivo. Deseja substituí-lo?'))return;
+     if(hasShopDraft(localStorage,scope())&&!await confirmShop('Já existe um rascunho nesta loja e neste dispositivo. Deseja substituí-lo?'))return;
      const draft=makeShopDraft({scope:scope(),cart,method,discount,pending});
      await saveShopDraft(localStorage,scope(),password,draft);
      render();showMessage('Rascunho encriptado guardado neste dispositivo. Não foi registada nenhuma venda.');
     }else{
      if(pending)throw Error('pending_checkout');
-     if(cart.length&&!confirm('O carrinho actual será substituído pelo rascunho. Continuar?'))return;
+     if(cart.length&&!await confirmShop('O carrinho actual será substituído pelo rascunho. Continuar?'))return;
      const restored=await restoreShopDraft(localStorage,scope(),password);
      cart=restored.cart.map(item=>({...item}));
      method=restored.method;discount=restored.discount;pending=restored.pending;
@@ -1031,13 +1037,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    else if(action==='cash_open'){
     payload={device_id:String(f.get('device_id')||'').trim(),
      opening_cash_cents:toCents(f.get('opening_cash'))};
-    if(!confirm('Abrir o caixa com fundo inicial de '+(payload.opening_cash_cents/100).toFixed(2)+' MT?'))return;
+    if(!await confirmShop('Abrir o caixa com fundo inicial de '+(payload.opening_cash_cents/100).toFixed(2)+' MT?'))return;
    }
    else if(action==='cash_close'){
     const target=cashState?.sessions.find(s=>s.operatorId===account.userId&&s.status==='pending')||session();
     if(!target)return showMessage('Solicite primeiro o fecho da sessão.',true);
     payload={session_id:target.id,counted_cash_cents:toCents(f.get('counted_cash'))};
-    if(!confirm('Confirmar contagem de '+(payload.counted_cash_cents/100).toFixed(2)+' MT? Não poderá alterá-la depois.'))return;
+    if(!await confirmShop('Confirmar contagem de '+(payload.counted_cash_cents/100).toFixed(2)+' MT? Não poderá alterá-la depois.'))return;
    }
    else return;
    await execute(action,payload);
