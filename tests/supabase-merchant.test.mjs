@@ -88,12 +88,13 @@ test('Authorized merchant can list branches, fetch a branch-scoped snapshot and 
  await assert.rejects(()=>client.merchantAction('delete_all',{business_id:ID[0]}),/shop_action_invalid/);
  assert.ok(fake.calls.every(c=>c.cache==='no-store'));
 });
-test('Denied merchant RPC immediately invalidates the session',async()=>{
+test('Forbidden merchant RPC denies the operation without erasing the login',async()=>{
  const fake=fakeSupabase(false);
  const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:fake.fetchImpl});
  await client.signIn('caixa@example.org','pw');
- await assert.rejects(()=>client.merchantSnapshot(ID[0],ID[1]),/supabase_unauthorized/);
- await assert.rejects(()=>client.merchantAction('sale_complete',{}),/supabase_unauthorized/);
+ await assert.rejects(()=>client.merchantSnapshot(ID[0],ID[1]),/supabase_forbidden/);
+ await assert.rejects(()=>client.merchantAction('sale_complete',{}),/supabase_forbidden/);
+ assert.equal((await client.account()).userId,ID[0]);
 });
 test('Sales page has persistent fixed payment buttons, split fields, branch selector and no fictitious merchandise',()=>{
  const snapshot=normalizeMerchantSnapshot(stock);
