@@ -1,3 +1,4 @@
+import {renderCashManagement,ownOpenSession} from './supabase-cash-ui.js';
 import {esc,MONEY,UNIT_OPTIONS,PAYMENT_METHODS,cartTotal,toCents} from './supabase-shop-core.js';
 import {renderCreditView,creditCheckoutFields} from './supabase-credit-ui.js';
 import {renderFinanceView} from './supabase-finance-ui.js';
@@ -25,7 +26,7 @@ const cartRow=(item,products)=>{
   '<input type="number" data-cart-qty="'+esc(p.id)+'" value="'+esc(item.quantity)+'" min="0.001" step="0.001" aria-label="Quantidade de '+esc(p.name)+'"><button type="button" data-qty="1" data-id="'+esc(p.id)+'" aria-label="Aumentar quantidade">+</button>'+
   '<button type="button" class="shop-clear-row" data-remove="'+esc(p.id)+'" aria-label="Remover produto">×</button></div></div>';
 };
-export function shopPaymentPanel({method,cart,products,discount='0',session,role='owner',credit=null,selectedCustomerId='',creditDue=''}){
+export function shopPaymentPanel({method,cart,products,discount='0',session,role='owner',credit=null,selectedCustomerId='',creditDue='',allowNoSession=false}){
  let subtotal=0,total=0,err='';
  try{({subtotal,total}=cartTotal(cart,products,toCents(discount)))}catch(e){err=e.message;}
  const methods=['cash','mpesa','emola','transfer','mixed'];
@@ -48,12 +49,12 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   (method!=='credit'?'<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>':'')+
   '<p class="shop-help">Os pagamentos M-Pesa, e-Mola e transferência não são verificados automaticamente pela operadora.</p>'+
   (['owner','manager','cashier'].includes(role)?'<button type="button" class="shop-credit-toggle" data-shop-credit aria-pressed="'+(method==='credit')+'">'+(method==='credit'?'Voltar a pagamento imediato':'Vender a crédito')+'</button>':'')+
-  '<button class="shop-submit" type="submit" '+(!session||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
+  '<button class="shop-submit" type="submit" '+((!session&&!allowNoSession)||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0}){
  const products=data?.products||[];
- const session=data?.sessions.find(s=>s.operatorId===account.userId)||null;
+ const session=cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
  const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['audit','Auditoria'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
  const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'>'+name+'</button>').join('');
@@ -64,7 +65,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
   body='<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><label class="shop-search"><span>Pesquisar por nome ou código</span>'+
    '<input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Pesquisar ou ler o código"></label>'+
    '<div id="shop-product-results" class="shop-products">'+(prodCards||'<p class="shop-help">Não há produtos encontrados.</p>')+'</div></section>'+
-   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue})+'</div>'+   (cart.length?'<div class="shop-hold-actions"><button type="button" data-shop-hold>Suspender esta venda</button><small>A venda em espera não reserva stock nem confirma pagamentos.</small></div>':'');
+   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue,allowNoSession:cashState?.policy.openingRequired===false})+'</div>'+   (cart.length?'<div class="shop-hold-actions"><button type="button" data-shop-hold>Suspender esta venda</button><small>A venda em espera não reserva stock nem confirma pagamentos.</small></div>':'');
   if(pending)body+='<div class="shop-pending"><strong>Venda com confirmação pendente</strong><p>Não crie outra venda antes de verificar se esta foi concluída. Pode repetir o mesmo pedido sem duplicar o registo ou descartá-lo após conferência.</p><button type="button" data-shop-retry>Repetir o mesmo pedido</button><button type="button" data-shop-discard>Descartar pedido pendente</button></div>';
  }else if(view==='customers'||view==='debts'){
   body=renderCreditView({view,credit,role:grant.role,query:customerQuery,filter:debtFilter,session,selectedCustomerId});
@@ -121,19 +122,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    field('unit_cost','Custo por unidade (MT, opcional)','','type="number" min="0" step="0.01"')+
    '<button class="shop-submit" type="submit">Registar entrada de stock</button></form>','Cria um lote e um movimento de entrada, sem alterar vendas anteriores.')+'</div>';
  }else if(view==='cash'){
-  body=section('Sessão de caixa',
-   session?'<p>Caixa aberto em '+esc(safeDate(session.openedAt))+'. Fundo inicial: <strong>'+MONEY(session.openingCash)+'</strong>.</p>'+
-   '<form data-shop-form="cash_close" class="shop-form">'+field('counted_cash','Dinheiro contado no caixa (MT)','','required type="number" min="0" step="0.01"')+
-   '<button class="shop-submit" type="submit">Fechar e reconciliar caixa</button></form>'+ 
-   '<form data-shop-form="cash_move" class="shop-form"><h4>Entrada / retirada de dinheiro</h4><label>Movimento<select name="direction"><option value="in">Entrada</option><option value="out">Retirada</option></select></label>'+
-   field('amount','Valor (MT)','','type="number" min="0.01" step="0.01" required')+
-   field('reason','Motivo','','minlength="3" maxlength="180" required')+
-   '<button class="shop-submit" type="submit">Registar movimento no caixa</button></form>':
-   '<p>Não existe uma sessão de caixa aberta nesta filial para esta conta.</p>'+
-   '<form data-shop-form="cash_open" class="shop-form">'+field('device_id','Identificação do terminal','CAIXA-01','required minlength="2" maxlength="100"')+
-   field('opening_cash','Fundo inicial (MT)','0','required type="number" min="0" step="0.01"')+
-   '<button class="shop-submit" type="submit">Abrir caixa</button></form>',
-   'Cada operador abre e fecha a sua própria sessão. O fecho compara o dinheiro contado com o dinheiro esperado.');
+  body=renderCashManagement({cash:cashState,account,role:grant.role,pendingOffline});
  }else if(view==='audit'&&grant.role==='owner'){
   body=renderAuditView({audit,search:auditSearch});
  }else if(view==='team'&&grant.role==='owner'){
@@ -155,12 +144,12 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
     '<p class="shop-help">Ainda não existem vendas registadas no Supabase.</p>')+'</div>',
    'Apresentação limitada às últimas 20 vendas autorizadas. Não substitui os relatórios fiscais.');
  }
- return '<div class="shop-shell"><header class="shop-header"><div class="shop-brand"><img src="/icon.svg" alt=""><span><strong>Pronto POS</strong><small>Operação Supabase · Piloto</small></span></div>'+
+ return '<div class="shop-shell"><header class="shop-header"><div class="shop-brand"><img src="/icon.svg" alt=""><span><strong>Pronto POS</strong><small>O seu negócio na palma da mão</small></span></div>'+
  '<div class="shop-account"><strong>'+esc(grant.name)+'</strong><small>'+esc(account.email)+' · '+esc(grant.role)+'</small></div>'+
  '<button type="button" data-shop-logout class="shop-logout">Sair</button></header>'+
  '<div class="shop-toolbar"><label>Empresa<select id="shop-business-select">'+grants.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===grant.id?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
  '<label>Filial<select id="shop-branch-select">'+branches.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===branchId?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
- '<button type="button" data-shop-refresh>Actualizar dados</button><span class="shop-cash-indicator">'+(session?'Caixa aberto':'Caixa fechado')+'</span></div>'+
+ '<button type="button" data-shop-refresh>Actualizar dados</button><span class="shop-cash-indicator">'+(session?'Caixa aberto':cashState?.policy.openingRequired===false?'Abertura opcional':'Caixa fechado')+'</span></div>'+
  '<nav class="shop-nav">'+menu+'</nav>'+
  '<main class="shop-main"><div id="shop-message" role="status" aria-live="polite">'+esc(feedback||'')+'</div>'+
  '<h2>'+esc(branch?.name||'Loja')+'</h2>'+body+
