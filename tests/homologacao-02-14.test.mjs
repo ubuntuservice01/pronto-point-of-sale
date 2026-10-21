@@ -67,6 +67,7 @@ test('H06 — devolução: limites, reembolso manual, sem nota fiscal simulada',
  assert.match(view,/max="3"/);
  assert.match(view,/name="confirmed"/);
  assert.match(view,/nota de crédito fiscal/);
+ assert.match(view,/Artigo em condições de voltar ao stock/);
  assert.match(file('src/supabase-shop-dashboard.js'),/client\.returnAction/);
 });
 test('H07 — stock: rejects oversell, repeated product and expired batch path exists',()=>{
@@ -109,6 +110,9 @@ test('H11 — PWA: only static GET assets fall back to cache, versioned offline 
  assert.match(sw,/pathname\.startsWith\('\/api\/'\)/);
  assert.match(manifest,/"display"\s*:\s*"standalone"/);
  assert.match(sw,/shop-sidebar\.css/);
+ const merchantUI=file('src/supabase-shop-ui.js');
+ assert.doesNotMatch(merchantUI,/Piloto PostgreSQL/);
+ assert.match(merchantUI,/Menos complicações, mais negócio/);
 });
 test('H12 — printing: cash change and escaped non-fiscal receipt',()=>{
  const receipt=confirmedSaleReceipt({request:request(),result:{sale_id:S,total_cents:85000,change_cents:15000},
