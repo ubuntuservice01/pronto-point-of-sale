@@ -40,3 +40,83 @@
  .shop-layout .shop-main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 }
 @media(prefers-reduced-motion:reduce){.shop-layout .shop-sidebar,.shop-layout .shop-sidebar-shade{transition:none}}
+
+
+/* Distinct, accessible vector icons for every merchant navigation item. */
+.shop-layout .shop-nav button{gap:12px;min-height:54px;padding:9px 10px;font-size:13.5px}
+.shop-layout .shop-nav-icon{
+ --nav-ink:#087f68;--nav-surface:#e7f6ef;
+ display:inline-grid;place-items:center;flex:none;width:38px;height:38px;border-radius:11px;
+ background:var(--nav-surface);color:var(--nav-ink);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nav-ink) 13%,transparent);
+}
+.shop-layout .shop-nav-icon svg{display:block;width:25px;height:25px;stroke-width:1.85}
+.shop-layout .shop-nav button:hover .shop-nav-icon{transform:scale(1.04)}
+.shop-layout .shop-nav button[aria-current=page] .shop-nav-icon{box-shadow:inset 0 0 0 1.5px var(--nav-ink)}
+.shop-layout .shop-nav button[data-shop-view="sell"] .shop-nav-icon{--nav-ink:#087f68;--nav-surface:#e4f8ef}
+.shop-layout .shop-nav button[data-shop-view="products"] .shop-nav-icon{--nav-ink:#4f46e5;--nav-surface:#edeaff}
+.shop-layout .shop-nav button[data-shop-view="cash"] .shop-nav-icon{--nav-ink:#bb7004;--nav-surface:#fff2ce}
+.shop-layout .shop-nav button[data-shop-view="history"] .shop-nav-icon{--nav-ink:#186db5;--nav-surface:#e5f2ff}
+.shop-layout .shop-nav button[data-shop-view="customers"] .shop-nav-icon{--nav-ink:#8449c7;--nav-surface:#f2e9ff}
+.shop-layout .shop-nav button[data-shop-view="debts"] .shop-nav-icon{--nav-ink:#b7285c;--nav-surface:#ffe9f0}
+.shop-layout .shop-nav button[data-shop-view="suppliers"] .shop-nav-icon{--nav-ink:#008b8b;--nav-surface:#dff8f7}
+.shop-layout .shop-nav button[data-shop-view="purchases"] .shop-nav-icon{--nav-ink:#c66b0b;--nav-surface:#fff0df}
+.shop-layout .shop-nav button[data-shop-view="expenses"] .shop-nav-icon{--nav-ink:#c63838;--nav-surface:#ffeaea}
+.shop-layout .shop-nav button[data-shop-view="held"] .shop-nav-icon{--nav-ink:#7856aa;--nav-surface:#eee8f8}
+.shop-layout .shop-nav button[data-shop-view="returns"] .shop-nav-icon{--nav-ink:#15806a;--nav-surface:#e0f4ed}
+.shop-layout .shop-nav button[data-shop-view="inventory"] .shop-nav-icon{--nav-ink:#087c9e;--nav-surface:#def4fc}
+.shop-layout .shop-nav button[data-shop-view="alerts"] .shop-nav-icon{--nav-ink:#d22d3f;--nav-surface:#ffe8eb}
+.shop-layout .shop-nav button[data-shop-view="shopping_list"] .shop-nav-icon{--nav-ink:#7e8220;--nav-surface:#f3f5d9}
+.shop-layout .shop-nav button[data-shop-view="reports"] .shop-nav-icon{--nav-ink:#2664bb;--nav-surface:#e6efff}
+.shop-layout .shop-nav button[data-shop-view="team"] .shop-nav-icon{--nav-ink:#8754ad;--nav-surface:#f5eaff}
+.shop-layout .shop-nav button[data-shop-view="audit"] .shop-nav-icon{--nav-ink:#52657b;--nav-surface:#eaf0f7}
+.shop-layout .shop-nav button[data-shop-view="branches"] .shop-nav-icon{--nav-ink:#4c8827;--nav-surface:#eaf7e2}
+.shop-layout .shop-nav button[data-shop-view="transfers"] .shop-nav-icon{--nav-ink:#4363c2;--nav-surface:#e9eeff}
+.shop-layout.shop-menu-collapsed .shop-nav button{padding:10px 4px}
+.shop-layout .shop-held-menu-count{margin-left:auto}
+.shop-layout .shop-alert-count{
+ display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:23px;height:23px;
+ margin-left:auto;padding:0 5px;border-radius:999px;background:#dc2845;color:#fff;
+ font-size:11px;line-height:1;font-weight:850;font-variant-numeric:tabular-nums;box-shadow:0 2px 6px #c51b3c33;
+}
+.shop-layout .shop-alert-count[hidden]{display:none!important}
+.shop-layout.shop-menu-collapsed .shop-nav .shop-alert-count{position:absolute;right:1px;top:0;min-width:19px;height:19px;font-size:10px}
+.shop-layout.shop-menu-collapsed .shop-nav button{position:relative}
+.shop-layout .shop-header{position:relative;z-index:20}
+.shop-layout .shop-header-actions{display:flex;align-items:center;gap:12px;flex:none;margin-left:auto}
+.shop-layout .shop-notification-area{position:relative}
+.shop-layout .shop-notification-trigger{
+ position:relative;display:inline-grid;place-items:center;min-width:46px;height:46px;
+ border:1px solid #d3e6dd;border-radius:13px;background:#f8fbf9;color:#087f68;
+}
+.shop-layout .shop-notification-trigger:hover,.shop-layout .shop-notification-trigger[aria-expanded=true]{background:#e8f7ef;border-color:#9fd9bb}
+.shop-layout .shop-notification-trigger svg{width:26px;height:26px;stroke-width:2}
+.shop-layout .shop-notification-trigger .shop-alert-count{position:absolute;top:-8px;right:-8px;margin:0;min-width:22px;height:22px;font-size:11px;border:2px solid white}
+.shop-layout .shop-notification-popover{
+ position:absolute;right:0;top:calc(100% + 12px);width:min(370px,calc(100vw - 28px));max-height:min(66vh,490px);
+ overflow:auto;border:1px solid #dce9e3;border-radius:17px;background:#fff;color:#213b32;
+ box-shadow:0 20px 54px #0d352b35;z-index:50;padding:15px;
+}
+.shop-layout .shop-notification-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.shop-layout .shop-notification-heading strong{font-size:16px}
+.shop-layout .shop-notification-heading small{font-size:12px;color:#a32e42;font-weight:800}
+.shop-layout .shop-notification-list{list-style:none;padding:0;margin:0;display:grid;gap:9px}
+.shop-layout .shop-notification-item{display:grid;gap:4px;padding:11px 12px;border-radius:11px;background:#f7faf8;border-left:3px solid #df8b24}
+.shop-layout .shop-notification-item strong{font-size:13px;color:#233d33}
+.shop-layout .shop-notification-item span{font-size:12px;line-height:1.35;color:#556d63;overflow-wrap:anywhere}
+.shop-layout .shop-notification-expired{border-left-color:#c81e42;background:#fff2f2}
+.shop-layout .shop-notification-low{border-left-color:#de8d1b;background:#fff8e9}
+.shop-layout .shop-notification-expiring{border-left-color:#3b75c5;background:#edf5ff}
+.shop-layout .shop-notification-empty{font-size:13px;line-height:1.5;color:#526b62;margin:9px 0 14px}
+.shop-layout .shop-notification-all{display:block;width:100%;margin-top:12px;padding:11px 12px;background:#e6f5ec;border:1px solid #acd7bf;border-radius:10px;color:#087b61;font-weight:800}
+.shop-layout .shop-mobile-bottom .shop-bottom-icon{display:inline-grid;place-items:center;width:29px;height:29px}
+.shop-layout .shop-mobile-bottom .shop-bottom-icon svg{width:25px;height:25px;stroke-width:1.9}
+@media(max-width:830px){
+ .shop-layout.shop-menu-collapsed .shop-nav button{padding:9px 10px;justify-content:flex-start}
+ .shop-layout.shop-menu-collapsed .shop-nav .shop-alert-count{position:static;min-width:23px;height:23px;font-size:11px}
+}
+@media(max-width:680px){
+ .shop-layout .shop-header-actions{order:2;margin-left:auto;gap:8px}
+ .shop-layout .shop-notification-trigger{min-width:43px;height:43px}
+ .shop-layout .shop-notification-popover{right:-86px;width:min(350px,calc(100vw - 28px))}
+ .shop-layout .shop-account{order:3;width:100%}
+}

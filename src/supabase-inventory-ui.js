@@ -26,10 +26,23 @@ export function inventoryAlerts(inventory,days=30){
  const dateLimit=new Date(d.getTime()+Math.max(1,Math.min(365,days))*86400000).toISOString().slice(0,10);
  return {
   low:inventory.suggestions.filter(x=>x.low),
-  expiring:inventory.batches.filter(x=>x.expiry&&x.expiry>=inventory.today&&x.expiry<=dateLimit),
-  expired:inventory.batches.filter(x=>x.expiry&&x.expiry<inventory.today),
+  expiring:inventory.batches.filter(x=>x.qty>0&&x.expiry&&x.expiry>=inventory.today&&x.expiry<=dateLimit),
+  expired:inventory.batches.filter(x=>x.qty>0&&x.expiry&&x.expiry<inventory.today),
   suggestions:inventory.suggestions.filter(x=>x.suggested>0)
  };
+}
+// One notification per actionable low-stock product or expiring/expired stock lot.
+// The numbers are derived only from the authenticated, branch-scoped inventory snapshot.
+export function inventoryNotificationSummary(inventory,days=30){
+ const alerts=inventoryAlerts(inventory,days);
+ const products=inventory?.products||[];
+ const name=productId=>products.find(p=>p.id===productId)?.name||'Produto';
+ const items=[
+  ...alerts.expired.filter(batch=>batch.qty>0).map(batch=>({kind:'expired',title:'Produto vencido',detail:name(batch.productId)+' · Validade '+batch.expiry})),
+  ...alerts.low.map(product=>({kind:'low',title:'Stock baixo',detail:product.name+' · Disponível '+qty(product.available)+' / mínimo '+qty(product.minimum)})),
+  ...alerts.expiring.filter(batch=>batch.qty>0).map(batch=>({kind:'expiring',title:'Validade próxima',detail:name(batch.productId)+' · Validade '+batch.expiry}))
+ ];
+ return {total:items.length,items,low:alerts.low.length,expiring:items.filter(item=>item.kind==='expiring').length,expired:items.filter(item=>item.kind==='expired').length};
 }
 const options=items=>items.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+esc(p.code)+'</option>').join('');
 export function renderInventoryView({view,inventory,role,selectedProductId='',alertDays=30,query=''}) {

@@ -11,7 +11,7 @@ import {checkoutCashPreview} from './supabase-checkout-change.js';
 import {getPinKPIs,setPinKPIs,clearPinKPIs} from './pin-city-ui.js';
 import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
 import {creditStatementHTML,creditWhatsAppURL} from './supabase-credit-ui.js';
-import {shoppingListCSV} from './supabase-inventory-ui.js';
+import {shoppingListCSV,inventoryNotificationSummary} from './supabase-inventory-ui.js';
 import {reportsCSV} from './supabase-reports-ui.js';
 import {auditCSV} from './supabase-audit-ui.js';
 const maputoDate=(time=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'}).format(time);
@@ -33,7 +33,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,menuOpen=false,sidebarCollapsed=false,accessBlocked=false,accessCheckBusy=false;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,accessBlocked=false,accessCheckBusy=false;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  let pinMetricCheckedAt=0,pinMetricBusy=false;
  // Read only the branch and business currently authorised for this signed-in user.
@@ -79,7 +79,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data||accessBlocked)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
    if(!path||!client.productPhotoUrl)continue;
@@ -93,6 +93,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
+   notificationsOpen=false;
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
    branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;returns=null;selectedReturnSaleId='';inventory=null;selectedProductId='';inventoryQuery='';report=null;reportScope='branch';audit=null;auditPage=0;auditSearch='';
@@ -141,7 +142,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    not_associated:'A sua conta já não está associada a esta loja.'
   }[reason]||'Não é possível confirmar o acesso. Aguarde a ligação à internet.';
   clearPinKPIs(account.userId);
-  accessBlocked=true;data=null;cart=[];pending=null;credit=null;finance=null;returns=null;inventory=null;photoCache.clear();
+  accessBlocked=true;notificationsOpen=false;data=null;cart=[];pending=null;credit=null;finance=null;returns=null;inventory=null;photoCache.clear();
   root.innerHTML='<section class="login-shell pronto-auth-test"><div class="panel login-panel">'+
    '<h2>Acesso ao Pronto POS encerrado</h2><p role="alert">'+esc(message)+'</p>'+
    '<p class="form-hint">A verificação é automática. Nenhum dado comercial fica disponível enquanto o acesso estiver bloqueado.</p>'+
@@ -172,10 +173,38 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return false;
   }finally{accessCheckBusy=false;}
  };
+ // Refresh only protected inventory data so the bell and menu counts follow real changes
+ // in the current branch. Updating badges in place preserves open forms and drafts.
+ let alertRefreshBusy=false;
+ const refreshAlertBadges=()=>{
+  const count=authorizedView('alerts')?inventoryNotificationSummary(inventory,alertDays).total:0;
+  root.querySelectorAll('[data-shop-alert-count]').forEach(badge=>{
+   badge.hidden=count===0;badge.textContent=count>99?'99+':String(count);
+   badge.setAttribute('aria-label',count+' alerta(s)');
+  });
+  root.querySelector('[data-shop-view="alerts"]')?.setAttribute('aria-label','Alertas'+(count?' ('+count+')':''));
+  root.querySelector('[data-shop-notifications]')?.setAttribute('aria-label','Notificações: '+count+' alerta(s)');
+ };
+ const refreshAlerts=async()=>{
+  if(signal.aborted||accessBlocked||busy||alertRefreshBusy||disconnected()||document.hidden||
+   client.isScreenLocked?.()||!authorizedView('alerts')||!branchId||typeof client.inventorySnapshot!=='function')return;
+  alertRefreshBusy=true;
+  const business=grant.id,branch=branchId,user=account.userId;
+  try{
+   const next=await client.inventorySnapshot(business,branch);
+   if(signal.aborted||accessBlocked||grant.id!==business||branchId!==branch||account.userId!==user||client.isScreenLocked?.())return;
+   inventory=next;
+   refreshAlertBadges();
+   if(notificationsOpen||(view==='alerts'&&!root.querySelector('input:focus,textarea:focus,select:focus')))render();
+  }catch{/* Keep the existing view; do not manufacture alerts on network failure. */}
+  finally{alertRefreshBusy=false;}
+ };
+ const alertTimer=setInterval(()=>{void refreshAlerts();},120000);
+ signal.addEventListener('abort',()=>clearInterval(alertTimer),{once:true});
  const accessTimer=setInterval(()=>{void checkStaffAccess();},5000);
  signal.addEventListener('abort',()=>clearInterval(accessTimer),{once:true});
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)void checkStaffAccess();},{signal});
- window.addEventListener('focus',()=>{void checkStaffAccess();},{signal});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)void checkStaffAccess().then(ok=>{if(ok)void refreshAlerts();});},{signal});
+ window.addEventListener('focus',()=>{void checkStaffAccess().then(ok=>{if(ok)void refreshAlerts();});},{signal});
  const loadReports=async()=>{
   if(disconnected())return showMessage('Sem internet, não é possível actualizar relatórios.',true);
   if(busy)return;
@@ -302,9 +331,29 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    showMessage('Operação rejeitada ou sem confirmação. Verifique os dados antes de tentar novamente. ('+String(e.message||'erro')+')',true);
   }finally{busy=false;}
  };
+ // Close the notification popover without re-rendering a merchant's input form.
+ root.addEventListener('pointerdown',event=>{
+  if(!notificationsOpen||event.target.closest('.shop-notification-area'))return;
+  notificationsOpen=false;root.querySelector('.shop-notification-popover')?.remove();
+  root.querySelector('[data-shop-notifications]')?.setAttribute('aria-expanded','false');
+ },{signal});
+ root.addEventListener('keydown',event=>{
+  if(event.key!=='Escape'||!notificationsOpen)return;
+  notificationsOpen=false;root.querySelector('.shop-notification-popover')?.remove();
+  const trigger=root.querySelector('[data-shop-notifications]');
+  trigger?.setAttribute('aria-expanded','false');trigger?.focus({preventScroll:true});
+ },{signal});
  root.addEventListener('click',async event=>{
   const el=event.target.closest('button');
   if(!el||busy||signal.aborted)return;
+  if(el.hasAttribute('data-shop-notifications')){
+   notificationsOpen=!notificationsOpen;render();
+   root.querySelector('[data-shop-notifications]')?.focus({preventScroll:true});return;
+  }
+  if(el.hasAttribute('data-shop-notifications-all')){
+   if(!authorizedView('alerts'))return;
+   notificationsOpen=false;view='alerts';menuOpen=false;render();return;
+  }
   if(el.hasAttribute('data-shop-menu-toggle')){menuOpen=!menuOpen;render();return;}
   if(el.hasAttribute('data-shop-sidebar-collapse')){sidebarCollapsed=!sidebarCollapsed;render();return;}
   if(el.hasAttribute('data-shop-logout'))return void leave();
@@ -496,7 +545,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.hasAttribute('data-qty'))return void add(el.dataset.id,Number(el.dataset.qty));
   if(el.hasAttribute('data-shop-held-tab')){if(!authorizedView('held'))return;view='held';render();return;}
   if(el.hasAttribute('data-shop-sell-tab')){if(!authorizedView('sell'))return;view='sell';render();return;}
-  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;menuOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
+  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;menuOpen=false;notificationsOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
   if(el.hasAttribute('data-shop-discard')){
