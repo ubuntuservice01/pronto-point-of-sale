@@ -30,6 +30,13 @@ const cartRow=(item,products)=>{
 export function shopPaymentPanel({method,cart,products,discount='0',session,role='owner',credit=null,selectedCustomerId='',creditDue='',allowNoSession=false}){
  let subtotal=0,total=0,err='';
  try{({subtotal,total}=cartTotal(cart,products,toCents(discount)))}catch(e){err=e.message;}
+ const creditCustomer=credit?.customers.find(c=>c.id===selectedCustomerId&&c.active);
+ const outstanding=creditCustomer?credit.debts.filter(d=>d.customerId===creditCustomer.id&&d.balance>0)
+  .reduce((sum,d)=>sum+d.balance,0):0;
+ const available=creditCustomer?Math.max(0,creditCustomer.creditLimit-outstanding):0;
+ const creditWarning=method==='credit'&&creditCustomer&&total>available?
+  '<p class="shop-error" role="alert" data-credit-limit-warning>Não é possível registar esta dívida: crédito disponível de '+MONEY(available)+
+  ' para uma venda de '+MONEY(total)+'. Peça ao proprietário ou gerente para actualizar o limite na opção Clientes.</p>':'';
  const methods=['cash','mpesa','emola','transfer','mixed'];
  const buttons='<div class="shop-methods" role="group" aria-label="Forma de pagamento">'+methods.map(m=>
   '<button type="button" data-shop-method="'+m+'" aria-pressed="'+(method===m)+'" class="'+(method===m?'selected':'')+'">'+methodLabels[m]+'</button>').join('')+'</div>';
@@ -54,6 +61,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   (method!=='credit'?'<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>':'')+
   '<p class="shop-help">Os pagamentos M-Pesa, e-Mola e transferência não são verificados automaticamente pela operadora.</p>'+
   (['owner','manager','cashier'].includes(role)?'<button type="button" class="shop-credit-toggle" data-shop-credit aria-pressed="'+(method==='credit')+'">'+(method==='credit'?'Voltar a pagamento imediato':'Vender a crédito')+'</button>':'')+
+  creditWarning+'<p id="shop-checkout-feedback" class="shop-error" role="alert" hidden></p>'+
   '<button class="shop-submit" type="submit" '+((!session&&!allowNoSession)||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
 }
