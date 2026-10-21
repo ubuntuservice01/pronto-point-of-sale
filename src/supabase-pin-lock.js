@@ -4,7 +4,7 @@ import {pinCityBackdrop,readPinKPIs,clearPinKPIs} from './pin-city-ui.js';
 import {MONEY} from './supabase-shop-core.js';
 // Not a replacement for Supabase Auth / MFA and not a cold-start login credential.
 const valid=value=>typeof value==='string'&&/^[0-9]{5}$/.test(value);
-export const PIN_FOOTER_TEXT='Plataforma desenvolvida pela Ubuntu Service, Lda. — Criando pontes entre o físico e o digital.';
+export const PIN_FOOTER_TEXT='Plataforma desenvolvida pela Ubuntu Service Limitada — Criando pontes entre o físico e o digital.';
 // Number-row and Numpad presses both expose their character through event.key.
 // Ignore shortcuts and composition so the keyboard handler stays PIN-only.
 export function pinKeyboardKey(event){
@@ -69,7 +69,7 @@ export function pinScreen({mode='unlock',email='',message='',metrics=null}={}){
   '<div><span>Vendas hoje</span><strong>'+(metrics?escape(MONEY(metrics.todayCents)):'—')+'</strong></div>'+
   '<div><span>Este mês</span><strong>'+(metrics?escape(MONEY(metrics.monthCents)):'—')+'</strong></div>'+
  '</div></section>'+
- '<footer class="pin-city-footer">Plataforma desenvolvida pela <strong>Ubuntu Service, Lda.</strong> — Criando pontes entre o físico e o digital.</footer>';
+ '<footer class="pin-city-footer">Plataforma desenvolvida pela <strong>Ubuntu Service Limitada</strong> — Criando pontes entre o físico e o digital.</footer>';
 }
 export async function mountProntoPinGate({
  root,client,account,open,onLogout,
