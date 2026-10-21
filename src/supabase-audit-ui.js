@@ -42,7 +42,7 @@ export function filterAuditEvents(snapshot,search=''){
   e.actor.toLocaleLowerCase().includes(q)||e.event.toLocaleLowerCase().includes(q));
 }
 export function renderAuditView({audit=null,search=''}={}){
- if(!audit)return '<section class="shop-box"><h3>Histórico de actividades</h3><p>A consultar os registos protegidos…</p></section>';
+ if(!audit)return '<section class="shop-box"><h3>Histórico de actividades</h3><p></p></section>';
  const rows=filterAuditEvents(audit,search);
  return '<section class="shop-box"><h3>Histórico de actividades</h3>'+
  '<p class="shop-help">Consulta restrita ao proprietário desta empresa. Mostra quem realizou alterações importantes, sem expor palavras-passe, PIN, contactos dos clientes ou dados internos dos pagamentos.</p>'+
