@@ -214,7 +214,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(!el||busy||signal.aborted)return;
   if(el.hasAttribute('data-shop-logout'))return void leave();
   if(el.hasAttribute('data-cash-export')){
-   if(grant.role!=='owner'||!cashState)return;
+   if(!['owner','manager'].includes(grant.role)||!cashState)return;
    const blob=new Blob([cashSessionsCSV(cashState)],{type:'text/csv;charset=utf-8'});
    const url=URL.createObjectURL(blob),link=document.createElement('a');
    link.href=url;link.download='sessoes-caixa-pronto-pos.csv';document.body.appendChild(link);link.click();link.remove();
