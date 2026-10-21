@@ -60,8 +60,10 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  const menuIcons={sell:'▣',products:'▦',cash:'◉',history:'▤',customers:'♙',debts:'◈',suppliers:'▥',purchases:'◫',expenses:'◰',
   held:'▧',returns:'↶',inventory:'▥',alerts:'!',shopping_list:'☷',reports:'▥',team:'♧',audit:'◎',branches:'⌂',transfers:'⇄'};
  const menu=nav.map(([key,name])=>'<button type="button" data-shop-view="'+key+'" aria-label="'+esc(name)+'" title="'+esc(name)+'" '+(view===key?'aria-current="page"':'')+'><span class="shop-nav-icon" aria-hidden="true">'+menuIcons[key]+'</span><span class="shop-nav-label">'+esc(name)+'</span></button>').join('');
- const bottomNav=[['sell','Vender','▣'],['products','Produtos','▦'],['cash','Caixa','◉'],['reports','Relatórios','▥']].filter(([key])=>nav.some(n=>n[0]===key))
-  .map(([key,name,icon])=>'<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'><span aria-hidden="true">'+icon+'</span><small>'+name+'</small></button>').join('');
+ const quickKeys=['sell','products','cash','reports','inventory','history','alerts','customers','team','purchases'];
+ const bottomNav=quickKeys.filter(key=>nav.some(item=>item[0]===key)).slice(0,4)
+  .map(key=>{const name={sell:'Vender',products:'Produtos',cash:'Caixa',reports:'Relatórios',inventory:'Inventário',history:'Vendas',
+   alerts:'Alertas',customers:'Clientes',team:'Equipa',purchases:'Compras'}[key];return '<button type="button" data-shop-view="'+key+'" '+(view===key?'aria-current="page"':'')+'><span aria-hidden="true">'+menuIcons[key]+'</span><small>'+name+'</small></button>';}).join('');
 
  const prodCards=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   .map(p=>'<article class="shop-product">'+(p.photoPath?'<img class="shop-product-photo" data-shop-product-photo="'+esc(p.photoPath)+'" alt="Fotografia de '+esc(p.name)+'" loading="lazy">':'')+'<div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
@@ -150,7 +152,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    'Apresentação limitada às últimas 20 vendas autorizadas. Não substitui os relatórios fiscais.');
  }
  return '<div class="shop-shell shop-layout'+(menuOpen?' shop-menu-open':'')+(sidebarCollapsed?' shop-menu-collapsed':'')+'">'+
- '<div class="shop-sidebar-shade" data-shop-menu-toggle aria-hidden="true"></div>'+
+ '<button type="button" class="shop-sidebar-shade" data-shop-menu-toggle aria-label="Fechar menu" tabindex="-1"></button>'+
  '<aside id="shop-sidebar" class="shop-sidebar" aria-label="Menu principal">'+
  '<div class="shop-sidebar-brand"><img src="/icon.svg" alt=""><span class="shop-nav-label"><strong>Pronto POS</strong><small>Menos complicações, mais negócio</small></span>'+
  '<button type="button" class="shop-sidebar-collapse" data-shop-sidebar-collapse aria-label="Recolher ou expandir menu" title="Recolher ou expandir menu">⇤</button></div>'+
