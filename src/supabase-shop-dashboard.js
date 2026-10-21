@@ -1,3 +1,4 @@
+import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
 import {toCents,toQuantity,makeSaleRequest,cartTotal,esc} from './supabase-shop-core.js';
 import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
@@ -858,26 +859,28 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return;
   }
   if(action==='team_invite'){
-   if(grant.role!=='owner')return showMessage('Apenas o proprietário pode convidar colaboradores.',true);
-   if(disconnected())return showMessage('Sem internet não é possível enviar convites.',true);
+   if(grant.role!=='owner')return showMessage('Apenas o proprietário pode criar colaboradores.',true);
+   if(disconnected())return showMessage('Precisa de ligação à internet para criar o acesso.',true);
    if(pending)return void lockPending();
    const fields=new FormData(form);
    const name=String(fields.get('name')||'').trim();
    const email=String(fields.get('email')||'').trim();
    const role=String(fields.get('role')||'');
-   busy=true;showMessage('A verificar permissões e enviar convite…');
+   busy=true;showMessage('A criar o acesso do colaborador…');
    try{
-    const result=await client.inviteShopStaff({businessId:grant.id,name,email,role});
+    const result=await client.provisionShopStaff({businessId:grant.id,name,email,role});
+    showProntoCredentials(result);
     form.reset();
-    showMessage(result?.ok===true?
-      'Convite enviado. O colaborador deverá aceitar, autenticar-se e criar o seu próprio PIN de cinco dígitos.':
-      'Pedido recebido. Verifique o convite no Supabase.');
+    try{await refresh();}catch{/* Credentials are already displayed; avoid retrying creation. */}
+    showMessage('Conta criada. Copie as credenciais antes de fechar a janela.');
    }catch(error){
-    const messages={staff_exists:'Esta conta já existe. Peça à Ubuntu Service para associar a conta actual.',
-     staff_invited_not_linked:'O convite foi enviado mas a associação falhou. Peça apoio à Ubuntu Service antes de reenviar.',
-     staff_invite_unavailable:'Não foi possível enviar o convite. Confirme a ligação e o envio de emails.',
-     supabase_unauthorized:'Sessão ou autorização expirada. Saia e volte a entrar.'};
-    showMessage(messages[error.message]||'Não foi possível convidar o colaborador.',true);
+    const messages={account_exists:'Este email já tem uma conta. Contacte o suporte para a associar.',
+     association_failed:'A conta não foi associada. Confirme o estado antes de repetir.',
+     provision_partial_contact_support:'O registo ficou incompleto. Contacte o suporte antes de repetir.',
+     account_unavailable:'Não foi possível criar o acesso. Verifique a ligação.',
+     not_authorized:'Não tem autorização para esta operação.',
+     supabase_unauthorized:'Sessão expirada. Saia e volte a entrar.'};
+    showMessage(messages[error.message]||'Não foi possível criar o colaborador.',true);
    }finally{busy=false;}
    return;
   }
