@@ -19,9 +19,9 @@ test('PIN scene uses the brand, five digits, city landscape, Mozambique map and 
  assert.match(file('src/pin-city.css'),/\.pronto-pin-backdrop\.pin-city-theme/);
  assert.match(markup,/Ecrã bloqueado/);
  assert.match(markup,/Desbloquear/);
- assert.match(markup,/Ubuntu Service, Lda\./);
+ assert.match(markup,/Ubuntu Service Limitada/);
  assert.doesNotMatch(markup,/Ubuntu Servers/);
- assert.equal(PIN_FOOTER_TEXT,'Plataforma desenvolvida pela Ubuntu Service, Lda. — Criando pontes entre o físico e o digital.');
+ assert.equal(PIN_FOOTER_TEXT,'Plataforma desenvolvida pela Ubuntu Service Limitada — Criando pontes entre o físico e o digital.');
  assert.match(markup,/Criando pontes entre o físico e o digital/);
  assert.equal((markup.match(/data-pin-key=/g)||[]).length,12);
  assert.equal((markup.match(/<span><\/span>/g)||[]).length,5);
