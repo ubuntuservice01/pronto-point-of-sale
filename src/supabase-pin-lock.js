@@ -127,7 +127,7 @@ export async function mountProntoPinGate({
    if(mode!=='unlock'&&pin!==String(values.get('confirm')||'')){
     alert.textContent='Os PINs não coincidem.';return;
    }
-   processing=true;submit.disabled=true;alert.textContent='A validar no Supabase…';
+   processing=true;submit.disabled=true;alert.textContent='';
    try{
     const result=mode==='recover'?await client.recoverPinWithPassword({
      password:String(values.get('password')||''),pin
@@ -149,7 +149,7 @@ export async function mountProntoPinGate({
     }else if(error.message==='supabase_unauthorized'){
      alert.textContent='A sessão expirou. Termine a sessão e entre novamente.';
     }else{
-     alert.textContent='Falha na ligação ao Supabase. Não foi possível desbloquear.';
+     alert.textContent='Não foi possível desbloquear. Verifique a ligação e tente novamente.';
     }
    }finally{processing=false;if(submit.isConnected)submit.disabled=false;}
   },{signal});
