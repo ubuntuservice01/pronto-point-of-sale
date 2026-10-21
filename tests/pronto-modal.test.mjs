@@ -126,7 +126,7 @@ test('Chrome PWA UI: close, cancel, confirm and justified prompts work without b
    values.push(!open());
    return values;
   })()`);
-  assert.deepEqual(result,Array(10).fill(true));
+  assert.deepEqual(result,Array(11).fill(true));
  }finally{
   client?.close();proc?.kill('SIGKILL');
   if(ready)await new Promise(ok=>server.close(ok));
