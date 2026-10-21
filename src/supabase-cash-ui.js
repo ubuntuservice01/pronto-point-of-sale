@@ -81,6 +81,7 @@ function sessionCard(s,{owner,blind,userId}){
    '<label>Operação<select name="direction"><option value="in">Reforço de caixa</option><option value="out">Retirada de caixa</option></select></label>'+
    '<label>Valor (MT)<input type="number" name="amount" min="0.01" step="0.01" required></label>'+
    '<label>Motivo<input name="reason" minlength="3" maxlength="180" required></label>'+
+   '<label>Frase de protecção (para guardar offline)<input type="password" name="offline_passphrase" minlength="12" maxlength="128" autocomplete="off" placeholder="Obrigatória apenas sem Internet"></label>'+
    '<button type="submit" class="shop-submit">Registar movimento</button></form>':'')+
   (owner&&canOperate?
    '<form data-shop-form="cash_remote" class="shop-form">'+
@@ -92,7 +93,7 @@ function sessionCard(s,{owner,blind,userId}){
    '<button type="submit" class="shop-submit">Confirmar intervenção</button></form>':'')+
   '</article>';
 }
-export function renderCashManagement({cash,account,role='cashier'}){
+export function renderCashManagement({cash,account,role='cashier',pendingOffline=0}){
  if(!cash)return '<section class="shop-box"><h3>Gestão de caixa</h3><p>A actualizar sessões…</p></section>';
  const owner=role==='owner',canReview=role==='owner'||role==='manager',canOperate=['owner','manager','cashier'].includes(role);
  const ownOpen=ownOpenSession(cash,account.userId);
@@ -100,6 +101,11 @@ export function renderCashManagement({cash,account,role='cashier'}){
  const activeMine=mine.find(s=>['pending','blocked'].includes(s.status));
  const selected=cash.sessions.filter(s=>canReview||s.operatorId===account.userId);
  return '<div class="cash-control">'+
+  (pendingOffline?'<section class="shop-box"><h3>Movimentos offline por confirmar ('+pendingOffline+')</h3>'+
+   '<p class="cash-warning">Estes movimentos foram guardados de forma encriptada. Ainda não alteraram o saldo. Não feche o caixa antes de os enviar e confirmar.</p>'+
+   '<form data-shop-form="cash_offline_sync" class="shop-form">'+
+   '<label>Frase utilizada para proteger o(s) registo(s)<input type="password" name="offline_passphrase" minlength="12" maxlength="128" autocomplete="off" required></label>'+
+   '<button class="shop-submit" type="submit">Sincronizar movimentos com Internet</button></form></section>':'')+
   (owner?'<section class="shop-box"><h3>Definições do caixa nesta filial</h3>'+
    '<form data-shop-form="cash_configure" class="shop-form">'+
    '<label><input type="checkbox" name="opening_required" '+(cash.policy.openingRequired?'checked':'')+'> Abertura de caixa obrigatória para vender</label>'+
