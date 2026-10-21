@@ -1,13 +1,16 @@
+import {startProntoLoading} from './ui/pronto-loading.js';
 import {selectProntoEntry} from './entry-mode.js';
 // Public hosting opens the real Supabase sign-in, never the fictitious demo.
 const entry=selectProntoEntry({
  hostname:location.hostname,search:location.search,
  siteMode:document.querySelector('meta[name="pronto-mode"]')?.content||''
 });
+const startupLoader=startProntoLoading();
 const loading=entry==='supabase'?
  import('./supabase-auth-check-ui.js').then(mod=>mod.startSupabaseIdentityCheck()):
- import('./app.js');
+ import('./app.js').then(()=>startupLoader.finish());
 loading.catch(error=>{
+ startupLoader.cancel();
  console.error('Pronto POS could not start:',error);
  const root=document.querySelector('#app');root.replaceChildren();
  const section=document.createElement('section');section.className='error-screen';
