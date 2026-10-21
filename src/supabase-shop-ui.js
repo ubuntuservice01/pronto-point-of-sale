@@ -36,7 +36,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   field('pay_'+m,methodLabels[m]+' (MT)','0.00','type="number" min="0" step="0.01" inputmode="decimal"')).join('')+'</div>':
   '<p class="shop-help">Pagamento único: '+esc(methodLabels[method])+' · '+MONEY(total)+'.</p>';
  const cash=method==='cash'||method==='mixed'?
-  field('cash_received','Dinheiro recebido (MT)','','type="number" min="0" step="0.01" inputmode="decimal" placeholder="Introduza o valor entregue" autocomplete="off" required'):'';
+  field('cash_received','Dinheiro recebido (MT)','','type="number" min="0" step="0.01" inputmode="decimal" placeholder="Introduza o valor entregue" autocomplete="off"'+(method==='cash'?' required':'')):'';
  return '<div id="shop-checkout-panel">'+
   section('A sua venda','<div class="shop-cart-list">'+(cart.length?cart.map(x=>cartRow(x,products)).join(''):'<p class="shop-help">Seleccione um produto à esquerda.</p>')+'</div>'+
   '<div class="shop-totals"><span>Subtotal</span><strong>'+MONEY(subtotal)+'</strong></div>'+
