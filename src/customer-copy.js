@@ -1,7 +1,7 @@
 // Customer-visible copy only. Keep technical error identifiers in code/logs,
 // never in the merchant's status or error text.
 const internal=/\b(?:supabase|postgresql|postgrest|sqlstate|rpc|jwt|graphql|fetch|tenant|pgrst\d+|rest\/v1|auth\/v1|permission denied|database error)\b/i;
-const codePattern=/\b(?:supabase_[a-z_]+|pronto_private\.[a-z_]+|PGRST\d+|[245]\d[A-Z0-9]{3})\b/i;
+const codePattern=/\b(?:supabase_[a-z_]+|pronto_private\.[a-z_]+|PGRST\d+|[245]\d[A-Z0-9]{3}|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b/i;
 const pending=/^a\s+(?:consultar|verificar|carregar|buscar|actualizar|atualizar|registar|registrar|guardar|enviar|reconciliar|executar|validar|sincronizar|preparar)\b/i;
 export function customerMessage(value,{warning=false}={}){
  const original=String(value??'').trim();
