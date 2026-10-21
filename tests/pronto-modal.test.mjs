@@ -85,7 +85,17 @@ test('Chrome PWA UI: close, cancel, confirm and justified prompts work without b
    if(d.exceptionDetails)throw Error(JSON.stringify(d.exceptionDetails));
    return d.result.value;
   };
-  for(let i=0;i<50;i++){if(await run('document.readyState==="complete"'))break;await sleep(100);}
+  // CI Chrome sometimes opens DevTools on about:blank before reaching the URL.
+  await client.send('Page.navigate',{url});
+  let onSite=false;
+  for(let i=0;i<70;i++){
+   try{
+    onSite=await run('location.origin==='+JSON.stringify(new URL(url).origin)+' && document.readyState==="complete"');
+    if(onSite)break;
+   }catch{/* A navigation may replace the execution context. */}
+   await sleep(100);
+  }
+  assert.equal(onSite,true,'Chrome never navigated to the preview origin');
   const result=await run(`(async()=>{
    const mod=await import('/src/ui/pronto-modal.js');
    const values=[];
