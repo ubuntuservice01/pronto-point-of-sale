@@ -196,8 +196,11 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
   body='<div class="shop-sales-tabs" role="group" aria-label="Vendas e carrinhos em espera">'+
    '<button type="button" class="shop-sales-tab selected" aria-current="page">Venda actual</button>'+
    '<button type="button" class="shop-sales-tab" data-shop-held-tab>Em espera <span>'+heldSales.length+'</span></button></div>'+
-   '<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><label class="shop-search"><span>Pesquisar por nome ou código</span>'+
-   '<input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Pesquisar ou ler o código"></label>'+
+   '<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><div class="shop-search"><label for="shop-search">Pesquisar por nome ou código</label>'+
+   '<div class="shop-search-control"><input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Nome, código ou referência">'+
+   '<button class="shop-scan-launch" data-shop-scan type="button" title="Ler QR code ou código de barras" aria-label="Abrir câmara para ler QR code ou código de barras">'+
+   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M4 16v3a1 1 0 0 0 1 1h3m8 0h3a1 1 0 0 0 1-1v-3M3 12h18M8 9h1v6H8zm4 0h1v6h-1zm3 0h2v6h-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'+
+   '<span>Ler código</span></button></div></div>'+
    '<div id="shop-product-results" class="shop-products">'+(prodCards||'<p class="shop-help">Não há produtos encontrados.</p>')+'</div></section>'+
    shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue,allowNoSession:cashState?.policy.openingRequired===false})+'</div>'+
    '<section class="shop-box shop-held-in-sales"><div class="shop-held-heading"><h3>Vendas em espera <span>'+heldSales.length+'</span></h3>'+

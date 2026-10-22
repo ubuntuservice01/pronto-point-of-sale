@@ -6,6 +6,7 @@ import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/
 import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
+import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
 import {toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
 import {checkoutCashPreview} from './supabase-checkout-change.js';
 import {getPinKPIs,setPinKPIs,clearPinKPIs} from './pin-city-ui.js';
@@ -35,7 +36,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',settingsSection='personalizacao',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,accessBlocked=false,accessCheckBusy=false;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',settingsSection='personalizacao',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,accessBlocked=false,accessCheckBusy=false,closeScanner=null;
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const alertDaysKey=()=> 'pronto-alert-days:'+grant.id;
  const readAlertDays=()=>{
@@ -99,7 +100,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],branding:['owner'],settings:['owner'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
-  clearPinKPIs(account.userId);
+  closeScanner?.();clearPinKPIs(account.userId);
   aborter.abort();root.innerHTML='';
   try{await client.signOut();}finally{onLogout();}
  };
@@ -179,6 +180,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
  };
  const lockedScreen=(reason)=>{
+  closeScanner?.();
   const message={
    blocked:'O seu acesso foi bloqueado pelo proprietário. Contacte o responsável.',
    outside_schedule:'Fora do horário de trabalho. Aguarde a abertura programada ou contacte o responsável.',
@@ -248,7 +250,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  signal.addEventListener('abort',()=>clearInterval(alertTimer),{once:true});
  const accessTimer=setInterval(()=>{void checkStaffAccess();},5000);
  signal.addEventListener('abort',()=>clearInterval(accessTimer),{once:true});
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)void checkStaffAccess().then(ok=>{if(ok)void refreshAlerts();});},{signal});
+ document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){closeScanner?.();return;}
+  void checkStaffAccess().then(ok=>{if(ok)void refreshAlerts();});
+ },{signal});
  window.addEventListener('focus',()=>{void checkStaffAccess().then(ok=>{if(ok)void refreshAlerts();});},{signal});
  const loadReports=async()=>{
   if(disconnected())return showMessage('Sem internet, não é possível actualizar relatórios.',true);
@@ -281,6 +286,15 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   else if(item)item.quantity=q;
   else cart.push({productId:id,quantity:q});
   notice='';render();
+ };
+ const scanCode=code=>{
+  if(accessBlocked||client.isScreenLocked?.()||view!=='sell'||!authorizedView('sell'))return 'Leitura disponível apenas no ponto de venda desbloqueado.';
+  if(pending)return 'Resolva a venda pendente antes de adicionar outro produto.';
+  const product=findScannedShopProduct(data?.products,code);
+  if(!product)return 'Código não encontrado nesta loja.';
+  const inCart=cart.find(row=>row.productId===product.id)?.quantity||0;
+  if(inCart+1>product.stock)return 'Produto sem stock suficiente para esta venda.';
+  add(product.id);return true;
  };
  const updateCashChangePreview=()=>{
   const form=root.querySelector('#shop-sale-form');
@@ -658,6 +672,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     clearShopDraft(localStorage,scope());render();showMessage('Rascunho local apagado.');
    }return;
   }
+  if(el.hasAttribute('data-shop-scan')){
+   if(!authorizedView('sell')||view!=='sell'||accessBlocked||client.isScreenLocked?.())return;
+   closeScanner?.();
+   closeScanner=openShopCodeScanner({onCode:scanCode,onClose:()=>{closeScanner=null;}});
+   return;
+  }
   if(el.hasAttribute('data-shop-add'))return void add(el.dataset.shopAdd);
   if(el.hasAttribute('data-remove')){
    if(lockPending())return;
@@ -679,7 +699,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!control)return showMessage('O controlo de PIN está indisponível nesta sessão.',true);
    control.click();return;
   }
-  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;view=el.dataset.shopView;menuOpen=false;notificationsOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
+  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;closeScanner?.();view=el.dataset.shopView;menuOpen=false;notificationsOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
   if(el.hasAttribute('data-shop-discard')){
@@ -720,12 +740,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const next=account.grants.find(x=>x.id===el.value);
    if(!next||busy)return;
    if(pending)return showMessage('Resolva a venda pendente antes de mudar de empresa.',true);
-   clearPinKPIs(account.userId);pinMetricCheckedAt=0;grant=next;alertDays=readAlertDays();settingsSection='personalizacao';void safeLoad(true);return;
+   closeScanner?.();clearPinKPIs(account.userId);pinMetricCheckedAt=0;grant=next;alertDays=readAlertDays();settingsSection='personalizacao';void safeLoad(true);return;
   }
   if(el.id==='shop-branch-select'){
    if(pending)return showMessage('Resolva a venda pendente antes de mudar de filial.',true);
    if(!branches.some(b=>b.id===el.value))return;
-   clearPinKPIs(account.userId);pinMetricCheckedAt=0;branchId=el.value;cart=[];method='cash';discount='0';query='';report=null;void safeLoad();return;
+   closeScanner?.();clearPinKPIs(account.userId);pinMetricCheckedAt=0;branchId=el.value;cart=[];method='cash';discount='0';query='';report=null;void safeLoad();return;
   }
   if(el.id==='shop-audit-search'){auditSearch=el.value;render();return;}
   if(el.id==='shop-sale-customer'){if(lockPending())return;selectedCustomerId=el.value;updatePanel();return;}

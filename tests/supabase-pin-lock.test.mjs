@@ -51,6 +51,10 @@ test('PIN screen renders five digits, Portuguese labels and clear lock controls'
  assert.match(html,/Desbloquear/);
  assert.equal((html.match(/<span><\/span>/g)||[]).length,5);
  assert.equal((html.match(/data-pin-key=/g)||[]).length,12);
+ assert.match(html,/id="pronto-pin-entry" name="pin" type="hidden"/);
+ assert.doesNotMatch(html,/name="pin"[^>]*inputmode="numeric"/);
+ assert.match(html,/id="pronto-pin-count"/);
+ assert.match(pinScreen({mode:'create'}),/inputmode="numeric"/);
  assert.match(pinScreen({mode:'create'}),/Criar PIN de 5 dígitos/);
  assert.match(pinScreen({mode:'change'}),/PIN actual/);
  assert.ok(!pinScreen({email:'<script>alert(1)</script>'}).includes('<script>'));

@@ -124,9 +124,19 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
   assert.deepEqual(mobile,{
    bottomVisible:true,fixed:true,bottomButtons:5,centralSell:true,sidebarHidden:true,open:true,sideVisible:true,closed:true
   });
+  const scannerMobile=await js([
+   '(()=>{const button=document.querySelector("[data-shop-scan]");const input=document.querySelector("#shop-search");',
+   'return {shown:!!button&&getComputedStyle(button).display!=="none",nextToSearch:!!input&&input.closest(".shop-search-control")===button?.closest(".shop-search-control")};})()'
+  ].join(''));
+  assert.deepEqual(scannerMobile,{shown:true,nextToSearch:true});
+  const scannedManually=await js([
+   '(()=>{document.querySelector("[data-shop-scan]").click();const dialog=document.querySelector(".shop-scan-dialog");',
+   'const field=dialog.querySelector("[name=code]");field.value="PR-000001";field.closest("form").requestSubmit();',
+   'return {closed:!document.querySelector(".shop-scan-dialog"),cart:document.querySelectorAll(".shop-cart-row").length};})()'
+  ].join(''));
+  assert.deepEqual(scannedManually,{closed:true,cart:1});
   await debug.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await wait(80);
-  await js('document.querySelector("[data-shop-add]").click()');
   const sale=await js([
    '(async()=>{document.querySelector("[data-shop-method=mixed]").click();',
    'const f=document.getElementById("shop-sale-form");',

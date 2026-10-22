@@ -47,7 +47,7 @@ export function pinScreen({mode='unlock',email='',message='',metrics=null}={}){
    '<button class="pronto-pin-primary" type="submit">'+(setup?'Activar PIN':recover?'Recuperar PIN':'Alterar PIN')+'</button></form>':
   '<form id="pronto-pin-form" autocomplete="off" novalidate>'+
    '<div class="pronto-pin-dots" aria-hidden="true">'+Array.from({length:5},()=>'<span></span>').join('')+'</div>'+
-   '<label class="pronto-pin-input-label">PIN<input id="pronto-pin-entry" name="pin" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" maxlength="5" minlength="5" required aria-label="Introduza o PIN de cinco dígitos"></label>'+
+   '<input id="pronto-pin-entry" name="pin" type="hidden" value=""><span class="pronto-pin-input-label" id="pronto-pin-count" role="status" aria-live="polite">PIN vazio</span>'+
    '<div class="pronto-pin-keypad">'+['1','2','3','4','5','6','7','8','9','Limpar','0','⌫'].map(key=>{
     const letters={2:'ABC',3:'DEF',4:'GHI',5:'JKL',6:'MNO',7:'PQRS',8:'TUV',9:'WXYZ'}[key]||'';
     return '<button type="button" data-pin-key="'+escape(key)+'" aria-label="'+(key==='⌫'?'Apagar último número':escape(key))+'">'+
@@ -126,6 +126,8 @@ export async function mountProntoPinGate({
   function updateDots(){
    const n=entry?.value.length||0;
    overlay.querySelectorAll('.pronto-pin-dots span').forEach((dot,i)=>dot.classList.toggle('entered',i<n));
+   const count=overlay.querySelector('#pronto-pin-count');
+   if(count)count.textContent=n+' de 5 dígitos introduzidos';
   }
   if(entry){
    entry.addEventListener('input',()=>{
@@ -137,7 +139,8 @@ export async function mountProntoPinGate({
      const key=button.dataset.pinKey;
      entry.value=editUnlockPin(entry.value,key==='Limpar'?'Delete':key==='⌫'?'Backspace':key);
      entry.dispatchEvent(new Event('input',{bubbles:true}));
-     entry.focus({preventScroll:true});
+     // Keep mobile virtual keyboard closed; the visible keypad edits the hidden field.
+     submit.focus({preventScroll:true});
     },{signal});
    });
   }
@@ -181,7 +184,11 @@ export async function mountProntoPinGate({
     }
    }finally{processing=false;if(submit.isConnected)submit.disabled=false;}
   },{signal});
-  win.setTimeout(()=>{if(!destroyed)form.querySelector('input')?.focus({preventScroll:true});},0);
+  win.setTimeout(()=>{
+   if(destroyed||!form.isConnected)return;
+   if(mode==='unlock')submit.focus({preventScroll:true});
+   else form.querySelector('input:not([type="hidden"])')?.focus({preventScroll:true});
+  },0);
  };
  const close=()=>{
   if(destroyed)return;
