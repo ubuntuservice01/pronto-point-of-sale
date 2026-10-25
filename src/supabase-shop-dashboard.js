@@ -5,7 +5,7 @@ import {customerMessage} from './customer-copy.js';
 import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/pronto-sale-success.js';
 import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
-import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
+import {renderShopScreen,renderShopProductResults,shopPaymentPanel} from './supabase-shop-ui.js';
 import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
 import {PAYMENT_METHODS,toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
 import {quantityFromValueCents,validateSaleQuantity,allowsFractionalSale} from './sale-by-value.js';
@@ -117,20 +117,29 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const session=()=>cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const offlineCount=()=>offlineCashKeys(localStorage,scope()).length;
  const photoCache=new Map();
+ const hydrateProductPhotos=(element=root)=>{
+  for(const img of element.querySelectorAll('[data-shop-product-photo]')){
+   const path=img.dataset.shopProductPhoto;
+   if(!path||!client.productPhotoUrl)continue;
+   const cached=photoCache.get(path);
+   if(cached&&cached.expiresAt>Date.now()&&cached.url){img.src=cached.url;continue;}
+   // Reuse in-flight signed URL requests when a quick tap triggers a re-render.
+   const pending=cached&&cached.expiresAt>Date.now()?cached.pending:client.productPhotoUrl(path);
+   if(!cached||cached.expiresAt<=Date.now())photoCache.set(path,{pending,expiresAt:Date.now()+230000});
+   void pending.then(url=>{
+    if(photoCache.get(path)?.pending===pending)photoCache.set(path,{url,expiresAt:Date.now()+230000});
+    if(img.isConnected&&!signal.aborted)img.src=url;
+   }).catch(()=>{
+    if(photoCache.get(path)?.pending===pending)photoCache.delete(path);
+    if(img.isConnected)img.alt='Fotografia indisponível';
+   });
+  }
+ };
  const render=()=>{
   if(!data||accessBlocked)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,valueModeProducts:[...valueModeProducts],view,method,discount,query,feedback:notice,pending,
    draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,branding,logoUrl:brandLogoUrl,settingsSection});
-  for(const img of root.querySelectorAll('[data-shop-product-photo]')){
-   const path=img.dataset.shopProductPhoto;
-   if(!path||!client.productPhotoUrl)continue;
-   const cached=photoCache.get(path);
-   if(cached&&cached.expiresAt>Date.now()){img.src=cached.url;continue;}
-   void client.productPhotoUrl(path).then(url=>{
-    photoCache.set(path,{url,expiresAt:Date.now()+230000});
-    if(img.isConnected&&!signal.aborted)img.src=url;
-   }).catch(()=>{if(img.isConnected)img.alt='Fotografia indisponível';});
-  }
+  hydrateProductPhotos();
  };
  const refresh=async(selectFirst=false)=>{
   if(selectFirst){
@@ -141,25 +150,39 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId);
-  // A falha no carregamento da imagem/configuração não pode bloquear o caixa.
-  try{branding=typeof client.documentSettings==='function'?await client.documentSettings(grant.id):normalizeDocumentBranding({},grant.name);}
-  catch{branding=normalizeDocumentBranding({},grant.name);}
-  brandLogoUrl='';
-  if(branding.logoPath&&typeof client.documentLogoUrl==='function'){
-   try{brandLogoUrl=await client.documentLogoUrl(branding.logoPath);}catch{/* Apenas a imagem fica indisponível. */}
-  }
-  cashState=typeof client.cashControl==='function'?normalizeCashControl(await client.cashControl('snapshot',cashData({}))):null;
+  // Independent snapshots run in parallel so a slow secondary screen does not
+  // force 10+ sequential network round-trips on a mobile connection.
+  const loadBranding=async()=>{
+   let settings;
+   try{settings=typeof client.documentSettings==='function'?await client.documentSettings(grant.id):normalizeDocumentBranding({},grant.name);}
+   catch{settings=normalizeDocumentBranding({},grant.name);}
+   let logoUrl='';
+   if(settings.logoPath&&typeof client.documentLogoUrl==='function'){
+    try{logoUrl=await client.documentLogoUrl(settings.logoPath);}catch{/* Only the logo is unavailable. */}
+   }
+   return {settings,logoUrl};
+  };
+  const [nextBrand,nextCash,nextBranches,nextStaff,nextStaffCash,nextAudit,
+   nextTransfers,nextCredit,nextFinance,nextHolds,nextReturns,nextInventory]=await Promise.all([
+    loadBranding(),
+    typeof client.cashControl==='function'?client.cashControl('snapshot',cashData({})):null,
+    grant.role==='owner'?client.manageBranch('list',{business_id:grant.id}):null,
+    grant.role==='owner'?client.ownerStaffSnapshot(grant.id):null,
+    grant.role==='owner'?client.ownerSuspendedCash(grant.id):null,
+    view==='audit'&&grant.role==='owner'?client.ownerAuditSnapshot(grant.id,auditPage):audit,
+    ['owner','manager','stock','finance'].includes(grant.role)?client.transferSnapshot(grant.id):null,
+    typeof client.creditSnapshot==='function'?client.creditSnapshot(grant.id,branchId):null,
+    typeof client.financeSnapshot==='function'?client.financeSnapshot(grant.id,branchId):null,
+    typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?client.holdList(grant.id,branchId):[],
+    typeof client.returnSnapshot==='function'&&['owner','manager'].includes(grant.role)?client.returnSnapshot(grant.id,branchId):null,
+    typeof client.inventorySnapshot==='function'&&['owner','manager','stock','finance'].includes(grant.role)?client.inventorySnapshot(grant.id,branchId):null
+   ]);
+  branding=nextBrand.settings;brandLogoUrl=nextBrand.logoUrl;
+  cashState=nextCash?normalizeCashControl(nextCash):null;
   pendingCashOffline=offlineCount();
-  branchManagement=grant.role==='owner'?await client.manageBranch('list',{business_id:grant.id}):null;
-  staffManagement=grant.role==='owner'?await client.ownerStaffSnapshot(grant.id):null;
-  staffCash=grant.role==='owner'?await client.ownerSuspendedCash(grant.id):null;
-  if(view==='audit'&&grant.role==='owner')audit=await client.ownerAuditSnapshot(grant.id,auditPage);
-  transfers=['owner','manager','stock','finance'].includes(grant.role)?await client.transferSnapshot(grant.id):null;
-  credit=typeof client.creditSnapshot==='function'?await client.creditSnapshot(grant.id,branchId):null;
-  finance=typeof client.financeSnapshot==='function'?await client.financeSnapshot(grant.id,branchId):null;
-  heldSales=typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?await client.holdList(grant.id,branchId):[];
-  returns=typeof client.returnSnapshot==='function'&&['owner','manager'].includes(grant.role)?await client.returnSnapshot(grant.id,branchId):null;
-  inventory=typeof client.inventorySnapshot==='function'&&['owner','manager','stock','finance'].includes(grant.role)?await client.inventorySnapshot(grant.id,branchId):null;
+  branchManagement=nextBranches;staffManagement=nextStaff;staffCash=nextStaffCash;
+  audit=nextAudit;transfers=nextTransfers;credit=nextCredit;finance=nextFinance;
+  heldSales=nextHolds;returns=nextReturns;inventory=nextInventory;
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
   void refreshPinMetrics();
@@ -725,11 +748,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const el=event.target;
   if(el.id==='shop-search'){
    query=el.value;
-   root.querySelectorAll('[data-shop-add]').forEach(button=>{
-    const p=data?.products.find(x=>x.id===button.dataset.shopAdd);
-    const card=button.closest('.shop-product');
-    if(p&&card)card.hidden=!(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase());
-   });
+   const results=root.querySelector('#shop-product-results');
+   if(results){results.innerHTML=renderShopProductResults(data?.products||[],query);hydrateProductPhotos(results);}
   }else if(el.id==='shop-inventory-search'){
    inventoryQuery=el.value;
    const term=inventoryQuery.toLocaleLowerCase();

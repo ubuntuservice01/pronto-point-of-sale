@@ -158,6 +158,17 @@ export function renderOwnerSettings({selected='personalizacao',branding=null,log
   '<div class="owner-settings-body" id="owner-settings-panel" role="tabpanel" aria-labelledby="owner-settings-tab-'+active+'">'+body+'</div></div></div>';
 }
 
+// Render only a small window of the matching catalog, not thousands of image
+// elements and buttons. Search still considers the complete product collection.
+export function renderShopProductResults(products=[],query=''){
+ const search=String(query||'').trim().toLocaleLowerCase();
+ const matching=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(search));
+ const visible=matching.slice(0,80);
+ const cards=visible.map(p=>'<article class="shop-product">'+(p.photoPath?'<img class="shop-product-photo" data-shop-product-photo="'+esc(p.photoPath)+'" alt="Fotografia de '+esc(p.name)+'" loading="lazy">':'')+'<div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
+ if(!matching.length)return '<p class="shop-help" role="status">Não há produtos encontrados.</p>';
+ return cards+(matching.length>80?'<p class="shop-help" role="status">A mostrar 80 de '+matching.length+' produtos. Pesquise pelo nome ou código para encontrar os restantes.</p>':'');
+}
+
 export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,valueModeProducts=[],view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,branding=null,logoUrl='',settingsSection='personalizacao'}){
  const products=data?.products||[];
  const session=cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
@@ -193,8 +204,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
     '<p class="shop-notification-empty">'+(canViewAlerts?'Não existem alertas de stock ou validade neste momento.':'Alertas de inventário disponíveis apenas para perfis autorizados.')+'</p>')+
    (canViewAlerts?'<button type="button" data-shop-notifications-all class="shop-notification-all">Ver todos os alertas'+(notificationCount>5?' ('+notificationCount+')':'')+'</button>':'')+
   '</div>':'';
- const prodCards=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
-  .map(p=>'<article class="shop-product">'+(p.photoPath?'<img class="shop-product-photo" data-shop-product-photo="'+esc(p.photoPath)+'" alt="Fotografia de '+esc(p.name)+'" loading="lazy">':'')+'<div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
+ const prodCards=view==='sell'?renderShopProductResults(products,query):'';
  let body='';
  if(view==='sell'){
   body='<div class="shop-sales-tabs" role="group" aria-label="Vendas e carrinhos em espera">'+
