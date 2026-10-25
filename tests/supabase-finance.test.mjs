@@ -30,6 +30,7 @@ test('Expenses are manual transactions; recurrent expenses are explicit reminder
  const html=renderFinanceView({view:'expenses',finance:data,role:'finance'});
  assert.ok(html.includes('data-shop-form="expense_add"'));
  assert.ok(html.includes('data-shop-form="expense_schedule_save"'));
+ assert.ok(html.includes('<option value="bank">Banco</option>'));
  assert.ok(html.includes('NÃO são efectuados automaticamente'));
  assert.ok(html.includes('Combustível'));
  assert.ok(html.includes('25,00 MT'));

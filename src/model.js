@@ -38,7 +38,7 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
  if(!Number.isSafeInteger(discount)||discount<0||discount>=subtotal)throw Error('discount');
  if(discount>0&&!can(role,'discount'))throw Error('permission');
  const total=subtotal-discount;
- const methods=['cash','mpesa','emola','transfer'];
+ const methods=['cash','mpesa','emola','transfer','bank'];
  const isDebt=method==='credit'&&payments===undefined;
  let normalized;
  if(payments!==undefined){

@@ -1,5 +1,5 @@
 // Supabase merchant pilot domain helpers. No floating-point money is sent to the DB.
-export const PAYMENT_METHODS=['cash','mpesa','emola','transfer'];
+export const PAYMENT_METHODS=['cash','mpesa','emola','transfer','bank'];
 export const UNIT_OPTIONS=['un','m','m²','kg','g','l','ml','caixa','pacote','saco','rolo','par','conjunto'];
 export const INTEGER_UNITS=['un','caixa','pacote','saco','rolo','par','conjunto'];
 export const MONEY=(cents)=>new Intl.NumberFormat('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100)+' MT';
@@ -60,7 +60,7 @@ export function makeSaleRequest({businessId,branchId,sessionId,cart,products,dis
   paid+=cents;
   return {method,amount_cents:cents,reference:String(reference).slice(0,128)};
  });
- if(!selected.length||selected.length>4||paid!==totals.total)throw Error('payment_mismatch');
+ if(!selected.length||selected.length>PAYMENT_METHODS.length||paid!==totals.total)throw Error('payment_mismatch');
  const received=toCents(cashReceived);
  if(cash>received)throw Error('cash_short');
  return {business_id:businessId,branch_id:branchId,session_id:sessionId,idempotency_key:idempotencyKey,

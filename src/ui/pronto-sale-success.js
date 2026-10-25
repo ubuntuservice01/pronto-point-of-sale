@@ -2,7 +2,7 @@
 // Printable document is explicitly an operational receipt, not a fiscal invoice.
 import {esc,MONEY} from '../supabase-shop-core.js';
 import {normalizeDocumentBranding} from '../supabase-document-branding.js';
-const methods={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência'};
+const methods={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco'};
 const integer=x=>Number.isSafeInteger(Number(x))&&Number(x)>=0;
 const formatDate=stamp=>new Intl.DateTimeFormat('pt-PT',{
  timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'

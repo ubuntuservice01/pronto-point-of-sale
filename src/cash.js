@@ -1,6 +1,6 @@
 import {debtBalance} from './debts.js';
 import {afterBatchRefund} from './batches.js';
-export const paymentMethods=['cash','mpesa','emola','transfer'];
+export const paymentMethods=['cash','mpesa','emola','transfer','bank'];
 export function activeCash(state,{tenantId,userId,deviceId}){return (state.cashSessions||[]).find(s=>s.tenantId===tenantId&&s.userId===userId&&s.deviceId===deviceId&&s.status==='open');}
 function allocations(sale){return Array.isArray(sale.payments)&&sale.payments.length?sale.payments:[{method:sale.method,amount:sale.total}];}
 export function cashSummary(state,session){
@@ -32,12 +32,14 @@ export function attachCashSale(state,context,id){
 }
 export function closeCash(state,context,counted,note=''){
  const session=activeCash(state,context);if(!session)throw Error('cash_not_open');
- for(const method of paymentMethods)cents(counted[method]);
+ // Old open shifts may come from a client version without the Banco field.
+ const confirmed={...counted,bank:counted.bank??0};
+ for(const method of paymentMethods)cents(confirmed[method]);
  if(typeof note!=='string'||note.length>400)throw Error('cash_note');
  const summary=cashSummary(state,session);
- const differences=Object.fromEntries(paymentMethods.map(m=>[m,counted[m]-summary.expected[m]]));
+ const differences=Object.fromEntries(paymentMethods.map(m=>[m,confirmed[m]-summary.expected[m]]));
  if(Object.values(differences).some(v=>v!==0)&&!note.trim())throw Error('cash_difference_note');
- return {...state,cashSessions:state.cashSessions.map(s=>s.id===session.id?{...s,status:'closed',closedAt:new Date().toISOString(),counted:{...counted},differences,note:note.trim(),closingSummary:summary}:s)};
+ return {...state,cashSessions:state.cashSessions.map(s=>s.id===session.id?{...s,status:'closed',closedAt:new Date().toISOString(),counted:confirmed,differences,note:note.trim(),closingSummary:summary}:s)};
 }
 export function refundSale(state,context,{saleId,id,reason}){
  if(!['owner','manager'].includes(context.role))throw Error('permission');

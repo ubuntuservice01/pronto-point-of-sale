@@ -1,7 +1,7 @@
 // Gestão de Dívidas — currency in integer centavos; dates are local Mozambique calendar dates.
 import {normalizeExpiryDate} from './expiry.js';
 const money=v=>Number.isSafeInteger(v)&&v>=0&&v<=100000000000;
-export const collectionMethods=['cash','mpesa','emola','transfer'];
+export const collectionMethods=['cash','mpesa','emola','transfer','bank'];
 export function mozambiqueDate(at=new Date()){
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(at).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
  return parts.year+'-'+parts.month+'-'+parts.day;

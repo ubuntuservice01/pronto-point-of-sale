@@ -987,6 +987,10 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
 .shop-methods button[data-shop-method="transfer"]{
   color:#354a96;background:#eef1fe;border-color:#bfc9e9;
 }
+.checkout-payment-choice .cashier-payment[data-quick-payment="bank"],
+.shop-methods button[data-shop-method="bank"]{
+  color:#155a46;background:#e8f6ee;border-color:#a7d7bc;
+}
 .checkout-payment-choice .cashier-payment[data-quick-payment="mixed"],
 .shop-methods button[data-shop-method="mixed"]{
   color:#654391;background:#f5efff;border-color:#d5c2ee;
@@ -1013,6 +1017,10 @@ dialog.held-sales-dialog{width:min(620px,calc(100vw - 26px));max-width:620px;max
 .checkout-payment-choice .cashier-payment[data-quick-payment="transfer"][aria-pressed="true"],
 .shop-methods button[data-shop-method="transfer"][aria-pressed="true"]{
   background:#354a96;border-color:#354a96;color:#fff;
+}
+.checkout-payment-choice .cashier-payment[data-quick-payment="bank"][aria-pressed="true"],
+.shop-methods button[data-shop-method="bank"][aria-pressed="true"]{
+  background:#155a46;border-color:#155a46;color:#fff;
 }
 .checkout-payment-choice .cashier-payment[data-quick-payment="mixed"][aria-pressed="true"],
 .shop-methods button[data-shop-method="mixed"][aria-pressed="true"]{

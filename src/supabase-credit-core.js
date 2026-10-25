@@ -1,5 +1,5 @@
 // Client helpers for Supabase customers/credit. The database remains the authority.
-import {toCents} from './supabase-shop-core.js';
+import {PAYMENT_METHODS,toCents} from './supabase-shop-core.js';
 export const DEBT_STATES={em_dia:'Em dia',parcial:'Parcial',vencido:'Vencido',liquidado:'Liquidado',cancelado:'Cancelado'};
 const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase().trim();
 export const digits=v=>String(v??'').replace(/[^0-9]/g,'');
@@ -15,7 +15,7 @@ export function makeCreditSaleRequest({businessId,branchId,sessionId,cart,custom
 export function makeDebtPaymentRequest({businessId,branchId,sessionId,debt,amount,method,reference='',confirmed,idempotencyKey}){
  const cents=toCents(amount);
  if(cents<=0||cents>debt.balance)throw Error('debt_amount');
- if(!['cash','mpesa','emola','transfer'].includes(method))throw Error('debt_payment');
+ if(!PAYMENT_METHODS.includes(method))throw Error('debt_payment');
  if(confirmed!==true)throw Error('debt_payment');
  if(method!=='cash'&&!String(reference).trim())throw Error('reference_required');
  return {business_id:businessId,branch_id:branchId,session_id:sessionId,idempotency_key:idempotencyKey,debt_id:debt.id,amount_cents:cents,method,reference:String(reference).trim().slice(0,128),manual_confirmed:true};

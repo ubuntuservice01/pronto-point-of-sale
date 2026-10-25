@@ -2,7 +2,7 @@
 // This module never stores passwords or Supabase tokens. No background replay.
 const enc=new TextEncoder(),dec=new TextDecoder();
 const idRE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const methods=['cash','mpesa','emola','transfer'];
+const methods=['cash','mpesa','emola','transfer','bank'];
 const maxEnvelope=40000,maxDraft=25000;
 const b64=bytes=>{
  let output='';for(const n of bytes)output+=String.fromCharCode(n);
@@ -24,7 +24,7 @@ export function validateDraftContent(data,scope){
  const s=scoped(scope);
  if(!data||data.version!==1||data.userId!==s.userId||data.businessId!==s.businessId||data.branchId!==s.branchId)throw Error('draft_scope');
  if(!Array.isArray(data.cart)||data.cart.length>100||typeof data.method!=='string')throw Error('draft_payload');
- if(!['cash','mpesa','emola','transfer','mixed'].includes(data.method))throw Error('draft_payload');
+ if(![...methods,'mixed'].includes(data.method))throw Error('draft_payload');
  const seen=new Set();
  for(const line of data.cart){
   if(!idRE.test(line?.productId)||seen.has(line.productId)||
@@ -39,7 +39,7 @@ export function validateDraftContent(data,scope){
    !idRE.test(p.idempotency_key)||!idRE.test(p.session_id)||
    !Array.isArray(p.items)||!Array.isArray(p.allocations)||
    p.items.length<1||p.items.length>100||
-   p.allocations.length<1||p.allocations.length>4||
+   p.allocations.length<1||p.allocations.length>methods.length||
    !Number.isSafeInteger(p.discount_cents)||p.discount_cents<0||
    !Number.isSafeInteger(p.cash_received_cents)||p.cash_received_cents<0||
    !p.items.every(item=>idRE.test(item?.product_id)&&Number.isFinite(item.quantity)&&

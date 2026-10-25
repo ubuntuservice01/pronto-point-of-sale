@@ -22,7 +22,7 @@ test('Guardado e recuperação de vendas em espera sem concluir qualquer venda',
  assert.equal(sale.subtotal,21500);
  assert.equal(sale.total,21000);
  assert.equal(sale.method,'mixed');
- assert.deepEqual(sale.mixed,{cash:'100',mpesa:'',emola:'115',transfer:''});
+ assert.deepEqual(sale.mixed,{cash:'100',mpesa:'',emola:'115',transfer:'',bank:''});
  assert.deepEqual(sale.cart,cart);
  assert.equal(state.sales.length,0);
  const storage=store();

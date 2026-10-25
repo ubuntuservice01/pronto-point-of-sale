@@ -7,7 +7,7 @@ import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} fro
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
 import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
-import {toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
+import {PAYMENT_METHODS,toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
 import {checkoutCashPreview} from './supabase-checkout-change.js';
 import {getPinKPIs,setPinKPIs,clearPinKPIs} from './pin-city-ui.js';
 import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
@@ -833,7 +833,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
       discount:disc,idempotencyKey:idem});
      await processSale();return;
     }
-    const allocations=method==='mixed'?['cash','mpesa','emola','transfer'].map(m=>({
+    const allocations=method==='mixed'?PAYMENT_METHODS.map(m=>({
      method:m,amount:String(f.get('pay_'+m)||'0')
     })).filter(p=>toCents(p.amount)>0):[{method,amount:totalText}];
     if(allocations.some(x=>x.method!=='cash')&&f.get('confirmed')!=='yes')throw Error('digital_unconfirmed');

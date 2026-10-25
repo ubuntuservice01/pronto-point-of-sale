@@ -12,7 +12,7 @@ import {renderStaffManagement} from './supabase-team-management-ui.js';
 import {renderSuspendedCash} from './supabase-staff-cash-ui.js';
 import {renderAuditView} from './supabase-audit-ui.js';
 
-const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',mixed:'Repartido'};
+const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco',mixed:'Repartido'};
 const safeDate=value=>{
  const d=new Date(value);
  return Number.isFinite(d.getTime())?d.toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short',timeZone:'Africa/Maputo'}):'—';
@@ -38,7 +38,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
  const creditWarning=method==='credit'&&creditCustomer&&total>available?
   '<p class="shop-error" role="alert" data-credit-limit-warning>Não é possível registar esta dívida: crédito disponível de '+MONEY(available)+
   ' para uma venda de '+MONEY(total)+'. Peça ao proprietário ou gerente para actualizar o limite na opção Clientes.</p>':'';
- const methods=['cash','mpesa','emola','transfer','mixed'];
+ const methods=[...PAYMENT_METHODS,'mixed'];
  const buttons='<div class="shop-methods" role="group" aria-label="Forma de pagamento">'+methods.map(m=>
   '<button type="button" data-shop-method="'+m+'" aria-pressed="'+(method===m)+'" class="'+(method===m?'selected':'')+'">'+methodLabels[m]+'</button>').join('')+'</div>';
  const amounts=method==='credit'?'<p class="shop-help">Venda a crédito: não recebe dinheiro neste momento; cria uma dívida e baixa o stock após confirmação.</p>':method==='mixed'?'<div class="shop-payment-grid">'+PAYMENT_METHODS.map(m=>
@@ -60,7 +60,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
    '<small data-shop-change-note>Introduza o valor recebido para calcular o troco.</small></div>':'')+
   (method==='credit'?'<label>Prazo de pagamento<input type="date" id="shop-credit-due" name="credit_due" min="'+esc(credit?.today||'')+'" value="'+esc(creditDue)+'" required></label>':'')+
   (method!=='credit'?'<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>':'')+
-  '<p class="shop-help">Os pagamentos M-Pesa, e-Mola e transferência não são verificados automaticamente pela operadora.</p>'+
+  '<p class="shop-help">Os pagamentos M-Pesa, e-Mola, transferência e Banco devem ser confirmados manualmente.</p>'+
   (['owner','manager','cashier'].includes(role)?'<button type="button" class="shop-credit-toggle" data-shop-credit aria-pressed="'+(method==='credit')+'">'+(method==='credit'?'Voltar a pagamento imediato':'Vender a crédito')+'</button>':'')+
   creditWarning+(method==='credit'?'<p id="shop-checkout-feedback" class="shop-error" role="alert" hidden></p>':'')+
   '<button class="shop-submit" type="submit" '+((!session&&!allowNoSession)||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
@@ -109,7 +109,7 @@ export function renderOwnerSettings({selected='personalizacao',branding=null,log
     '<button type="submit" class="shop-submit">Guardar regras do caixa</button></form>':
     '<p class="shop-help">Não foi possível carregar as regras do caixa. Actualize os dados quando tiver ligação.</p>')+
    linked('Sessões e movimentos','Abertura, fecho, reforços, retiradas e supervisão de vendedores.','cash','Gerir caixa')+'</section>'+
-   '<section class="shop-box"><h3>Meios de pagamento</h3><p class="shop-help">Dinheiro, M-Pesa, e-Mola e transferência são meios registados no POS. A confirmação de carteiras móveis ainda é manual; o sistema não valida recebimentos junto das operadoras.</p></section>';
+   '<section class="shop-box"><h3>Meios de pagamento</h3><p class="shop-help">Dinheiro, M-Pesa, e-Mola, transferência e Banco são meios registados no POS. A confirmação dos pagamentos digitais e bancários é manual.</p></section>';
  }else if(active==='equipa'){
   const staff=staffManagement?.staff||[];
   body='<section class="shop-box"><h3>Colaboradores e permissões</h3>'+

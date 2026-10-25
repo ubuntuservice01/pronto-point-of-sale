@@ -26,7 +26,7 @@ test('20 000 MT of seller sales are separated between cash, M-Pesa and e-Mola', 
  assert.equal(report.totals.salesCount, 3);
  assert.equal(report.totals.grossSales, 2000000);
  assert.deepEqual(report.totals.receivedByMethod, {
-  cash: 1000000, mpesa: 500000, emola: 500000, transfer: 0
+  cash: 1000000, mpesa: 500000, emola: 500000, transfer: 0, bank: 0
  });
  assert.equal(report.totals.receiptsTotal, 2000000);
  assert.equal(report.sellers[0].shifts.length, 0);
@@ -67,7 +67,7 @@ test('Split payments, credit, refunds and debt collections stay in the correct c
  assert.equal(r.creditSales, 70000);
  assert.equal(r.refundsProcessed, 20000);
  assert.equal(r.debtCollections, 30000);
- assert.deepEqual(r.receivedByMethod, { cash: 50000, mpesa: -20000, emola: 100000, transfer: 30000 });
+ assert.deepEqual(r.receivedByMethod, { cash: 50000, mpesa: -20000, emola: 100000, transfer: 30000, bank: 0 });
  assert.equal(r.receiptsTotal, 160000);
  assert.equal(r.salesCount, 2);
  assert.equal(report.totals.grossSales, 220000);

@@ -13,7 +13,7 @@ export function normalizeReturnSnapshot(raw){
   generatedAt:raw.generated_at
  };
 }
-const methods=[['cash','Dinheiro'],['mpesa','M-Pesa'],['emola','e-Mola'],['transfer','Transferência']];
+const methods=[['cash','Dinheiro'],['mpesa','M-Pesa'],['emola','e-Mola'],['transfer','Transferência'],['bank','Banco']];
 export function renderReturnView({returns,selectedSaleId='',session=null}={}){
  if(!returns)return '<section class="shop-box"><h3>Devoluções</h3><p></p></section>';
  const sales=returns.sales.filter(s=>s.status==='completed');

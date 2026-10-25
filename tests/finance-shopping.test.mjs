@@ -47,7 +47,7 @@ test('Pagamentos por M-Pesa, e-Mola, dinheiro e transferência não duplicam ven
  s=createSale(s,{tenantId:'t1',role:'owner',cart:[{productId:'p1',quantity:1}],id:'emola',method:'emola',received:0});
  s={...s,debtPayments:[{id:'debt-pay',tenantId:'t1',method:'transfer',amount:3000,createdAt:new Date().toISOString()}]};
  const report=commercialReport(s,'t1');
- assert.deepEqual(report.moneyByMethod,{cash:5000,mpesa:12000,emola:8500,transfer:3000});
+ assert.deepEqual(report.moneyByMethod,{cash:5000,mpesa:12000,emola:8500,transfer:3000,bank:0});
  assert.equal(report.net,25500);assert.equal(report.debtCollections,3000);
 });
 test('Lista automática guarda recomendações reais e não inventa um pedido ao fornecedor',()=>{

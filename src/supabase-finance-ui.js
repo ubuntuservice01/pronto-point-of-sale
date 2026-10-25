@@ -16,7 +16,7 @@ export function normalizeFinanceSnapshot(raw){
   generatedAt:raw.generated_at
  };
 }
-const payMethods='<option value="cash">Dinheiro</option><option value="mpesa">M-Pesa</option><option value="emola">e-Mola</option><option value="transfer">Transferência</option>';
+const payMethods='<option value="cash">Dinheiro</option><option value="mpesa">M-Pesa</option><option value="emola">e-Mola</option><option value="transfer">Transferência</option><option value="bank">Banco</option>';
 export function renderFinanceView({view,finance,products=[],supplierId='',lines=1,role='',session=null}){
  if(!finance)return section('Compras e despesas','','');
  if(view==='suppliers'){

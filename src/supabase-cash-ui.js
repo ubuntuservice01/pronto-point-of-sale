@@ -32,7 +32,7 @@ export function cashSessionsCSV(snapshot){
   return '"'+(/^[\s]*[=+@\-\t\r]/.test(v)?"'"+v:v)+'"';};
  const header=['Sessão','Funcionário','Terminal','Estado','Tipo de fecho','Abertura','Encerramento',
   'Fundo inicial (MT)','Esperado (MT)','Contado (MT)','Diferença (MT)','Dinheiro recebido (MT)',
-  'M-Pesa (MT)','e-Mola (MT)','Transferência (MT)'];
+  'M-Pesa (MT)','e-Mola (MT)','Transferência (MT)','Banco (MT)'];
  const lines=snapshot.sessions.map(s=>[s.id,s.operator,s.terminal,stateLabels[s.status],
   s.closeType==='administrative_unchecked'?'Fecho administrativo sem conferência':s.closeType||'',s.openedAt||'',s.closedAt||'',s.opening/100,
   s.expected===null?'':s.expected/100,s.counted===null?'':s.counted/100,
@@ -40,7 +40,8 @@ export function cashSessionsCSV(snapshot){
   s.methods?.cash===undefined?'':s.methods.cash/100,
   s.methods?.mpesa===undefined?'':s.methods.mpesa/100,
   s.methods?.emola===undefined?'':s.methods.emola/100,
-  s.methods?.transfer===undefined?'':s.methods.transfer/100].map(safe).join(';'));
+  s.methods?.transfer===undefined?'':s.methods.transfer/100,
+  s.methods?.bank===undefined?'':s.methods.bank/100].map(safe).join(';'));
  return '\ufeff'+[header.map(safe).join(';'),...lines].join('\r\n');
 }
 const fmtTime=value=>{

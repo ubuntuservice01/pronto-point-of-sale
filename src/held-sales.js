@@ -1,7 +1,7 @@
 // Suspended carts are not completed sales and do not reserve any stock.
 // Browser storage is scoped to a shop and operator. Authenticated accounts use
 // sessionStorage until server-side suspended-sale storage is available.
-export const heldSaleMethods = ['cash','mpesa','emola','transfer','mixed','credit'];
+export const heldSaleMethods = ['cash','mpesa','emola','transfer','bank','mixed','credit'];
 const maxHolds = 100;
 const maxLines = 500;
 const validText = value => typeof value === 'string' && value.length <= 128;
@@ -28,7 +28,7 @@ export function makeHeldSale({id,tenantId,userId,cart,products,method='cash',rec
   cart:list.map(({productId,quantity})=>({productId,quantity})),
   lines:list,subtotal,total:Math.max(0,subtotal-discountCents),
   method,received:String(received).slice(0,30),discountText:String(discountText).slice(0,30),
-  mixed:Object.fromEntries(['cash','mpesa','emola','transfer'].map(m=>[m,String(mixed?.[m]||'').slice(0,30)])),
+  mixed:Object.fromEntries(['cash','mpesa','emola','transfer','bank'].map(m=>[m,String(mixed?.[m]||'').slice(0,30)])),
   selectedCustomerId:String(customerId||'').slice(0,128),
   debtDueDate:String(debtDueDate||'').slice(0,30)
  };

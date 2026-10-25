@@ -90,7 +90,7 @@ test('Chrome UI: payment buttons keep product search and checkout mounted', { sk
   }
   const initial = await evalJS('(() => { const search=document.querySelector("#search");const choices=[...document.querySelectorAll("[data-quick-payment]")];window.__posSearch=search;window.__posCheckout=document.querySelector("#sale-cart");return {search:!!search,methods:choices.map(x=>x.dataset.quickPayment),nativeSelect:!!document.querySelector("select#payment")};})()');
   assert.equal(initial.search, true);
-  assert.deepEqual(initial.methods, ['cash','mpesa','emola','transfer','mixed','credit']);
+  assert.deepEqual(initial.methods, ['cash','mpesa','emola','transfer','bank','mixed','credit']);
   assert.equal(initial.nativeSelect, false);
   async function clickMethod(key) {
    const selector = '[data-quick-payment="' + key + '"]';

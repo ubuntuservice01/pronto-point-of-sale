@@ -7,7 +7,7 @@ const input=(name,label,type='text',extra='')=>'<label>'+esc(label)+'<input name
 const select=(name,label,options,first='Seleccione')=>'<label>'+esc(label)+'<select name="'+esc(name)+'" required><option value="">'+esc(first)+'</option>'+options.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('')+'</select></label>';
 const blank=s=>s===null||s===undefined?'':String(s);
 const date=s=>{if(!s)return '—';const d=new Date(s);return Number.isFinite(d.valueOf())?d.toLocaleDateString('pt-PT',{timeZone:'Africa/Maputo'}):'—';};
-const prettyPayment={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência'};
+const prettyPayment={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco'};
 const money=c=>MONEY(Number(c)||0);
 const allIds=list=>list.map(item=>({id:item.id,name:item.name}));
 const panel=(title,body,description='')=>'<section class="shop-box credit-panel"><h3>'+esc(title)+'</h3>'+(description?'<p class="shop-help">'+esc(description)+'</p>':'')+body+'</section>';

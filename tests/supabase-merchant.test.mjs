@@ -61,6 +61,31 @@ test('Split tender 20 MT cash and 50 MT e-Mola is one 70 MT sale with a stable i
   cashReceived:'20',idempotencyKey:key});
  assert.deepEqual(same,payload);
 });
+test('Banco is a separate manual payment method in checkout and split payments',()=>{
+ const article={...products[0],priceCents:7000};
+ const basic={businessId:ID[0],branchId:ID[1],sessionId:ID[2],
+  cart:[{productId:article.id,quantity:1}],products:[article],discount:'0',idempotencyKey:ID[3]};
+ const single=makeSaleRequest({...basic,allocations:[{method:'bank',amount:'70',reference:'Banco-123'}]});
+ assert.equal(single.allocations[0].method,'bank');
+ assert.equal(single.allocations[0].reference,'Banco-123');
+ assert.equal(single.cash_received_cents,0);
+ const split=makeSaleRequest({...basic,allocations:[{method:'transfer',amount:'20'},{method:'bank',amount:'50'}]});
+ assert.deepEqual(split.allocations.map(x=>x.method),['transfer','bank']);
+ const panel=shopPaymentPanel({method:'bank',cart:basic.cart,products:[article],session:{id:ID[2]}});
+ assert.match(panel,/data-shop-method="bank" aria-pressed="true"/);
+ assert.match(panel,/Pagamento único: Banco/);
+ assert.match(shopPaymentPanel({method:'mixed',cart:basic.cart,products:[article],session:{id:ID[2]}}),/name="pay_bank"/);
+});
+test('Database migration accepts Banco without weakening tenant-scoped merchant RPCs',()=>{
+ const sql=readFileSync(new URL('../supabase/migrations/20261025120000_bank_payment_method.sql',import.meta.url),'utf8');
+ for(const table of ['pronto_sales','pronto_payment_allocations','pronto_debt_payments',
+  'pronto_return_headers','pronto_purchase_payments','pronto_expenses'])
+  assert.match(sql,new RegExp('alter table public\\.'+table));
+ for(const fn of ['merchant_action','credit_action','return_action','finance_action'])
+  assert.ok(sql.includes('pronto_private.'+fn+'(text,jsonb)'));
+ assert.match(sql,/not between 1 and 5/);
+ assert.match(sql,/raise exception 'Payment allowlist changed/);
+});
 test('Rejects partial/mismatched payments, double methods, short cash and oversold stock',()=>{
  const args={businessId:ID[0],branchId:ID[1],sessionId:ID[2],
   cart:[{productId:products[1].id,quantity:1}],products,discount:'0',

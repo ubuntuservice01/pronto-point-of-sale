@@ -70,7 +70,7 @@ export function commercialReport(state,tenantId,{from='',to=''}={}){
  const netOperatingResult=completeCostData?knownGrossProfit-expensesTotal:null;
  const marginRevenue=sales.filter(s=>saleCost(s)!==null).reduce((sum,s)=>sum+s.total,0);
  const allocationsFor=s=>Array.isArray(s.payments)&&s.payments.length?s.payments:(s.method==='credit'?[]:[{method:s.method,amount:s.total}]);
- const moneyByMethod=Object.fromEntries(['cash','mpesa','emola','transfer'].map(method=>[method,
+ const moneyByMethod=Object.fromEntries(['cash','mpesa','emola','transfer','bank'].map(method=>[method,
   sales.reduce((n,s)=>n+allocationsFor(s).filter(p=>p.method===method).reduce((v,p)=>v+p.amount,0),0)
    -refunds.reduce((n,ref)=>n+(ref.payments||[]).filter(p=>p.method===method).reduce((v,p)=>v+p.amount,0),0)
    +(state.debtPayments||[]).filter(p=>p.tenantId===tenantId&&inDates(p.createdAt,from,to)&&p.method===method).reduce((n,p)=>n+p.amount,0)

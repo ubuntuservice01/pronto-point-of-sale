@@ -6,3 +6,13 @@ const context={tenantId:'t1',userId:'demo-owner',deviceId:'phone'};
 test('Cash reconciliation uses net cash sales, separates electronic payments and includes movements',()=>{let s=openCash(seed(),context,10000);s=createSale(s,{...context,role:'owner',cart:[{productId:'p1',quantity:1}],method:'cash',received:10000,id:'s1'});s=attachCashSale(s,context,'s1');s=createSale(s,{...context,role:'owner',cart:[{productId:'p2',quantity:1}],method:'mpesa',id:'s2'});s=attachCashSale(s,context,'s2');s=moveCash(s,context,{type:'in',amount:2000,reason:'Trocos'});s=moveCash(s,context,{type:'out',amount:3000,reason:'Transporte'});const summary=cashSummary(s,activeCash(s,context));assert.equal(summary.expected.cash,17500);assert.equal(summary.expected.mpesa,15500);assert.equal(summary.total,24000);const closed=closeCash(s,context,{cash:17500,mpesa:15500,emola:0,transfer:0});assert.equal(closed.cashSessions[0].status,'closed');assert.equal(activeCash(closed,context),undefined);});
 test('Duplicate opening, over-withdrawal and unexplained differences are rejected',()=>{const s=openCash(seed(),context,1000);assert.throws(()=>openCash(s,context,0),/already_open/);assert.throws(()=>moveCash(s,context,{type:'out',amount:2000,reason:'Too much'}),/insufficient/);assert.throws(()=>closeCash(s,context,{cash:900,mpesa:0,emola:0,transfer:0}),/difference_note/);assert.equal(closeCash(s,context,{cash:900,mpesa:0,emola:0,transfer:0},'Difference to investigate').cashSessions[0].differences.cash,-100);});
 test('Sessions are independent across businesses and devices',()=>{let s=openCash(seed(),context,0);s=openCash(s,{...context,deviceId:'tablet'},0);assert.equal(s.cashSessions.length,2);assert.equal(activeCash(s,{...context,tenantId:'t2'}),undefined);assert.throws(()=>attachCashSale(seed(),context,'none'),/not_open/);});
+test('Banco is reconciled separately from bank transfers',()=>{
+ let s=openCash(seed(),context,0);
+ s=createSale(s,{...context,role:'owner',cart:[{productId:'p1',quantity:1}],method:'bank',id:'bank-sale'});
+ s=attachCashSale(s,context,'bank-sale');
+ const summary=cashSummary(s,activeCash(s,context));
+ assert.equal(summary.expected.bank,8500);
+ assert.equal(summary.expected.transfer,0);
+ const closed=closeCash(s,context,{cash:0,mpesa:0,emola:0,transfer:0,bank:8500});
+ assert.equal(closed.cashSessions[0].differences.bank,0);
+});
