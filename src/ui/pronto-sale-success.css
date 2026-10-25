@@ -11,23 +11,30 @@ dialog.pronto-sale-success-dialog{max-width:480px;text-align:center;padding:26px
 .pronto-sale-success-actions button{width:100%;min-height:50px}
 .pronto-sale-print-action{border:1px solid #96cfb7;background:#e8f5ed;color:#076e53}
 .pronto-sale-print-action:hover{background:#d6eee0}
+.pronto-sale-paper-setting{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 4px;text-align:left}
+.pronto-sale-paper-setting label{font-size:13px;font-weight:700;margin:0;color:#335345}
+.pronto-sale-paper-setting select{width:auto;min-width:152px;padding:8px 10px;font-size:13px;min-height:40px}
+.pronto-sale-print-help{font-size:11px;line-height:1.5;color:#667b70;text-align:left;margin:9px 0}
 #pronto-sale-print{display:none}
-.pronto-receipt-content{max-width:74mm;margin:0 auto;padding:8px;font:12px/1.45 ui-monospace,monospace;color:#000;background:#fff}
-.pronto-receipt-content header,.pronto-receipt-content footer{text-align:center}
-.pronto-receipt-content header strong{font-size:20px}
-.pronto-receipt-content header p,.pronto-receipt-content footer p{margin:3px 0}
-.pronto-receipt-content table{width:100%;border-collapse:collapse;margin:14px 0;text-align:left}
-.pronto-receipt-content th,.pronto-receipt-content td{border-bottom:1px dashed #555;padding:5px 1px}
-.pronto-receipt-content td:last-child,.pronto-receipt-content th:last-child{text-align:right;white-space:nowrap}
-.pronto-receipt-content small{display:block;font-size:10px}
-.pronto-receipt-totals{border-top:1px dashed #333;padding-top:7px}
-.pronto-receipt-totals>div{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
-.pronto-receipt-grand{border-top:1px solid #333;border-bottom:1px solid #333;font-size:16px;font-weight:800;margin:5px 0;padding:6px 0!important}
+#pronto-sale-print.pronto-sale-print-measure{display:block!important;visibility:hidden!important;position:fixed!important;left:-10000px!important;top:0!important;width:var(--pronto-paper-width)!important;padding:2mm!important;margin:0!important;box-sizing:border-box!important}
+#pronto-sale-print .pronto-receipt-content{width:var(--pronto-content-width);max-width:100%;margin:0 auto;padding:0;font:11px/1.35 ui-monospace,monospace;color:#000;background:#fff;overflow-wrap:anywhere}
+#pronto-sale-print .pronto-receipt-content header,#pronto-sale-print .pronto-receipt-content footer{display:block;height:auto;padding:0;margin:0;border:0;background:transparent;text-align:center;color:#000}
+#pronto-sale-print .pronto-receipt-content header strong{font-size:15px}
+#pronto-sale-print .pronto-receipt-content header p,#pronto-sale-print .pronto-receipt-content footer p{margin:3px 0;font-size:10px;color:#000}
+#pronto-sale-print .pronto-receipt-content>p{font-size:11px;line-height:1.3;margin:4px 0;color:#000}
+#pronto-sale-print .pronto-receipt-brand-logo{display:block;width:55px;height:46px;object-fit:contain;margin:0 auto 6px}
+#pronto-sale-print .pronto-receipt-content table{width:100%;border-collapse:collapse;margin:10px 0;text-align:left;table-layout:auto}
+#pronto-sale-print .pronto-receipt-content th,#pronto-sale-print .pronto-receipt-content td{border-bottom:1px dashed #555;padding:5px 1px;font-size:11px;vertical-align:top}
+#pronto-sale-print .pronto-receipt-content td:last-child,#pronto-sale-print .pronto-receipt-content th:last-child{text-align:right;white-space:nowrap}
+#pronto-sale-print .pronto-receipt-content small{display:block;font-size:9px;color:#111}
+#pronto-sale-print .pronto-receipt-totals{border-top:1px dashed #333;padding-top:7px}
+#pronto-sale-print .pronto-receipt-totals>div{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
+#pronto-sale-print .pronto-receipt-grand{border-top:1px solid #333;border-bottom:1px solid #333;font-size:14px;font-weight:800;margin:5px 0;padding:6px 0!important}
 @media print{
  body.pronto-printing > :not(#pronto-sale-print){display:none!important}
- body.pronto-printing{margin:0!important;padding:0!important;background:#fff!important}
- body.pronto-printing #pronto-sale-print{display:block!important;position:static!important;margin:0!important;padding:0!important}
- body.pronto-printing .pronto-receipt-content{max-width:74mm!important;padding:0!important}
+ body.pronto-printing{width:auto!important;margin:0!important;padding:0!important;background:#fff!important}
+ body.pronto-printing #pronto-sale-print{display:block!important;visibility:visible!important;position:static!important;width:var(--pronto-paper-width)!important;margin:0!important;padding:2mm!important;box-sizing:border-box!important;break-inside:avoid}
+ body.pronto-printing #pronto-sale-print .pronto-receipt-content{width:var(--pronto-content-width)!important;max-width:100%!important;padding:0!important}
 }
 
 .pronto-sale-success-change{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0;padding:13px 16px;border-radius:12px;background:#e7f7ed;border:1px solid #b9dfc7;text-align:left}

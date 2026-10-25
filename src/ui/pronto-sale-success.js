@@ -2,6 +2,7 @@
 // Printable document is explicitly an operational receipt, not a fiscal invoice.
 import {esc,MONEY} from '../supabase-shop-core.js';
 import {normalizeDocumentBranding} from '../supabase-document-branding.js';
+import {savedThermalPaperWidth,saveThermalPaperWidth,thermalPaperWidth,thermalPageHeightMm,thermalPageRule} from './pronto-thermal-paper.js';
 const methods={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco'};
 const integer=x=>Number.isSafeInteger(Number(x))&&Number(x)>=0;
 const formatDate=stamp=>new Intl.DateTimeFormat('pt-PT',{
@@ -61,6 +62,7 @@ export function receiptMarkup(r,{branding,logoUrl=''}={}){
 export function showSaleCompleteModal(receipt,{doc=document}={}){
  if(!receipt?.id)throw Error('sale_not_confirmed');
  return new Promise(resolve=>{
+  const paperWidth=savedThermalPaperWidth();
   const dialog=doc.createElement('dialog');
   dialog.className='pronto-dialog pronto-sale-success-dialog';
   dialog.setAttribute('aria-labelledby','pronto-sale-success-title');
@@ -74,6 +76,11 @@ export function showSaleCompleteModal(receipt,{doc=document}={}){
     '<div class="pronto-sale-success-change"><span>Troco a entregar</span><strong>'+MONEY(receipt.change)+'</strong></div>':'')+
    '<p class="pronto-sale-success-ref">Referência: '+esc(receipt.id.slice(0,8))+'</p>'+
    (receipt.duplicate?'<p class="pronto-sale-success-note">Esta venda já estava registada. Não foi duplicada.</p>':'')+
+   '<div class="pronto-sale-paper-setting"><label for="pronto-sale-paper-width">Largura do rolo térmico</label>'+
+    '<select id="pronto-sale-paper-width" aria-label="Largura do papel da impressora">'+
+    '<option value="80"'+(paperWidth===80?' selected':'')+'>80 mm (padrão)</option>'+
+    '<option value="58"'+(paperWidth===58?' selected':'')+'>58 mm</option></select></div>'+
+   '<p class="pronto-sale-print-help">Ligue a impressora por USB, Bluetooth ou Wi-Fi ao dispositivo e seleccione-a ao imprimir. Configure o mesmo tamanho de papel, margens zero e sem cabeçalhos.</p>'+
    '<div class="pronto-sale-success-actions">'+
     '<button type="button" class="pronto-dialog-button pronto-dialog-button-primary" data-sale-done="new">+ Nova venda</button>'+
     '<button type="button" class="pronto-dialog-button pronto-sale-print-action" data-sale-done="print">Imprimir recibo</button>'+
@@ -90,23 +97,37 @@ export function showSaleCompleteModal(receipt,{doc=document}={}){
   };
   dialog.addEventListener('click',e=>{
    const button=e.target.closest('[data-sale-done]');
-   if(button)done(button.dataset.saleDone);
+   if(button){
+    if(button.dataset.saleDone==='print')saveThermalPaperWidth(dialog.querySelector('#pronto-sale-paper-width')?.value);
+    done(button.dataset.saleDone);
+   }
+  });
+  dialog.addEventListener('change',e=>{
+   if(e.target.id==='pronto-sale-paper-width')saveThermalPaperWidth(e.target.value);
   });
   dialog.addEventListener('cancel',e=>{e.preventDefault();done('close');});
   try{dialog.showModal();dialog.querySelector('[data-sale-done="new"]')?.focus();}
   catch{dialog.remove();resolve('close');}
  });
 }
-export function printSaleReceipt(r,{doc=document,win=window,branding=null,logoUrl=''}={}){
+export function printSaleReceipt(r,{doc=document,win=window,branding=null,logoUrl='',paperWidth}={}){
  if(!r?.id)throw Error('sale_not_confirmed');
  // Only one print container; escaped data come from confirmed checkout request.
  doc.getElementById('pronto-sale-print')?.remove();
+ const width=thermalPaperWidth(paperWidth??savedThermalPaperWidth());
  const page=doc.createElement('section');
  page.id='pronto-sale-print';page.className='pronto-sale-print-page';
+ page.style.setProperty('--pronto-paper-width',width+'mm');
+ page.style.setProperty('--pronto-content-width',width-4+'mm');
  page.innerHTML=receiptMarkup(r,{branding,logoUrl});
  doc.body.append(page);
+ // Measure the same narrow layout that will be printed. Use a real, finite page
+ // height: "80mm auto" is invalid in @page and silently produces A4 on browsers.
+ page.classList.add('pronto-sale-print-measure');
+ const receiptHeight=thermalPageHeightMm(Math.max(page.getBoundingClientRect().height,page.scrollHeight));
+ page.classList.remove('pronto-sale-print-measure');
  const pageStyle=doc.createElement('style');
- pageStyle.textContent='@page{size:80mm auto;margin:3mm}.pronto-receipt-brand-logo{display:block;width:70px;height:58px;object-fit:contain;margin:0 auto 8px}.pronto-receipt-content header{text-align:center}';
+ pageStyle.textContent=thermalPageRule(width,receiptHeight);
  doc.head.append(pageStyle);
  doc.body.classList.add('pronto-printing');
  const cleanup=()=>{page.remove();pageStyle.remove();doc.body.classList.remove('pronto-printing');};

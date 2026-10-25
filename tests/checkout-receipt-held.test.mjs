@@ -73,6 +73,8 @@ test('Checkout confirmation is shown only after successful server response, and 
  for(const action of ['new','print','close'])assert.match(modal,new RegExp('data-sale-done="'+action+'"'));
  assert.match(modal,/win\.print\(\)/);
  assert.match(css,/@media print/);
- assert.match(modal,/size:80mm/);
+ assert.match(modal,/thermalPageRule\(width,receiptHeight\)/);
+ assert.match(modal,/pronto-sale-paper-width/);
+ assert.match(modal,/saveThermalPaperWidth/);
  assert.match(css,/body\.pronto-printing/);
 });
