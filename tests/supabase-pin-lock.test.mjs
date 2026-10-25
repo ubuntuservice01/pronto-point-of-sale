@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createProntoIdentity} from '../src/supabase-identity.js';
 import {prontoSupabaseConfig} from '../src/pronto-supabase-config.js';
-import {PIN_IDLE_MS,pinError,pinScreen} from '../src/supabase-pin-lock.js';
+import {PIN_IDLE_MS,pinError,pinScreen,dismissUnlockSoftKeyboard,editUnlockPin,pinKeyboardKey} from '../src/supabase-pin-lock.js';
 import {renderShopScreen} from '../src/supabase-shop-ui.js';
 
 const ID='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222';
@@ -60,6 +60,25 @@ test('PIN screen renders five digits, Portuguese labels and clear lock controls'
  assert.ok(!pinScreen({email:'<script>alert(1)</script>'}).includes('<script>'));
  assert.match(pinError({reason:'incorrect_pin',remaining_attempts:2}),/2 tentativas/);
  assert.match(pinError({reason:'temporarily_blocked',retry_after_seconds:900}),/15 minutos/);
+});
+test('Locked mobile PIN dismisses the system keyboard without disabling the in-app keypad or hardware keys',()=>{
+ const events=[];
+ const doc={activeElement:{blur(){events.push('blur');}}};
+ const win={navigator:{virtualKeyboard:{hide(){events.push('hide');}}}};
+ dismissUnlockSoftKeyboard({doc,win});
+ assert.deepEqual(events,['blur','hide']);
+ assert.doesNotThrow(()=>dismissUnlockSoftKeyboard({doc,win:{navigator:{}}})); // iPhone / older Android
+ assert.doesNotThrow(()=>dismissUnlockSoftKeyboard({doc:{},win:{}}));
+ assert.equal(editUnlockPin('','5'),'5');
+ assert.equal(editUnlockPin('12345','Backspace'),'1234');
+ assert.equal(pinKeyboardKey({key:'7'}),'7');
+ assert.equal(pinKeyboardKey({key:'Backspace'}),'Backspace');
+ const html=pinScreen({mode:'unlock'});
+ assert.match(html,/id="pronto-pin-entry" name="pin" type="hidden"/);
+ assert.doesNotMatch(html,/name="pin"[^>]*inputmode="numeric"/);
+ const source=readFileSync(new URL('../src/supabase-pin-lock.js',import.meta.url),'utf8');
+ assert.match(source,/if\(mode==='unlock'\)dismissUnlockSoftKeyboard\(\{doc,win\}\)/);
+ assert.match(source,/dismissUnlockSoftKeyboard\(\{doc,win\}\);\s*submit\.focus\(\{preventScroll:true\}\)/);
 });
 test('PIN is set only after Supabase Auth; locked browser client denies POS writes until server confirms PIN',async()=>{
  const fake=mock(),client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:fake.fetchImpl});

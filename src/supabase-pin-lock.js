@@ -19,6 +19,15 @@ export function editUnlockPin(value,key){
  if(key==='Delete'||key==='Escape')return '';
  return current;
 }
+// A locked checkout can retain focus on a price/quantity input behind the overlay.
+// Blur it before rendering the PIN pad: inert alone doesn't reliably close Gboard.
+export function dismissUnlockSoftKeyboard({doc,win}={}){
+ try{doc?.activeElement?.blur?.();}catch{/* Ignore inaccessible focus targets. */}
+ try{
+  const result=win?.navigator?.virtualKeyboard?.hide?.();
+  result?.catch?.(()=>{});
+ }catch{/* VirtualKeyboard is optional (including on iOS). */}
+}
 export const PIN_IDLE_MS=600000; // 10 minutes of actual inactivity.
 export function pinError(result){
  if(result?.reason==='incorrect_pin')return 'PIN incorrecto. Restam '+(result.remaining_attempts??'?')+' tentativas.';
@@ -109,6 +118,7 @@ export async function mountProntoPinGate({
  };
  const show=mode=>{
   if(destroyed||processing&&mode==='unlock')return;
+  if(mode==='unlock')dismissUnlockSoftKeyboard({doc,win});
   locking=true;forget();client.lockScreen();
   if(timer!==null)win.clearTimeout(timer);timer=null;
   root.inert=true;root.setAttribute('aria-hidden','true');
@@ -139,7 +149,8 @@ export async function mountProntoPinGate({
      const key=button.dataset.pinKey;
      entry.value=editUnlockPin(entry.value,key==='Limpar'?'Delete':key==='⌫'?'Backspace':key);
      entry.dispatchEvent(new Event('input',{bubbles:true}));
-     // Keep mobile virtual keyboard closed; the visible keypad edits the hidden field.
+     // Physical/touch PIN buttons never need Android's numeric keyboard.
+     dismissUnlockSoftKeyboard({doc,win});
      submit.focus({preventScroll:true});
     },{signal});
    });
@@ -186,8 +197,11 @@ export async function mountProntoPinGate({
   },{signal});
   win.setTimeout(()=>{
    if(destroyed||!form.isConnected)return;
-   if(mode==='unlock')submit.focus({preventScroll:true});
-   else form.querySelector('input:not([type="hidden"])')?.focus({preventScroll:true});
+   if(mode==='unlock'){
+    // Recheck after the overlay mounts in case Android deferred the old focus.
+    dismissUnlockSoftKeyboard({doc,win});
+    submit.focus({preventScroll:true});
+   }else form.querySelector('input:not([type="hidden"])')?.focus({preventScroll:true});
   },0);
  };
  const close=()=>{
