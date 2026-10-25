@@ -5,6 +5,13 @@
 .shop-sales-tab span,.shop-held-heading span,.shop-held-menu-count{display:inline-grid;place-items:center;margin-left:6px;border-radius:99px;min-width:22px;height:22px;padding:0 5px;font-size:12px;font-weight:850;background:#e6f4ea;color:#087f68}
 .shop-sales-tab.selected span{background:#fff;color:#087f68}
 .shop-held-menu-count{margin-left:auto}
+.shop-sale-hold-toolbar{display:flex;align-items:center;gap:14px;margin:-4px 0 16px;padding:12px 14px;border:1px solid #c8e3d5;border-radius:13px;background:#f1faf5}
+.shop-hold-trigger{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:46px;padding:10px 16px;border:0;border-radius:10px;background:#087f68;color:#fff;font-size:13px;font-weight:800;cursor:pointer}
+.shop-hold-trigger:disabled{background:#c6d6ce;color:#526c5d;cursor:not-allowed}
+.shop-hold-trigger:focus-visible,.shop-hold-mobile-bar button:focus-visible{outline:3px solid #2369ec;outline-offset:3px}
+.shop-hold-item-count{padding:3px 7px;border-radius:99px;background:#ffffff30;font-size:11px;white-space:nowrap}
+.shop-sale-hold-toolbar p{margin:0;color:#426953;font-size:12px;line-height:1.45}
+.shop-hold-mobile-bar{display:none}
 .shop-held-in-sales{margin:16px 0}
 .shop-held-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .shop-held-heading h3{margin:0}
@@ -16,7 +23,22 @@
 .shop-held-mini-item small{display:block;color:#6b8073;font-size:12px;margin-top:4px}
 .shop-held-mini-item button{flex:none;border:1px solid #0c8967;color:#08765a;background:#f1fbf5;border-radius:10px;min-height:42px;padding:8px 16px;font-weight:750}
 .shop-held-mini-item button:hover,.shop-held-heading>button:hover{background:#d6eee1}
-@media(max-width:600px){.shop-sales-tabs{display:grid;grid-template-columns:1fr 1fr}.shop-sales-tab{font-size:13px;padding:10px 8px}.shop-held-mini-item{align-items:flex-start;flex-wrap:wrap}.shop-held-mini-item>div{flex:1 1 180px}}
+@media(max-width:600px){
+ .shop-sales-tabs{display:grid;grid-template-columns:1fr 1fr}
+ .shop-sales-tab{font-size:13px;padding:10px 8px}
+ .shop-sale-hold-toolbar{display:grid;gap:6px;margin-top:0;padding:11px}
+ .shop-hold-trigger{width:100%;min-height:50px}
+ .shop-sale-hold-toolbar p{font-size:11px}
+ .shop-held-mini-item{align-items:flex-start;flex-wrap:wrap}
+ .shop-held-mini-item>div{flex:1 1 180px}
+ .shop-main.shop-main-hold-active{padding-bottom:170px}
+ .shop-hold-mobile-bar{display:flex;position:fixed;align-items:center;justify-content:space-between;gap:12px;left:12px;right:12px;bottom:calc(83px + env(safe-area-inset-bottom));z-index:89;padding:10px 11px 10px 15px;border:1px solid #b8daca;border-radius:16px;background:#fff;box-shadow:0 7px 26px #143b2b30}
+ .shop-hold-mobile-bar>div{display:grid;gap:3px;min-width:0}
+ .shop-hold-mobile-bar small{font-size:10px;color:#667e70}
+ .shop-hold-mobile-bar strong{font-size:12px;color:#164b35}
+ .shop-hold-mobile-bar button{flex:none;border:0;border-radius:11px;background:#087f68;color:#fff;min-height:45px;padding:10px 14px;font-size:13px;font-weight:850}
+}
+@media(max-width:355px){.shop-hold-mobile-bar{left:7px;right:7px;gap:5px}.shop-hold-mobile-bar button{padding:10px;font-size:12px}}
 
 /* Instant change calculation. Paid amount is always typed manually by cashier. */
 .shop-change-preview{display:flex;flex-direction:column;gap:6px;margin:15px 0;padding:17px 19px;border:1px solid #addcc0;border-radius:15px;background:#e8f8ef}

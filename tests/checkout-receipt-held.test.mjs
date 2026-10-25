@@ -61,6 +61,29 @@ test('Held sales appear as a dedicated tab and directly on the selling screen',(
  assert.match(held,/data-shop-sell-tab/);
  assert.match(held,/data-shop-hold-delete/);
 });
+test('Mobile cashier can find and activate the hold-sale button without scrolling below checkout',()=>{
+ const account={userId:u,email:'caixa@loja.co.mz',grants:[{id:u,name:'Loja',role:'cashier'}]};
+ const opts={account,grants:account.grants,grant:account.grants[0],branches:[{id:b,name:'Centro'}],branchId:b,
+  data:{products:[item],sessions:[{id:b,operatorId:u}],sales:[]},cart,view:'sell',method:'cash',discount:'0',
+  query:'',feedback:'',pending:null,heldSales:[{id:u,cart,createdAt:'2026-10-21T12:00:00Z'}]};
+ const html=renderShopScreen(opts);
+ assert.match(html,/<div class="shop-sale-hold-toolbar">/);
+ assert.ok(html.indexOf('shop-sale-hold-toolbar')<html.indexOf('shop-search'),
+  'The primary hold action must appear before the long mobile product catalog');
+ assert.match(html,/<button[^>]*data-shop-hold>[^<]*<span[^>]*>⏸<\/span> Colocar venda em espera/);
+ assert.match(html,/<div class="shop-hold-mobile-bar"[^>]*>[\s\S]*data-shop-hold/);
+ assert.match(html,/data-shop-held-tab>Em espera <span>1<\/span>/);
+ assert.match(html,/shop-main-hold-active/);
+ const empty=renderShopScreen({...opts,cart:[]});
+ assert.match(empty,/data-shop-hold disabled/);
+ assert.doesNotMatch(empty,/shop-hold-mobile-bar/);
+ const awaiting=renderShopScreen({...opts,pending:{id:u}});
+ assert.match(awaiting,/data-shop-hold disabled/);
+ assert.doesNotMatch(awaiting,/shop-hold-mobile-bar/);
+ const css=read('src/supabase-checkout-flow.css');
+ assert.match(css,/\.shop-hold-mobile-bar\{display:flex;position:fixed/);
+ assert.match(css,/\.shop-main\.shop-main-hold-active\{padding-bottom:/);
+});
 test('Checkout confirmation is shown only after successful server response, and printing is an explicit choice',()=>{
  const js=read('src/supabase-shop-dashboard.js');
  const css=read('src/ui/pronto-sale-success.css');

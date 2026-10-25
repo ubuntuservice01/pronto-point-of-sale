@@ -205,11 +205,18 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    (canViewAlerts?'<button type="button" data-shop-notifications-all class="shop-notification-all">Ver todos os alertas'+(notificationCount>5?' ('+notificationCount+')':'')+'</button>':'')+
   '</div>':'';
  const prodCards=view==='sell'?renderShopProductResults(products,query):'';
+ const holdLabel=cart.length+' artigo'+(cart.length===1?'':'s');
+ const holdEnabled=cart.length>0&&!pending;
  let body='';
  if(view==='sell'){
   body='<div class="shop-sales-tabs" role="group" aria-label="Vendas e carrinhos em espera">'+
    '<button type="button" class="shop-sales-tab selected" aria-current="page">Venda actual</button>'+
    '<button type="button" class="shop-sales-tab" data-shop-held-tab>Em espera <span>'+heldSales.length+'</span></button></div>'+
+   '<div class="shop-sale-hold-toolbar"><button type="button" class="shop-hold-trigger" data-shop-hold'+(holdEnabled?'':' disabled')+'>'+
+   '<span aria-hidden="true">⏸</span> Colocar venda em espera'+(cart.length?' <span class="shop-hold-item-count">'+holdLabel+'</span>':'')+'</button>'+
+   '<p>'+(pending?'Há uma venda pendente de confirmação. Verifique-a antes de colocar outra em espera.':
+    cart.length?'Guarda este carrinho na filial para atender outro cliente. Não reserva stock.':
+    'Adicione artigos ao carrinho para poder colocar a venda em espera.')+'</p></div>'+
    '<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><div class="shop-search"><label for="shop-search">Pesquisar por nome ou código</label>'+
    '<div class="shop-search-control"><input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Nome, código ou referência">'+
    '<button class="shop-scan-launch" data-shop-scan type="button" title="Ler QR code ou código de barras" aria-label="Abrir câmara para ler QR code ou código de barras">'+
@@ -224,8 +231,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
      '</strong><small>'+esc(h.cart.length)+' artigo(s) · '+esc(safeDate(h.createdAt))+'</small></div>'+
      '<button type="button" data-shop-hold-resume="'+esc(h.id)+'">Retomar</button></div>').join(''):
      '<p class="shop-help">Ainda não há vendas suspensas. Pode guardar o carrinho para atender outro cliente.</p>')+
-   '</section>'+
-   (cart.length?'<div class="shop-hold-actions"><button type="button" data-shop-hold>Suspender esta venda</button><small>A venda em espera não reserva stock nem confirma pagamentos.</small></div>':'');
+   '</section>';
   if(pending)body+='<div class="shop-pending"><strong>Venda com confirmação pendente</strong><p>Não crie outra venda antes de verificar se esta foi concluída. Pode repetir o mesmo pedido sem duplicar o registo ou descartá-lo após conferência.</p><button type="button" data-shop-retry>Repetir o mesmo pedido</button><button type="button" data-shop-discard>Descartar pedido pendente</button></div>';
  }else if(view==='customers'||view==='debts'){
   body=renderCreditView({view,credit,role:grant.role,query:customerQuery,filter:debtFilter,session,selectedCustomerId});
@@ -332,7 +338,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  '<label>Filial<select id="shop-branch-select">'+branches.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===branchId?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
  '<button type="button" data-shop-refresh>Actualizar dados</button><span class="shop-cash-indicator">'+(session?'Caixa aberto':cashState?.policy.openingRequired===false?'Abertura opcional':'Caixa fechado')+'</span></div>'+
 
- '<main class="shop-main"><div id="shop-message" role="status" aria-live="polite">'+esc(feedback||'')+'</div>'+
+ '<main class="shop-main'+(view==='sell'&&holdEnabled?' shop-main-hold-active':'')+'"><div id="shop-message" role="status" aria-live="polite">'+esc(feedback||'')+'</div>'+
  '<h2>'+esc(branch?.name||'Loja')+'</h2>'+body+
  (view==='sell'||view==='held'?'<section class="shop-box shop-draft-section"><h3>Recuperação de carrinhos</h3><p class="shop-help">Pode guardar o carrinho encriptado neste dispositivo. Sem Internet, pode guardar o carrinho para recuperar mais tarde. A venda só é concluída com ligação. Os carrinhos guardados só podem ser finalizados com Internet.</p>'+
  (cart.length||pending?'<form data-shop-form="draft_save" class="shop-form"><label>Frase de recuperação (mínimo 12 caracteres)<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Guardar rascunho encriptado</button></form>':'')+
@@ -340,6 +346,9 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  '<p class="shop-help">Se uma venda foi enviada e a resposta falhou, recupere o mesmo pedido e a mesma referência antes de reenviar. Não crie uma venda nova sem conferir os registos.</p></section>':'')+
  (pendingFinance?'<div class="shop-pending"><strong>Operação financeira por confirmar</strong><p>Confira o histórico da loja antes de tentar outra operação. Repetir o mesmo formulário reutiliza a chave original.</p><button type="button" data-finance-discard>Descartar referência local após conferir</button></div>':'')+
  '<p class="shop-footer">Pronto POS — Menos complicações, mais negócio. © Ubuntu Service, Lda.</p></main></div>'+
+ (view==='sell'&&holdEnabled?'<div class="shop-hold-mobile-bar" role="group" aria-label="Acções da venda actual">'+
+  '<div><small>Venda actual</small><strong>'+holdLabel+'</strong></div>'+
+  '<button type="button" data-shop-hold aria-label="Colocar venda actual em espera">⏸ Pôr em espera</button></div>':'')+
  '<nav class="shop-mobile-bottom" aria-label="Navegação rápida">'+bottomNav+
  '<button type="button" data-shop-menu-toggle aria-label="Mais funcionalidades" aria-expanded="'+menuOpen+'"><span aria-hidden="true">☰</span><small>Mais</small></button></nav></div>';
 }
