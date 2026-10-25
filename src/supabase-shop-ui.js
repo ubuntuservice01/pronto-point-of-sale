@@ -215,18 +215,8 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
     '<button type="button" data-shop-hold'+(holdEnabled?'':' disabled')+'>⏸ Em espera</button>'+
     '<button type="button" data-shop-held-tab>↩ Retomar ('+heldSales.length+')</button>'+
     '<button type="button" data-shop-go-checkout class="shop-cashier-charge">✓ Cobrar</button></div>':'';
-  body=shortcuts+'<div class="shop-sales-tabs" role="group" aria-label="Vendas e carrinhos em espera">'+
-   '<button type="button" class="shop-sales-tab selected" aria-current="page">Venda actual</button>'+
-   '<button type="button" class="shop-sales-tab" data-shop-held-tab>Em espera <span>'+heldSales.length+'</span></button></div>'+
-   '<div class="shop-sale-hold-toolbar"><button type="button" class="shop-hold-trigger" data-shop-hold'+(holdEnabled?'':' disabled')+'>'+
-   '<span aria-hidden="true">⏸</span> Colocar venda em espera'+(cart.length?' <span class="shop-hold-item-count">'+holdLabel+'</span>':'')+'</button>'+
-   '<p>'+(pending?'Há uma venda pendente de confirmação. Verifique-a antes de colocar outra em espera.':
-    cart.length?'Guarda este carrinho na filial para atender outro cliente. Não reserva stock.':
-    'Adicione artigos ao carrinho para poder colocar a venda em espera.')+'</p></div>'+
-   '<section class="shop-mobile-payment-shortcut" aria-label="Pagamento no telemóvel">'+
-   '<div class="shop-mobile-payment-heading"><div><strong>Forma de pagamento</strong><small>Escolha como o cliente vai pagar. Pode alterar na cobrança.</small></div>'+
-   '<button type="button" data-shop-go-checkout>Ir ao pagamento ↓</button></div>'+
-   paymentMethodButtons(method,'shop-methods-mobile-quick','Escolher meio de pagamento no telemóvel')+'</section>'+
+  // No duplicated checkout, held-cart or payment controls above the catalog.
+  body=shortcuts+
    '<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><div class="shop-search"><label for="shop-search">Pesquisar por nome ou código</label>'+
    '<div class="shop-search-control"><input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Nome, código ou referência">'+
    '<button class="shop-scan-launch" data-shop-scan type="button" title="Ler QR code ou código de barras" aria-label="Abrir câmara para ler QR code ou código de barras">'+
@@ -358,7 +348,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  '<button type="button" data-shop-refresh>Actualizar dados</button><span class="shop-cash-indicator">'+(session?'Caixa aberto':cashState?.policy.openingRequired===false?'Abertura opcional':'Caixa fechado')+'</span></div>'+
 
  '<main class="shop-main'+(view==='sell'&&holdEnabled?' shop-main-hold-active':'')+'"><div id="shop-message" role="status" aria-live="polite">'+esc(feedback||'')+'</div>'+
- '<h2>'+esc(branch?.name||'Loja')+'</h2>'+body+
+ (view==='sell'?'':'<h2>'+esc(branch?.name||'Loja')+'</h2>')+body+
  (view==='sell'||view==='held'?'<section class="shop-box shop-draft-section"><h3>Recuperação de carrinhos</h3><p class="shop-help">Pode guardar o carrinho encriptado neste dispositivo. Sem Internet, pode guardar o carrinho para recuperar mais tarde. A venda só é concluída com ligação. Os carrinhos guardados só podem ser finalizados com Internet.</p>'+
  (cart.length||pending?'<form data-shop-form="draft_save" class="shop-form"><label>Frase de recuperação (mínimo 12 caracteres)<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Guardar rascunho encriptado</button></form>':'')+
  (draftAvailable?'<form data-shop-form="draft_restore" class="shop-form"><label>Frase do rascunho guardado<input type="password" name="passphrase" minlength="12" maxlength="128" autocomplete="off" required></label><button class="shop-submit" type="submit">Recuperar rascunho</button></form><button type="button" data-shop-draft-clear class="shop-logout">Apagar rascunho do dispositivo</button>':'')+

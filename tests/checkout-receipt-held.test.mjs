@@ -18,25 +18,23 @@ test('Cash received starts blank, not prefilled with the transaction total',()=>
  const mixed=shopPaymentPanel({method:'mixed',cart,products:[item],session:{id:b},role:'owner'});
  assert.match(mixed,/name="cash_received" value=""/);
 });
-test('Caixa no telemóvel mostra Banco e os seis meios de pagamento antes do catálogo',()=>{
+test('Caixa no telemóvel mostra os seis meios de pagamento apenas na cobrança',()=>{
  const account={userId:u,email:'caixa@loja.co.mz',grants:[{id:u,name:'Loja',role:'cashier'}]};
  const opts={account,grants:account.grants,grant:account.grants[0],branches:[{id:b,name:'Centro'}],branchId:b,
   data:{products:[item],sessions:[],sales:[]},cart,view:'sell',method:'bank',discount:'0',query:'',feedback:'',pending:null,heldSales:[]};
  const html=renderShopScreen(opts);
- assert.ok(html.indexOf('shop-mobile-payment-shortcut')<html.indexOf('shop-search-control'));
- assert.match(html,/class="shop-methods shop-methods-mobile-quick"/);
- assert.match(html,/data-shop-go-checkout/);
- const mobile=html.slice(html.indexOf('class="shop-methods shop-methods-mobile-quick"'),html.indexOf('</section>',html.indexOf('class="shop-methods shop-methods-mobile-quick"')));
- for(const label of ['Dinheiro','M-Pesa','e-Mola','Transferência','Banco','Repartido'])assert.ok(mobile.includes('>'+label+'</button>'),label);
- assert.match(mobile,/data-shop-method="bank" aria-pressed="true"/);
- assert.equal((html.match(/data-shop-method="bank"/g)||[]).length,2,'Quick and checkout buttons remain available');
- const css=read('src/supabase-checkout-flow.css');
- assert.match(css,/\.shop-mobile-payment-shortcut\{display:none\}/);
- assert.match(css,/@media\(max-width:660px\)[\s\S]*\.shop-mobile-payment-shortcut\{display:block/);
- assert.match(css,/\.shop-methods\.shop-methods-mobile-quick\{display:grid;grid-template-columns:repeat\(3/);
+ assert.ok(html.indexOf('shop-search-control')<html.indexOf('id="shop-checkout-panel"'));
+ assert.doesNotMatch(html,/shop-mobile-payment-shortcut|shop-sale-hold-toolbar/);
+ assert.doesNotMatch(html,/class="shop-sales-tabs" role="group"/);
+ assert.doesNotMatch(html,/<h2>Centro<\/h2>/);
+ assert.equal((html.match(/data-shop-method="bank"/g)||[]).length,1,'Only checkout owns the payment options');
+ const checkout=html.slice(html.indexOf('id="shop-checkout-panel"'));
+ for(const label of ['Dinheiro','M-Pesa','e-Mola','Transferência','Banco','Repartido'])
+  assert.ok(checkout.includes('>'+label+'</button>'),label);
+ assert.match(checkout,/data-shop-method="bank" aria-pressed="true"/);
+ assert.match(html,/shop-held-in-sales/);
  const controller=read('src/supabase-shop-dashboard.js');
- assert.match(controller,/\.shop-methods-mobile-quick \[data-shop-method\]/);
- assert.match(controller,/el\.hasAttribute\('data-shop-go-checkout'\)/);
+ assert.match(controller,/el\.hasAttribute\('data-shop-method'\)/);
 });
 test('Confirmed sales produce an escaped printable receipt with correct cash and change',()=>{
  const req=makeSaleRequest({
@@ -81,24 +79,22 @@ test('Held sales appear as a dedicated tab and directly on the selling screen',(
  assert.match(held,/data-shop-sell-tab/);
  assert.match(held,/data-shop-hold-delete/);
 });
-test('Mobile cashier can find and activate the hold-sale button without scrolling below checkout',()=>{
+test('Mobile hold stays on the floating action bar, not in the repeated top block',()=>{
  const account={userId:u,email:'caixa@loja.co.mz',grants:[{id:u,name:'Loja',role:'cashier'}]};
  const opts={account,grants:account.grants,grant:account.grants[0],branches:[{id:b,name:'Centro'}],branchId:b,
   data:{products:[item],sessions:[{id:b,operatorId:u}],sales:[]},cart,view:'sell',method:'cash',discount:'0',
   query:'',feedback:'',pending:null,heldSales:[{id:u,cart,createdAt:'2026-10-21T12:00:00Z'}]};
  const html=renderShopScreen(opts);
- assert.match(html,/<div class="shop-sale-hold-toolbar">/);
- assert.ok(html.indexOf('shop-sale-hold-toolbar')<html.indexOf('shop-search'),
-  'The primary hold action must appear before the long mobile product catalog');
- assert.match(html,/<button[^>]*data-shop-hold>[^<]*<span[^>]*>⏸<\/span> Colocar venda em espera/);
+ assert.doesNotMatch(html,/shop-sale-hold-toolbar|shop-mobile-payment-shortcut/);
+ assert.ok(html.indexOf('<h3>Produtos</h3>')<html.indexOf('shop-held-in-sales'));
  assert.match(html,/<div class="shop-hold-mobile-bar"[^>]*>[\s\S]*data-shop-hold/);
- assert.match(html,/data-shop-held-tab>Em espera <span>1<\/span>/);
+ assert.match(html,/data-shop-held-tab>Ver todas/);
  assert.match(html,/shop-main-hold-active/);
  const empty=renderShopScreen({...opts,cart:[]});
- assert.match(empty,/data-shop-hold disabled/);
+ assert.doesNotMatch(empty,/data-shop-hold(?:\s|>)/);
  assert.doesNotMatch(empty,/shop-hold-mobile-bar/);
  const awaiting=renderShopScreen({...opts,pending:{id:u}});
- assert.match(awaiting,/data-shop-hold disabled/);
+ assert.doesNotMatch(awaiting,/data-shop-hold(?:\s|>)/);
  assert.doesNotMatch(awaiting,/shop-hold-mobile-bar/);
  const css=read('src/supabase-checkout-flow.css');
  assert.match(css,/\.shop-hold-mobile-bar\{display:flex;position:fixed/);
