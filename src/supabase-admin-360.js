@@ -91,6 +91,14 @@ export function renderAdmin360Members(data){
    form('member_edit',hidden('business_id',m.businessId)+hidden('user_id',m.userId)+
      '<label>Nome'+input('display_name',m.name||m.email,'required minlength="2" maxlength="120"')+'</label>'+
      '<label>Perfil'+roles(m.role)+'</label>','Actualizar colaborador')+
+   '<details class="admin360-subpanel"><summary>Recuperar acesso — gerar senha provisória</summary>'+
+   '<p class="admin360-muted">Confirme a identidade e, para funcionários, a autorização do proprietário. A senha antiga nunca é apresentada.</p>'+
+   '<form class="admin360-recovery-form" data-admin-password-reset>'+
+    hidden('business_id',m.businessId)+hidden('user_id',m.userId)+
+    '<label>Motivo do atendimento<textarea name="reason" minlength="10" maxlength="500" required placeholder="Ex.: Proprietário confirmou a identidade do funcionário por telefone"></textarea></label>'+
+    '<label class="admin360-recovery-check"><input type="checkbox" name="identity_verified" required> Confirmei a identidade e a autorização para recuperar esta conta.</label>'+
+    '<button type="submit" class="admin360-btn admin360-warn">Repor palavra-passe</button>'+
+   '</form></details>'+
    '</details>').join(''):'<p>Nenhuma conta associada.</p>');
 }
 export function renderAdmin360Licenses(data){

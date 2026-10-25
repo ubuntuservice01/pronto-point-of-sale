@@ -146,6 +146,32 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   try{const profile=await account();remember();return profile;}
   catch(error){clearSession();throw error;}
  }
+ async function resetMemberPassword({businessId,userId,reason,identityVerified}={}){
+  if(!session||sessionLocked)throw Error('pin_screen_locked');
+  if(!uuid(businessId)||!uuid(userId)||typeof reason!=='string'||
+   reason.trim().length<10||reason.trim().length>500||identityVerified!==true)
+   throw Error('recovery_invalid');
+  const admin=await account();
+  if(admin.ubuntuAdmin!==true||admin.userId===userId)throw Error('admin_required');
+  await ensureFresh();
+  const response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-password-reset',{
+   method:'POST',headers:{apikey:publishableKey,Authorization:'Bearer '+session.access_token,
+    'Content-Type':'application/json',Accept:'application/json'},
+   body:JSON.stringify({business_id:businessId,user_id:userId,reason:reason.trim(),identity_verified:true}),
+   cache:'no-store',credentials:'omit',redirect:'error'
+  });
+  const result=await response.json().catch(()=>null);
+  if(!response.ok){
+   if(response.status===401){clearSession();throw Error('supabase_unauthorized');}
+   if(response.status===429)throw Error('supabase_rate_limit');
+   throw Error(['not_authorized_or_limited','account_unavailable','reset_partial_contact_support','reset_failed']
+    .includes(result?.error)?result.error:'recovery_unavailable');
+  }
+  if(result?.ok!==true||result.recovery!==true||!validEmail(result.email)||
+   typeof result.temporary_password!=='string'||result.temporary_password.length<16||
+   !uuid(result.user_id)||result.user_id!==userId)throw Error('recovery_unavailable');
+  return result;
+ }
  // New accounts must replace their provisional password before PIN enrolment.
  async function changeInitialPassword(currentPassword,newPassword){
   if(!session)throw Error('supabase_unauthorized');
@@ -652,5 +678,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

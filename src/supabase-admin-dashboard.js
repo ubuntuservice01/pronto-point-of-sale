@@ -164,6 +164,42 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    }[error.message]||'Não foi possível alterar a palavra-passe. Verifique a ligação e tente novamente.';
   }finally{if(root.querySelector('#pronto-admin-refresh')===refreshButton)toggleBusy(false);}
  };
+ const recoverAccount=async event=>{
+  const form=event.target.closest('form[data-admin-password-reset]');
+  if(!form)return;
+  event.preventDefault();
+  if(busy)return;
+  const fields=new FormData(form);
+  const businessId=String(fields.get('business_id')||'');
+  const userId=String(fields.get('user_id')||'');
+  const reason=String(fields.get('reason')||'').trim();
+  if(reason.length<10||reason.length>500||!fields.has('identity_verified')){
+   message.textContent='Confirme a identidade e indique o motivo (10 a 500 caracteres).';return;
+  }
+  const member=data?.businesses?.find(b=>b.id===businessId)?.members?.find(m=>m.userId===userId);
+  if(!member){message.textContent='Não foi possível identificar a conta. Actualize a lista.';return;}
+  if(!await showConfirmModal({
+   title:'Repor acesso do utilizador',
+   message:'Confirma a reposição da palavra-passe de '+String(member.name||member.email)+
+    '? A senha anterior deixará de servir para novos logins. Esta operação será registada em auditoria.',
+   danger:true,confirmText:'Sim, gerar nova senha'
+  }))return;
+  toggleBusy(true);message.textContent='';
+  try{
+   const credentials=await client.resetMemberPassword({businessId,userId,reason,identityVerified:true});
+   showProntoCredentials(credentials);
+   form.reset();
+   message.textContent='Senha provisória gerada. Entregue-a apenas ao utilizador cuja identidade foi confirmada.';
+  }catch(error){
+   message.textContent={
+    not_authorized_or_limited:'Reposição não autorizada ou limite de tentativas atingido.',
+    account_unavailable:'A conta não está disponível para recuperação.',
+    reset_partial_contact_support:'Recuperação parcialmente concluída. Contacte o suporte antes de repetir.',
+    reset_failed:'O serviço não conseguiu repor a palavra-passe.',
+    supabase_rate_limit:'Demasiadas tentativas. Aguarde antes de tentar novamente.'
+   }[error.message]||'Não foi possível concluir a recuperação. Verifique a ligação e tente novamente.';
+  }finally{toggleBusy(false);}
+ };
  const controlForm=async event=>{
   const form=event.target.closest('form[data-admin-control]');
   if(!form)return;
@@ -267,6 +303,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    render();message.textContent='Estado actualizado e registado.';
   }catch(e){await failure(e);}finally{toggleBusy(false);}
  };
+ content.addEventListener('submit',recoverAccount);
  content.addEventListener('submit',changeAdminPassword);
  content.addEventListener('submit',controlForm);
  content.addEventListener('click',event=>{

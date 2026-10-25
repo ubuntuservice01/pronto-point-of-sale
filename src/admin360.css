@@ -55,3 +55,12 @@
 .pronto-admin-shell .admin360-password-note{font-size:12px;color:#526f60;line-height:1.6;grid-column:1/-1;margin:0}
 .pronto-admin-shell .admin360-password-form .admin360-btn{grid-column:1/-1;justify-self:start}
 @media(max-width:600px){.pronto-admin-shell .admin360-password-panel{padding:15px}.pronto-admin-shell .admin360-password-form{grid-template-columns:1fr}.pronto-admin-shell .admin360-password-form .admin360-btn{width:100%;justify-content:center}}
+
+/* Verified administrative account recovery, with accessible mobile controls. */
+.pronto-admin-shell .admin360-recovery-form{display:grid;gap:12px;padding:15px}
+.pronto-admin-shell .admin360-recovery-form>label:not(.admin360-recovery-check){display:grid;gap:7px;color:#335643;font-weight:700;font-size:13px}
+.pronto-admin-shell .admin360-recovery-form textarea{min-height:88px;max-width:700px;width:100%;border:1px solid #b8cfc3;border-radius:11px;padding:12px;font:inherit}
+.pronto-admin-shell .admin360-recovery-check{display:flex;gap:10px;align-items:flex-start;color:#335643;font-size:13px;line-height:1.5}
+.pronto-admin-shell .admin360-recovery-check input{width:22px;height:22px;flex:none;margin:0;accent-color:#087f68}
+.pronto-admin-shell .admin360-recovery-form button{justify-self:start;min-height:50px}
+@media(max-width:580px){.pronto-admin-shell .admin360-recovery-form button{width:100%}}
