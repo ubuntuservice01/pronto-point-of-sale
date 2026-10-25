@@ -9,7 +9,7 @@ revoke all on pronto_private.pending_product_photos from public,anon,authenticat
 -- No other product-editing RPC may enable a new product without its photo.
 create or replace function pronto_private.require_photo_for_activation()
 returns trigger language plpgsql security definer set search_path=''
-as $
+as $$
 begin
  if new.active and not old.active and new.photo_path is null
   and exists(select 1 from pronto_private.pending_product_photos
@@ -18,7 +18,7 @@ begin
  end if;
  return new;
 end;
-$;
+$$;
 revoke all on function pronto_private.require_photo_for_activation() from public,anon,authenticated;
 create trigger pronto_product_requires_photo_to_activate
 before update of active on public.pronto_products
