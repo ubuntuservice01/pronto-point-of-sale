@@ -1,6 +1,49 @@
 // Owner-only audit history. The RPC deliberately excludes arbitrary/raw payload
 // which can contain customer PII, payment details or security metadata.
-import {esc} from './supabase-shop-core.js';
+import {esc,MONEY} from './supabase-shop-core.js';
+const fieldLabels={
+ price_cents:'Preço',unit:'Unidade',stock:'Stock',min_stock:'Stock mínimo',
+ active:'Activo',allow_fractional:'Venda fraccionada',status:'Estado',role:'Perfil',
+ amount_cents:'Valor',total_cents:'Total',balance_cents:'Saldo',
+ credit_limit_cents:'Limite de crédito',credit_blocked:'Crédito bloqueado',
+ opening_cash_cents:'Fundo de abertura',counted_cash_cents:'Valor contado',
+ opening_required:'Abertura obrigatória',blind_close:'Fecho cego',
+ schedule_enabled:'Horário activo',start_time:'Início do horário',end_time:'Fim do horário',
+ manual_mode:'Controlo manual',qty_delta:'Variação do stock',quantity:'Quantidade',qty:'Quantidade',
+ due_on:'Vencimento',next_due_on:'Próxima data',repeat_months:'Repetição em meses',
+ expires_at:'Validade',cancelled:'Cancelado',reversed_at:'Data de reversão',
+ close_type:'Tipo de fecho',emergency_difference_cents:'Diferença de caixa'
+};
+const entityLabels={products:'Produto',customers:'Cliente',suppliers:'Fornecedor',
+ expenses:'Despesa',expense_schedules:'Lembrete de despesa',purchases:'Compra',
+ cash_sessions:'Sessão de caixa',cash_policies:'Regra de caixa',cash_movements:'Movimento de caixa',
+ debts:'Dívida',debt_payments:'Cobrança',memberships:'Colaborador',
+ staff_access_rules:'Acesso de colaborador',document_settings:'Modelo de documento',
+ branches:'Filial',businesses:'Empresa',sales:'Venda',refunds:'Devolução',
+ stock_transfers:'Transferência de stock',stock_movements:'Movimento de stock',
+ subscriptions:'Subscrição',held_sales:'Venda suspensa'};
+const safeScalar=x=>x===null||['string','number','boolean'].includes(typeof x);
+const changesFor=e=>{
+ if(typeof e.event!=='string'||!e.event.startsWith('record.'))return[];
+ const before=e.before&&typeof e.before==='object'&&!Array.isArray(e.before)?e.before:{};
+ const after=e.after&&typeof e.after==='object'&&!Array.isArray(e.after)?e.after:{};
+ const changed=Array.isArray(e.changed_fields)?e.changed_fields:[];
+ return changed.filter(key=>Object.hasOwn(fieldLabels,key)&&
+  safeScalar(before[key])&&safeScalar(after[key])).slice(0,6).map(key=>({
+  field:key,label:fieldLabels[key],before:before[key]??null,after:after[key]??null
+ }));
+};
+const eventTitle=name=>{
+ if(eventNames[name])return eventNames[name];
+ const match=/^record\.([a-z_]+)\.(insert|update|delete)$/.exec(name);
+ if(!match)return name;
+ return (entityLabels[match[1]]||match[1])+' — '+({insert:'criado(a)',update:'alterado(a)',delete:'eliminado(a)'})[match[2]];
+};
+const valueLabel=(value,field)=>value===null?'—':typeof value==='boolean'?(value?'Sim':'Não'):
+ field.endsWith('_cents')&&Number.isFinite(Number(value))?MONEY(Number(value)):
+ String(value);
+const describeChanges=e=>e.changes.map(x=>x.label+': '+valueLabel(x.before,x.field)+' → '+
+ valueLabel(x.after,x.field)).join(' · ');
 export function normalizeAuditSnapshot(raw){
  if(!raw||!Array.isArray(raw.events)||!Number.isInteger(raw.page)||
   typeof raw.has_more!=='boolean')throw Error('audit_snapshot_invalid');
@@ -8,7 +51,9 @@ export function normalizeAuditSnapshot(raw){
   page:raw.page,hasMore:raw.has_more,limit:Number(raw.limit)||50,
   events:raw.events.filter(e=>e&&e.id&&e.event).map(e=>({
    id:String(e.id),event:String(e.event),actor:String(e.actor_name||'Operador'),
-   createdAt:e.created_at,targetId:e.target_id?String(e.target_id):null
+   actorId:e.actor_id?String(e.actor_id):null,
+   createdAt:e.created_at,targetId:e.target_id?String(e.target_id):null,
+   changes:changesFor(e)
   }))
  };
 }
@@ -38,7 +83,7 @@ export function filterAuditEvents(snapshot,search=''){
  if(!snapshot)return[];
  const q=String(search).trim().toLocaleLowerCase();
  if(!q)return snapshot.events;
- return snapshot.events.filter(e=>(eventNames[e.event]||e.event).toLocaleLowerCase().includes(q)||
+ return snapshot.events.filter(e=>eventTitle(e.event).toLocaleLowerCase().includes(q)||
   e.actor.toLocaleLowerCase().includes(q)||e.event.toLocaleLowerCase().includes(q));
 }
 export function renderAuditView({audit=null,search=''}={}){
@@ -49,9 +94,12 @@ export function renderAuditView({audit=null,search=''}={}){
  '<label>Pesquisar nesta página<input id="shop-audit-search" type="search" value="'+esc(search)+'" placeholder="Evento ou colaborador"></label>'+
  '<div class="audit-history" role="table" aria-label="Actividades registadas">'+
  (rows.length?rows.map(e=>'<article class="audit-record" role="row">'+
-  '<strong>'+esc(eventNames[e.event]||e.event)+'</strong>'+
+  '<strong>'+esc(eventTitle(e.event))+'</strong>'+
   '<small>'+esc(fmtDate(e.createdAt))+' · '+esc(e.actor)+'</small>'+
+  (e.actorId?'<small>ID do operador: '+esc(e.actorId.slice(0,8))+'</small>':'')+
   (e.targetId?'<span>Referência: '+esc(e.targetId.slice(0,8))+'</span>':'')+
+  (e.changes.length?'<span class="audit-change-summary">'+esc(describeChanges(e))+'</span>':'')+
+  '<small>Rasto electrónico: '+esc(e.id)+'</small>'+
   '</article>').join(''):'<p class="shop-help">Sem actividades nesta página para os filtros seleccionados.</p>')+
  '</div><div class="audit-pagination">'+
  '<button type="button" data-audit-prev '+(audit.page===0?'disabled':'')+'>Anterior</button>'+
@@ -67,8 +115,8 @@ const cell=value=>{
 };
 export function auditCSV(audit){
  if(!audit)throw Error('audit_snapshot_invalid');
- const headings=['Data','Actividade','Colaborador','Referência'];
+ const headings=['Data','Actividade','Colaborador','ID do operador','Referência','Alterações','Rasto electrónico'];
  return '\uFEFF'+headings.map(cell).join(';')+'\r\n'+
- audit.events.map(e=>[fmtDate(e.createdAt),eventNames[e.event]||e.event,e.actor,e.targetId||'']
+ audit.events.map(e=>[fmtDate(e.createdAt),eventTitle(e.event),e.actor,e.actorId||'',e.targetId||'',describeChanges(e),e.id]
   .map(cell).join(';')).join('\r\n');
 }

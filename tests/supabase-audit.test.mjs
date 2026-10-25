@@ -27,6 +27,27 @@ test('Owner audit UI escapes names and supports pagination and local search',()=
  assert.equal(filterAuditEvents(data,'suspend').length,1);
  assert.throws(()=>normalizeAuditSnapshot({events:{}}),/audit_snapshot_invalid/);
 });
+test('Database mutation history shows only safe before/after values and a unique trace',()=>{
+ const rows={page:0,limit:50,has_more:false,events:[{
+  id:'77777777-7777-4777-8777-777777777777',
+  event:'record.products.update',actor_name:'Gerente',target_id:U,
+  created_at:'2026-10-25T15:20:00Z',
+  changed_fields:['price_cents','phone','stock'],
+  before:{price_cents:10000,stock:5,phone:'84 123 4567'},
+  after:{price_cents:12000,stock:4,phone:'84 987 6543'}
+ }]};
+ const normalized=normalizeAuditSnapshot(rows);
+ const ui=renderAuditView({audit:normalized});
+ assert.match(ui,/Produto — alterado\(a\)/);
+ assert.match(ui,/Preço: 100,00 MT → 120,00 MT/);
+ assert.match(ui,/Stock: 5 → 4/);
+ assert.match(ui,/Rasto electrónico: 77777777/);
+ assert.ok(!ui.includes('84 123'));
+ assert.ok(!ui.includes('phone'));
+ const csv=auditCSV(normalized);
+ assert.match(csv,/100,00 MT/);
+ assert.ok(!csv.includes('987 6543'));
+});
 test('CSV output prevents spreadsheet formula injection and excludes raw payload',()=>{
  const csv=auditCSV(normalizeAuditSnapshot(raw));
  assert.ok(csv.startsWith('\uFEFF'));
@@ -68,4 +89,15 @@ test('SQL does not expose arbitrary audit payload or allow non-owner reads',()=>
  const ui=readFileSync(new URL('../src/supabase-shop-ui.js',import.meta.url),'utf8');
  assert.match(ui,/renderAuditView/);
  assert.match(ui,/audit:\['owner'\]/);
+});
+test('Audit backstop identifies actor from auth, records vetted changes and protects the raw ledger',()=>{
+ const sql=readFileSync(new URL('../supabase/migrations/20261025200000_audit_mutation_backstop.sql',import.meta.url),'utf8');
+ for(const text of [/pronto_private\.audit_business_mutation/,/auth\.uid\(\)/,
+  /security definer set search_path=''/,/changed_fields/,/before/,/after/,
+  /pronto_products/,/pronto_expenses/,/pronto_cash_sessions/,/pronto_memberships/,
+  /revoke select on public\.pronto_audit_events from authenticated/])assert.match(sql,text);
+ assert.doesNotMatch(sql,/v_fields[^;]*'password'/s);
+ assert.doesNotMatch(sql,/v_fields[^;]*'phone'/s);
+ assert.doesNotMatch(sql,/v_fields[^;]*'pin'/s);
+ assert.doesNotMatch(sql,/'payload',e\.payload/);
 });
