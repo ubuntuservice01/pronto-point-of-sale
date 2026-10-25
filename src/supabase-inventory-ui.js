@@ -1,5 +1,6 @@
 // Authenticated inventory administration and alerts. Snapshot from protected RPC.
 import {esc,MONEY,UNIT_OPTIONS} from './supabase-shop-core.js';
+import {allowsFractionalSale} from './sale-by-value.js';
 const qty=x=>new Intl.NumberFormat('pt-PT',{maximumFractionDigits:3}).format(Number(x)||0);
 const str=x=>String(x??'');
 const field=(name,label,value='',attrs='')=>'<label>'+esc(label)+'<input name="'+name+'" value="'+esc(value)+'" '+attrs+'></label>';
@@ -9,7 +10,8 @@ export function normalizeInventorySnapshot(raw){
  return {
   products:raw.products.map(p=>({id:p.id,name:str(p.name),code:str(p.code),category:str(p.category),
    unit:str(p.unit),priceCents:Number(p.price_cents),stock:Number(p.stock),minStock:Number(p.min_stock),
-   revision:Number(p.revision),active:p.active===true,photoPath:p.photo_path||null})),
+   revision:Number(p.revision),active:p.active===true,photoPath:p.photo_path||null,
+   allowFractional:p.allow_fractional===undefined?undefined:p.allow_fractional===true})),
   batches:raw.batches.map(b=>({id:b.id,productId:b.product_id,lot:str(b.lot_number),
    expiry:b.expires_on,qty:Number(b.qty),unitCost:Number(b.unit_cost_cents||0)})),
   movements:raw.movements.map(m=>({id:m.id,productId:m.product_id,kind:m.kind,
@@ -101,6 +103,8 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
     field('name','Nome',chosen.name,'required maxlength="200"')+
     field('category','Categoria',chosen.category,'required maxlength="100"')+
     '<label>Unidade<select name="unit">'+UNIT_OPTIONS.map(u=>'<option value="'+esc(u)+'"'+(u===chosen.unit?' selected':'')+'>'+esc(u)+'</option>').join('')+'</select></label>'+
+    '<label class="fractional-control"><input type="checkbox" name="allow_fractional" '+(allowsFractionalSale(chosen)?'checked':'')+' '+(allowsFractionalSale({...chosen,allowFractional:true})?'':'disabled')+'> Permite venda fraccionada</label>'+
+    '<p class="shop-help">Apenas artigos divisíveis, como kg, litro e metro. Quando desligada, a quantidade deve ser inteira.</p>'+
     field('price','Preço de venda (MT)',(chosen.priceCents/100).toFixed(2),'required type="number" min="0.01" step="0.01"')+
     field('min_stock','Stock mínimo',chosen.minStock,'required type="number" min="0" step="0.001"')+
     '<label><input type="checkbox" name="active" '+(chosen.active?'checked':'')+'> Activo para venda</label>'+

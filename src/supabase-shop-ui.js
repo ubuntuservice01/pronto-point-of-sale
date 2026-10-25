@@ -1,5 +1,5 @@
 import {renderCashManagement,ownOpenSession} from './supabase-cash-ui.js';
-import {esc,MONEY,UNIT_OPTIONS,PAYMENT_METHODS,cartTotal,toCents} from './supabase-shop-core.js';
+import {esc,MONEY,UNIT_OPTIONS,PAYMENT_METHODS,cartTotal,toCents,allowsFractionalSale,saleQuantityLabel} from './supabase-shop-core.js';
 import {renderCreditView,creditCheckoutFields} from './supabase-credit-ui.js';
 import {renderFinanceView} from './supabase-finance-ui.js';
 import {renderReturnView} from './supabase-returns-ui.js';
@@ -20,15 +20,19 @@ const safeDate=value=>{
 const options=items=>items.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
 const field=(name,label,value='',extra='')=>'<label>'+esc(label)+'<input name="'+esc(name)+'" value="'+esc(value)+'" '+extra+'></label>';
 const section=(title,content,sub='')=>'<section class="shop-box"><h3>'+esc(title)+'</h3>'+(sub?'<p class="shop-help">'+esc(sub)+'</p>':'')+content+'</section>';
-const cartRow=(item,products)=>{
+const cartRow=(item,products,valueModeProducts=[])=>{
  const p=products.find(x=>x.id===item.productId);
  if(!p)return '<p class="shop-error">Produto indisponível. Retire-o do carrinho.</p>';
- return '<div class="shop-cart-row"><div><strong>'+esc(p.name)+'</strong><small>'+esc(p.code)+' · '+MONEY(p.priceCents)+' / '+esc(p.unit)+'</small></div>'+
-  '<div class="shop-cart-qty"><button type="button" data-qty="-1" data-id="'+esc(p.id)+'" aria-label="Reduzir quantidade">−</button>'+
-  '<input type="number" data-cart-qty="'+esc(p.id)+'" value="'+esc(item.quantity)+'" min="0.001" step="0.001" aria-label="Quantidade de '+esc(p.name)+'"><button type="button" data-qty="1" data-id="'+esc(p.id)+'" aria-label="Aumentar quantidade">+</button>'+
+ const byValue=valueModeProducts.includes(p.id),amount=Math.round(p.priceCents*item.quantity);
+ return '<div class="shop-cart-row"><div><strong>'+esc(p.name)+'</strong><small>'+esc(p.code)+' · '+MONEY(p.priceCents)+' / '+esc(p.unit)+'</small>'+
+  '<button type="button" class="sale-value-toggle" data-shop-value-toggle="'+esc(p.id)+'" aria-pressed="'+byValue+'">'+(byValue?'⇄ Por quantidade':'⇄ Por valor (MT)')+'</button>'+
+  (byValue?'<small class="sale-value-equivalent">'+esc(saleQuantityLabel(item.quantity,p.unit))+' · '+MONEY(amount)+'</small>':'')+'</div>'+
+  '<div class="shop-cart-qty">'+(byValue?'<label class="sale-value-label">Valor (MT)<input type="number" data-shop-cart-value="'+esc(p.id)+'" value="'+(amount/100).toFixed(2)+'" min="0.01" step="0.01" inputmode="decimal" aria-label="Valor para '+esc(p.name)+'"></label>':
+  '<button type="button" data-qty="-1" data-id="'+esc(p.id)+'" aria-label="Reduzir quantidade">−</button>'+
+  '<input type="number" data-cart-qty="'+esc(p.id)+'" value="'+esc(item.quantity)+'" min="'+(allowsFractionalSale(p)?'0.001':'1')+'" step="'+(allowsFractionalSale(p)?'0.001':'1')+'" aria-label="Quantidade de '+esc(p.name)+'"><button type="button" data-qty="1" data-id="'+esc(p.id)+'" aria-label="Aumentar quantidade">+</button>')+
   '<button type="button" class="shop-clear-row" data-remove="'+esc(p.id)+'" aria-label="Remover produto">×</button></div></div>';
 };
-export function shopPaymentPanel({method,cart,products,discount='0',session,role='owner',credit=null,selectedCustomerId='',creditDue='',allowNoSession=false}){
+export function shopPaymentPanel({method,cart,products,discount='0',session,role='owner',credit=null,selectedCustomerId='',creditDue='',allowNoSession=false,valueModeProducts=[]}){
  let subtotal=0,total=0,err='';
  try{({subtotal,total}=cartTotal(cart,products,toCents(discount)))}catch(e){err=e.message;}
  const creditCustomer=credit?.customers.find(c=>c.id===selectedCustomerId&&c.active);
@@ -47,7 +51,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
  const cash=method==='cash'||method==='mixed'?
   field('cash_received','Dinheiro recebido (MT)','','type="number" min="0" step="0.01" inputmode="decimal" placeholder="Introduza o valor entregue" autocomplete="off"'+(method==='cash'?' required':'')):'';
  return '<div id="shop-checkout-panel">'+
-  section('A sua venda','<div class="shop-cart-list">'+(cart.length?cart.map(x=>cartRow(x,products)).join(''):'<p class="shop-help">Seleccione um produto à esquerda.</p>')+'</div>'+
+  section('A sua venda','<div class="shop-cart-list">'+(cart.length?cart.map(x=>cartRow(x,products,valueModeProducts)).join(''):'<p class="shop-help">Seleccione um produto à esquerda.</p>')+'</div>'+
   '<div class="shop-totals"><span>Subtotal</span><strong>'+MONEY(subtotal)+'</strong></div>'+
   field('discount',role==='cashier'?'Desconto (requer gerente)':'Desconto (MT)',discount,'type="number" min="0" step="0.01" inputmode="decimal"'+(role==='cashier'?' disabled':''))+
   '<div class="shop-totals shop-total"><span>Total</span><strong>'+MONEY(total)+'</strong></div>'+
@@ -154,7 +158,7 @@ export function renderOwnerSettings({selected='personalizacao',branding=null,log
   '<div class="owner-settings-body" id="owner-settings-panel" role="tabpanel" aria-labelledby="owner-settings-tab-'+active+'">'+body+'</div></div></div>';
 }
 
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,branding=null,logoUrl='',settingsSection='personalizacao'}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,valueModeProducts=[],view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,branding=null,logoUrl='',settingsSection='personalizacao'}){
  const products=data?.products||[];
  const session=cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
@@ -202,7 +206,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M4 16v3a1 1 0 0 0 1 1h3m8 0h3a1 1 0 0 0 1-1v-3M3 12h18M8 9h1v6H8zm4 0h1v6h-1zm3 0h2v6h-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'+
    '<span>Ler código</span></button></div></div>'+
    '<div id="shop-product-results" class="shop-products">'+(prodCards||'<p class="shop-help">Não há produtos encontrados.</p>')+'</div></section>'+
-   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue,allowNoSession:cashState?.policy.openingRequired===false})+'</div>'+
+   shopPaymentPanel({method,cart,products,discount,session,role:grant.role,credit,selectedCustomerId,creditDue,valueModeProducts,allowNoSession:cashState?.policy.openingRequired===false})+'</div>'+
    '<section class="shop-box shop-held-in-sales"><div class="shop-held-heading"><h3>Vendas em espera <span>'+heldSales.length+'</span></h3>'+
    '<button type="button" data-shop-held-tab>Ver todas</button></div>'+
    (heldSales.length?heldSales.slice(0,3).map(h=>'<div class="shop-held-mini-item"><div><strong>'+
@@ -260,6 +264,8 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    field('name','Nome do produto','','required maxlength="200"')+
    field('category','Categoria','Geral','maxlength="100"')+
    '<label>Unidade<select name="unit">'+UNIT_OPTIONS.map(u=>'<option value="'+esc(u)+'">'+esc(u)+'</option>').join('')+'</select></label>'+
+   '<label class="fractional-control"><input type="checkbox" name="allow_fractional" disabled> Permite venda fraccionada</label>'+
+   '<p class="shop-help">Active para vender por valor (MT) partes de kg, litro ou metro. Não se aplica a artigos por unidade.</p>'+
    field('price','Preço de venda (MT)','','required type="number" min="0.01" step="0.01"')+
    field('code','Código de fábrica (opcional)','','maxlength="80" placeholder="Será gerado se vazio"')+
    field('min_stock','Stock mínimo','0','type="number" min="0" step="0.001"')+

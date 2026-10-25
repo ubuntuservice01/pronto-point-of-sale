@@ -1,4 +1,6 @@
 // Supabase merchant pilot domain helpers. No floating-point money is sent to the DB.
+import {allowsFractionalSale,validateSaleQuantity,quantityFromValueCents,saleQuantityLabel} from './sale-by-value.js';
+export {allowsFractionalSale,quantityFromValueCents,saleQuantityLabel};
 export const PAYMENT_METHODS=['cash','mpesa','emola','transfer','bank'];
 export const UNIT_OPTIONS=['un','m','m²','kg','g','l','ml','caixa','pacote','saco','rolo','par','conjunto'];
 export const INTEGER_UNITS=['un','caixa','pacote','saco','rolo','par','conjunto'];
@@ -23,7 +25,8 @@ export function normalizeMerchantSnapshot(raw){
  if(!raw||typeof raw!=='object'||!Array.isArray(raw.products)||!Array.isArray(raw.branches)||!Array.isArray(raw.cash_sessions)||!Array.isArray(raw.recent_sales))throw Error('supabase_response');
  const products=raw.products.map(p=>({
   id:p.id,code:String(p.code||''),name:String(p.name||''),category:String(p.category||''),
-  unit:String(p.unit||''),priceCents:Number(p.price_cents),stock:Number(p.stock),minStock:Number(p.min_stock),photoPath:p.photo_path||null
+  unit:String(p.unit||''),priceCents:Number(p.price_cents),stock:Number(p.stock),minStock:Number(p.min_stock),photoPath:p.photo_path||null,
+  allowFractional:p.allow_fractional===undefined?undefined:p.allow_fractional===true
  })).filter(p=>p.id&&p.name&&Number.isSafeInteger(p.priceCents)&&p.priceCents>0&&Number.isFinite(p.stock));
  return {businessId:raw.business_id,branchId:raw.branch_id,role:raw.role,products,
   branches:raw.branches.map(b=>({id:b.id,name:String(b.name||'')})),
@@ -41,6 +44,7 @@ export function cartTotal(cart,products,discountCents=0){
   seen.add(p.id);
   const q=toQuantity(item.quantity,p.unit);
   if(q>p.stock)throw Error('stock_unavailable');
+  validateSaleQuantity(p,q);
   subtotal+=Math.round(p.priceCents*q);
  }
  if(!Number.isSafeInteger(discountCents)||discountCents<0||(subtotal>0&&discountCents>=subtotal))throw Error('discount_invalid');

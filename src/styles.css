@@ -1118,3 +1118,15 @@ dialog button#confirm-management[data-pronto-action="deactivate"]{
 .shop-scan-manual-row input{min-width:0;flex:1;width:0;padding:12px;border-radius:10px;border:1px solid #bdd9cf;font-size:16px}
 .shop-scan-manual-row button{min-height:46px;background:#087f69;border:0;color:#fff;border-radius:10px;padding:0 13px;font-weight:750}
 @media(max-width:420px){.shop-scan-dialog{padding:14px}.shop-scan-heading h2{font-size:18px}}
+
+/* Sales by amount: keep the money field beside the existing quantity controls. */
+.sale-value-toggle{display:block;margin-top:7px;border:1px solid #b7dfcc;border-radius:8px;background:#eef9f3;color:#116b4b;font-size:11px;font-weight:750;padding:6px 9px;text-align:left;cursor:pointer}
+.sale-value-toggle[aria-pressed="true"]{background:#137d5d;color:#fff;border-color:#137d5d}
+.sale-value-equivalent{display:block;margin-top:6px;font-size:11px;color:#116b4b;font-weight:700}
+.sale-value-label{display:grid;gap:4px;margin:0;font-size:11px;font-weight:750;color:#116b4b;min-width:98px}
+.sale-value-label input{margin:0;width:100px;max-width:125px;height:40px;min-height:40px;padding:6px;text-align:right;font-size:15px;border:2px solid #137d5d}
+.shop-cart-row .sale-value-toggle{width:max-content;max-width:100%}
+.shop-cart-row .sale-value-label input{width:100px;max-width:125px;height:37px}
+.fractional-control{display:flex;align-items:center;gap:10px;background:#f1faf4;border:1px solid #cfebd6;padding:12px;border-radius:10px;font-size:13px;font-weight:650;line-height:1.4}
+.fractional-control input[type="checkbox"]{width:20px;height:20px;min-height:20px;flex-shrink:0;margin:0;accent-color:#13845d}
+@media(max-width:480px){.cart-row .sale-value-label{min-width:90px}.cart-row .sale-value-label input{width:92px}.shop-cart-row .sale-value-label input{width:105px}}

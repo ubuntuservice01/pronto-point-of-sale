@@ -1,6 +1,6 @@
 import {sellableQty} from './batches.js';
+import {validateSaleQuantity} from './sale-by-value.js';
 // Pure UI guards. Server-side validation remains mandatory.
-const discreteUnits=new Set(['un','caixa','pacote','saco','rolo','par','conjunto']);
 export function cartIssues(cart,products,state){
  const byId=new Map(products.map(p=>[p.id,p])),seen=new Set(),issues=[];
  for(const line of cart||[]){
@@ -9,8 +9,8 @@ export function cartIssues(cart,products,state){
   if(seen.has(line.productId)){issues.push({productId:line.productId,reason:'duplicate'});continue;}
   seen.add(line.productId);
   const q=line.quantity;
-  if(!Number.isFinite(q)||q<=0||q>(state?sellableQty(state,p):p.stock)||Math.abs(q*1000-Math.round(q*1000))>0.00001||(discreteUnits.has(p.unit)&&!Number.isInteger(q)))
-   issues.push({productId:line.productId,reason:'quantity'});
+  try{validateSaleQuantity(p,q,state?sellableQty(state,p):p.stock);}
+  catch{issues.push({productId:line.productId,reason:'quantity'});}
  }
  return issues;
 }

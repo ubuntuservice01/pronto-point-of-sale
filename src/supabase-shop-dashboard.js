@@ -8,6 +8,7 @@ import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,shopPaymentPanel} from './supabase-shop-ui.js';
 import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
 import {PAYMENT_METHODS,toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
+import {quantityFromValueCents,validateSaleQuantity,allowsFractionalSale} from './sale-by-value.js';
 import {checkoutCashPreview} from './supabase-checkout-change.js';
 import {getPinKPIs,setPinKPIs,clearPinKPIs} from './pin-city-ui.js';
 import {makeCreditSaleRequest,makeDebtPaymentRequest,searchCustomers} from './supabase-credit-core.js';
@@ -37,6 +38,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
   transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',settingsSection='personalizacao',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,accessBlocked=false,accessCheckBusy=false,closeScanner=null;
+ const valueModeProducts=new Set();
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const alertDaysKey=()=> 'pronto-alert-days:'+grant.id;
  const readAlertDays=()=>{
@@ -117,7 +119,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const photoCache=new Map();
  const render=()=>{
   if(!data||accessBlocked)return;
-  root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,view,method,discount,query,feedback:notice,pending,
+  root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,valueModeProducts:[...valueModeProducts],view,method,discount,query,feedback:notice,pending,
    draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,branding,logoUrl:brandLogoUrl,settingsSection});
   for(const img of root.querySelectorAll('[data-shop-product-photo]')){
    const path=img.dataset.shopProductPhoto;
@@ -325,7 +327,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  };
  const updatePanel=()=>{
   const panel=root.querySelector('#shop-checkout-panel');
-  if(panel&&data)panel.outerHTML=shopPaymentPanel({method,cart,products:data.products,discount,session:session(),role:grant.role,credit,selectedCustomerId,creditDue,allowNoSession:cashState?.policy.openingRequired===false});
+  if(panel&&data)panel.outerHTML=shopPaymentPanel({method,cart,products:data.products,discount,session:session(),role:grant.role,credit,selectedCustomerId,creditDue,valueModeProducts:[...valueModeProducts],allowNoSession:cashState?.policy.openingRequired===false});
  };
  const cashData=fields=>({business_id:grant.id,branch_id:branchId,...fields});
  const processSale=async()=>{
@@ -371,6 +373,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const result=['cash_open','cash_close'].includes(action)&&typeof client.cashControl==='function'?
     await client.cashControl(action==='cash_open'?'open':'close',cashData(payload)):
     await client.merchantAction(action,cashData(payload));
+   if(action==='product_create'&&payload.allow_fractional===true){
+    try{await client.productFractionUpdate({businessId:grant.id,branchId,productId:result.product_id,
+     allowFractional:true,expectedRevision:0});}
+    catch(error){await refresh();render();showMessage('Produto criado, mas a venda fraccionada não foi activada. Abra Inventário e tente novamente. ('+error.message+')',true);return;}
+   }
    await refresh();
    if(action==='product_create')view='products';
    if(action==='customer_save')view='customers';
@@ -679,6 +686,12 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return;
   }
   if(el.hasAttribute('data-shop-add'))return void add(el.dataset.shopAdd);
+  if(el.hasAttribute('data-shop-value-toggle')){
+   if(lockPending())return;
+   const id=el.dataset.shopValueToggle;
+   if(valueModeProducts.has(id))valueModeProducts.delete(id);else valueModeProducts.add(id);
+   render();return;
+  }
   if(el.hasAttribute('data-remove')){
    if(lockPending())return;
    cart=cart.filter(x=>x.productId!==el.dataset.remove);render();return;
@@ -736,6 +749,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  },{signal});
  root.addEventListener('change',event=>{
   const el=event.target;
+  if(el.name==='unit'){
+   const box=el.closest('form')?.querySelector('input[name="allow_fractional"]');
+   if(box){box.disabled=!allowsFractionalSale({unit:el.value,allowFractional:true});if(box.disabled)box.checked=false;}
+   return;
+  }
   if(el.id==='shop-business-select'){
    const next=account.grants.find(x=>x.id===el.value);
    if(!next||busy)return;
@@ -760,9 +778,18 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!p||!line)return;
    try{
     const next=toQuantity(el.value,p.unit);
-    if(next>p.stock)throw Error('stock_unavailable');
+    validateSaleQuantity(p,next);
     line.quantity=next;render();
    }catch{showMessage('Quantidade inválida ou superior ao stock.',true);el.value=String(line.quantity);}
+  }
+  if(el.hasAttribute('data-shop-cart-value')){
+   if(lockPending())return;
+   const p=data.products.find(x=>x.id===el.dataset.shopCartValue),line=cart.find(x=>x.productId===el.dataset.shopCartValue);
+   if(!p||!line)return;
+   try{
+    line.quantity=quantityFromValueCents({priceCents:p.priceCents,amountCents:toCents(el.value),product:p});
+    render();
+   }catch(error){showMessage(error.message==='amount_unrepresentable'? 'Este valor não corresponde a uma quantidade exacta permitida. Escolha outro montante ou venda por quantidade.':'Valor inválido ou stock insuficiente.',true);el.value=(Math.round(p.priceCents*line.quantity)/100).toFixed(2);}
   }
  },{signal});
  root.addEventListener('keydown',event=>{
@@ -1070,6 +1097,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    try{
     if(action==='product_update'){
      if(!['owner','manager'].includes(grant.role))throw Error('price_permission');
+     if(values.has('allow_fractional')&&!allowsFractionalSale({unit:get('unit'),allowFractional:true}))throw Error('A unidade não permite venda fraccionada');
      payload={product_id:p.id,expected_revision:revision,name:get('name'),category:get('category'),
       unit:get('unit'),price_cents:toCents(get('price')),min_stock:Number(get('min_stock')),
       active:values.has('active')};
@@ -1087,6 +1115,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    busy=true;showMessage('');
    try{
     const result=await client.inventoryAction(action,cashData(payload));
+    if(action==='product_update'&&values.has('allow_fractional')!==allowsFractionalSale(p)){
+     try{await client.productFractionUpdate({businessId:grant.id,branchId,productId:p.id,
+      allowFractional:values.has('allow_fractional'),expectedRevision:result.revision});}
+     catch(error){await refresh();render();showMessage('Os dados do produto foram actualizados, mas a configuração de venda fraccionada não foi guardada. Repita na opção Inventário. ('+error.message+')',true);return;}
+    }
     await refresh();render();showMessage('Inventário actualizado. Stock actual: '+String(result.stock||0));
    }catch(error){showMessage('A alteração não foi confirmada. Actualize os dados antes de repetir. ('+error.message+')',true);}
    finally{busy=false;}return;
@@ -1351,10 +1384,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   const f=new FormData(form);
   try{
    let payload;
-   if(action==='product_create')payload={name:String(f.get('name')||'').trim(),
+   if(action==='product_create'){
+    if(f.has('allow_fractional')&&!allowsFractionalSale({unit:String(f.get('unit')),allowFractional:true}))throw Error('Esta unidade não permite venda fraccionada.');
+    payload={name:String(f.get('name')||'').trim(),
     category:String(f.get('category')||'').trim(),unit:String(f.get('unit')||'un'),
     price_cents:toCents(f.get('price')),code:String(f.get('code')||'').trim(),
-    min_stock:String(f.get('min_stock')||'0')};
+    min_stock:String(f.get('min_stock')||'0'),allow_fractional:f.has('allow_fractional')};
+   }
    else if(action==='stock_receive')payload={product_id:String(f.get('product_id')||''),
     quantity:toQuantity(f.get('quantity'),data.products.find(p=>p.id===f.get('product_id'))?.unit),
     lot_number:String(f.get('lot_number')||'').trim(),expires_on:String(f.get('expires_on')||''),

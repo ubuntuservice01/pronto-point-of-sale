@@ -1,6 +1,7 @@
 import {trackedBatches} from './batches.js';
 import {normalizeExpiryDate} from './expiry.js';
 import {normaliseProductPhoto} from './product-photo.js';
+import {allowsFractionalSale} from './sale-by-value.js';
 // Inventory mutations shared by the authenticated API and the local demo.
 // All financial values are integer cents; stock supports up to 3 decimals.
 const discrete=new Set(['un','caixa','pacote','saco','rolo','par','conjunto']);
@@ -29,11 +30,15 @@ export function editInventoryProduct(state,tenantId,input,actorId){
  const name=input.name?.trim(),category=input.category?.trim(),code=input.code?.trim();
  if(!required(name,100)||!required(category,60)||typeof code!=='string'||code.length>80||!Number.isSafeInteger(input.price)||input.price<=0||!Number.isFinite(input.min)||input.min<0||input.min>100000000||Math.abs(input.min*1000-Math.round(input.min*1000))>0.00001)throw Error('invalid_product');
  const nextFields={name,category,code,price:input.price,min:Math.round(input.min*1000)/1000};
+ if(Object.prototype.hasOwnProperty.call(input,'allowFractional')){
+  if(typeof input.allowFractional!=='boolean'||(input.allowFractional&&!allowsFractionalSale({...own(state,input.productId,tenantId),allowFractional:true})))throw Error('invalid_product');
+  nextFields.allowFractional=input.allowFractional;
+ }
  if(Object.prototype.hasOwnProperty.call(input,'expiryDate'))nextFields.expiryDate=normalizeExpiryDate(input.expiryDate);
   if(Object.prototype.hasOwnProperty.call(input,'photo'))nextFields.photo=normaliseProductPhoto(input.photo);
  const request={...input,...nextFields};
  const compactSignature={...request,photo:request.photo?`${request.photo.length}:${request.photo.slice(0,24)}:${request.photo.slice(-64)}`:request.photo};
-  const sig=signature(compactSignature,['productId','expectedRevision','name','category','code','price','min','expiryDate','photo','reason']);
+  const sig=signature(compactSignature,['productId','expectedRevision','name','category','code','price','min','allowFractional','expiryDate','photo','reason']);
  if(protect(state,input,tenantId,actorId,'edit',sig))return state;
  const p=own(state,input.productId,tenantId);
  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision!==revision(p))throw Error('revision_conflict');

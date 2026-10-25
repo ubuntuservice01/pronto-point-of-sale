@@ -331,9 +331,37 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
  }
  async function inventorySnapshot(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
-  return normalizeInventorySnapshot(await call('/rest/v1/rpc/pronto_inventory_snapshot',{
+  const result=await call('/rest/v1/rpc/pronto_inventory_snapshot',{
    method:'POST',payload:{p_business:businessId,p_branch:branchId}
-  }));
+  });
+  return normalizeInventorySnapshot({...result,products:await withFractionSettings(result.products,businessId,branchId)});
+ }
+ async function productFractionSettings(businessId,branchId){
+  if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
+  const result=await call('/rest/v1/rpc/pronto_product_fraction',{
+   method:'POST',payload:{p_action:'list',p_data:{business_id:businessId,branch_id:branchId}}
+  });
+  if(!Array.isArray(result?.products))throw Error('supabase_response');
+  return result.products;
+ }
+ async function withFractionSettings(products,businessId,branchId){
+  let settings;
+  try{settings=await productFractionSettings(businessId,branchId);}
+  catch(error){
+   // Old deployments remain usable until the additive migration is applied.
+   if(error.message!=='supabase_request_failed')throw error;
+   return products;
+  }
+  const allowed=new Map(settings.map(s=>[s.id,s.allow_fractional===true]));
+  return products.map(p=>allowed.has(p.id)?{...p,allow_fractional:allowed.get(p.id)}:p);
+ }
+ async function productFractionUpdate({businessId,branchId,productId,allowFractional,expectedRevision}){
+  if(!uuid(businessId)||!uuid(branchId)||!uuid(productId)||typeof allowFractional!=='boolean'||
+   !Number.isInteger(expectedRevision)||expectedRevision<0)throw Error('fraction_setting_invalid');
+  return call('/rest/v1/rpc/pronto_product_fraction',{
+   method:'POST',payload:{p_action:'set',p_data:{business_id:businessId,branch_id:branchId,
+    product_id:productId,expected_revision:expectedRevision,allow_fractional:allowFractional}}
+  });
  }
  async function inventoryAction(action,data){
   if(!['product_update','inventory_adjust','inventory_count'].includes(action)||!data||typeof data!=='object'||Array.isArray(data))throw Error('inventory_action_invalid');
@@ -394,7 +422,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   const payload={p_business:businessId,p_branch:branchId};
   const result=await call('/rest/v1/rpc/pronto_merchant_snapshot',{method:'POST',payload});
-  return normalizeMerchantSnapshot(result);
+  return normalizeMerchantSnapshot({...result,products:await withFractionSettings(result.products,businessId,branchId)});
  }
  async function ownerAuditSnapshot(businessId,page=0){
   if(!uuid(businessId)||!Number.isInteger(page)||page<0||page>100)throw Error('audit_scope');
@@ -573,5 +601,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {restoreSession,unlockReloadedScreen,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {restoreSession,unlockReloadedScreen,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

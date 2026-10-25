@@ -3,6 +3,7 @@ import {allocateFEFO,afterBatchSale} from './batches.js';
 import {normalizeExpiryDate} from './expiry.js';
 import {normaliseProductPhoto} from './product-photo.js';
 import {allocateProductCode} from './product-code.js';
+import {allowsFractionalSale,validateSaleQuantity} from './sale-by-value.js';
 export const units=['un','m','m²','kg','g','l','ml','caixa','pacote','saco','rolo','par','conjunto'];
 export const roles=['owner','manager','cashier','stock','finance'];
 export const permissions={owner:['sell','stock','team','history','refund','discount','customers','purchases','expenses','reports','debts','alerts'],manager:['sell','stock','history','refund','discount','customers','purchases','expenses','reports','alerts'],cashier:['sell','history','customers','debts'],stock:['stock','purchases','alerts'],finance:['history','expenses','reports','debts']};
@@ -26,8 +27,7 @@ export function createSale(state,{tenantId,role,cart,method,received,discount=0,
   seen.add(p.id);
   const qty=Number(item.quantity);
   if(!Number.isFinite(qty)||qty<=0||qty>p.stock)throw Error('stock');
-  if(Math.abs(qty*1000-Math.round(qty*1000))>0.00001)throw Error('quantity');
-  if(['un','caixa','pacote','saco','rolo','par','conjunto'].includes(p.unit)&&!Number.isInteger(qty))throw Error('quantity');
+  try{validateSaleQuantity(p,qty);}catch{throw Error('quantity');}
   const batchAllocations=allocateFEFO(state,p,qty);
   const costKnown=batchAllocations.every(b=>Number.isSafeInteger(b.unitCost)&&b.unitCost>=0);
   const costAmount=costKnown?batchAllocations.reduce((sum,b)=>sum+Math.round(b.unitCost*b.quantity),0):null;
@@ -70,6 +70,8 @@ export function addProduct(state,tenantId,product){
  if(!state.tenants.some(t=>t.id===tenantId))throw Error('tenant');
  if(!product.name.trim()||!units.includes(product.unit)||!Number.isSafeInteger(product.price)||product.price<=0||!Number.isFinite(product.stock)||product.stock<0||!Number.isFinite(product.min)||product.min<0)throw Error('product');
  if(['un','caixa','pacote','saco','rolo','par','conjunto'].includes(product.unit)&&!Number.isInteger(product.stock))throw Error('quantity');
+ if(product.allowFractional!==undefined&&typeof product.allowFractional!=='boolean')throw Error('product');
+ if(product.allowFractional===true&&!allowsFractionalSale({...product,allowFractional:true}))throw Error('product');
  const {code,productCodeSequences}=allocateProductCode(state,tenantId,product.code);
- return {...state,productCodeSequences,products:[...state.products,{...product,code,photo:normaliseProductPhoto(product.photo),expiryDate:normalizeExpiryDate(product.expiryDate),id:crypto.randomUUID(),tenantId,active:true,revision:0}]};
+ return {...state,productCodeSequences,products:[...state.products,{...product,allowFractional:allowsFractionalSale(product),code,photo:normaliseProductPhoto(product.photo),expiryDate:normalizeExpiryDate(product.expiryDate),id:crypto.randomUUID(),tenantId,active:true,revision:0}]};
 }
