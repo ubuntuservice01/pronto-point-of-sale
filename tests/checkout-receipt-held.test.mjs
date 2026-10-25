@@ -18,6 +18,26 @@ test('Cash received starts blank, not prefilled with the transaction total',()=>
  const mixed=shopPaymentPanel({method:'mixed',cart,products:[item],session:{id:b},role:'owner'});
  assert.match(mixed,/name="cash_received" value=""/);
 });
+test('Caixa no telemóvel mostra Banco e os seis meios de pagamento antes do catálogo',()=>{
+ const account={userId:u,email:'caixa@loja.co.mz',grants:[{id:u,name:'Loja',role:'cashier'}]};
+ const opts={account,grants:account.grants,grant:account.grants[0],branches:[{id:b,name:'Centro'}],branchId:b,
+  data:{products:[item],sessions:[],sales:[]},cart,view:'sell',method:'bank',discount:'0',query:'',feedback:'',pending:null,heldSales:[]};
+ const html=renderShopScreen(opts);
+ assert.ok(html.indexOf('shop-mobile-payment-shortcut')<html.indexOf('shop-search-control'));
+ assert.match(html,/class="shop-methods shop-methods-mobile-quick"/);
+ assert.match(html,/data-shop-go-checkout/);
+ const mobile=html.slice(html.indexOf('class="shop-methods shop-methods-mobile-quick"'),html.indexOf('</section>',html.indexOf('class="shop-methods shop-methods-mobile-quick"')));
+ for(const label of ['Dinheiro','M-Pesa','e-Mola','Transferência','Banco','Repartido'])assert.ok(mobile.includes('>'+label+'</button>'),label);
+ assert.match(mobile,/data-shop-method="bank" aria-pressed="true"/);
+ assert.equal((html.match(/data-shop-method="bank"/g)||[]).length,2,'Quick and checkout buttons remain available');
+ const css=read('src/supabase-checkout-flow.css');
+ assert.match(css,/\.shop-mobile-payment-shortcut\{display:none\}/);
+ assert.match(css,/@media\(max-width:660px\)[\s\S]*\.shop-mobile-payment-shortcut\{display:block/);
+ assert.match(css,/\.shop-methods\.shop-methods-mobile-quick\{display:grid;grid-template-columns:repeat\(3/);
+ const controller=read('src/supabase-shop-dashboard.js');
+ assert.match(controller,/\.shop-methods-mobile-quick \[data-shop-method\]/);
+ assert.match(controller,/el\.hasAttribute\('data-shop-go-checkout'\)/);
+});
 test('Confirmed sales produce an escaped printable receipt with correct cash and change',()=>{
  const req=makeSaleRequest({
   businessId:u,branchId:b,sessionId:b,cart,products:[item],discount:'0',

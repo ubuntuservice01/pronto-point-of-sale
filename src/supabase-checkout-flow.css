@@ -12,6 +12,7 @@
 .shop-hold-item-count{padding:3px 7px;border-radius:99px;background:#ffffff30;font-size:11px;white-space:nowrap}
 .shop-sale-hold-toolbar p{margin:0;color:#426953;font-size:12px;line-height:1.45}
 .shop-hold-mobile-bar{display:none}
+.shop-mobile-payment-shortcut{display:none}
 .shop-held-in-sales{margin:16px 0}
 .shop-held-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .shop-held-heading h3{margin:0}
@@ -23,6 +24,16 @@
 .shop-held-mini-item small{display:block;color:#6b8073;font-size:12px;margin-top:4px}
 .shop-held-mini-item button{flex:none;border:1px solid #0c8967;color:#08765a;background:#f1fbf5;border-radius:10px;min-height:42px;padding:8px 16px;font-weight:750}
 .shop-held-mini-item button:hover,.shop-held-heading>button:hover{background:#d6eee1}
+@media(max-width:660px){
+ .shop-mobile-payment-shortcut{display:block;padding:14px;margin:0 0 16px;background:#fff;border:1px solid #d3e5db;border-radius:15px;box-shadow:0 3px 14px #16392d0a}
+ .shop-mobile-payment-heading{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+ .shop-mobile-payment-heading>div{display:grid;gap:4px;min-width:0}
+ .shop-mobile-payment-heading strong{color:#244d3c;font-size:14px}
+ .shop-mobile-payment-heading small{font-size:11px;color:#6d8176;line-height:1.4}
+ .shop-mobile-payment-heading button{flex:none;min-height:40px;border:1px solid #b8daca;border-radius:9px;background:#ebf7f0;color:#087f68;font-size:11px;font-weight:800;padding:7px 9px}
+ .shop-methods.shop-methods-mobile-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+ .shop-methods-mobile-quick button{min-width:0;min-height:49px;padding:7px 3px;font-size:12px;white-space:normal;overflow-wrap:anywhere}
+}
 @media(max-width:600px){
  .shop-sales-tabs{display:grid;grid-template-columns:1fr 1fr}
  .shop-sales-tab{font-size:13px;padding:10px 8px}

@@ -13,6 +13,9 @@ import {renderSuspendedCash} from './supabase-staff-cash-ui.js';
 import {renderAuditView} from './supabase-audit-ui.js';
 
 const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco',mixed:'Repartido'};
+const paymentMethodButtons=(method,extraClass='',label='Forma de pagamento')=>
+ '<div class="shop-methods'+(extraClass?' '+extraClass:'')+'" role="group" aria-label="'+esc(label)+'">'+
+ [...PAYMENT_METHODS,'mixed'].map(m=>'<button type="button" data-shop-method="'+m+'" aria-pressed="'+(method===m)+'" class="'+(method===m?'selected':'')+'">'+methodLabels[m]+'</button>').join('')+'</div>';
 const safeDate=value=>{
  const d=new Date(value);
  return Number.isFinite(d.getTime())?d.toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short',timeZone:'Africa/Maputo'}):'—';
@@ -42,9 +45,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
  const creditWarning=method==='credit'&&creditCustomer&&total>available?
   '<p class="shop-error" role="alert" data-credit-limit-warning>Não é possível registar esta dívida: crédito disponível de '+MONEY(available)+
   ' para uma venda de '+MONEY(total)+'. Peça ao proprietário ou gerente para actualizar o limite na opção Clientes.</p>':'';
- const methods=[...PAYMENT_METHODS,'mixed'];
- const buttons='<div class="shop-methods" role="group" aria-label="Forma de pagamento">'+methods.map(m=>
-  '<button type="button" data-shop-method="'+m+'" aria-pressed="'+(method===m)+'" class="'+(method===m?'selected':'')+'">'+methodLabels[m]+'</button>').join('')+'</div>';
+ const buttons=paymentMethodButtons(method);
  const amounts=method==='credit'?'<p class="shop-help">Venda a crédito: não recebe dinheiro neste momento; cria uma dívida e baixa o stock após confirmação.</p>':method==='mixed'?'<div class="shop-payment-grid">'+PAYMENT_METHODS.map(m=>
   field('pay_'+m,methodLabels[m]+' (MT)','0.00','type="number" min="0" step="0.01" inputmode="decimal"')).join('')+'</div>':
   '<p class="shop-help">Pagamento único: '+esc(methodLabels[method])+' · '+MONEY(total)+'.</p>';
@@ -217,6 +218,10 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    '<p>'+(pending?'Há uma venda pendente de confirmação. Verifique-a antes de colocar outra em espera.':
     cart.length?'Guarda este carrinho na filial para atender outro cliente. Não reserva stock.':
     'Adicione artigos ao carrinho para poder colocar a venda em espera.')+'</p></div>'+
+   '<section class="shop-mobile-payment-shortcut" aria-label="Pagamento no telemóvel">'+
+   '<div class="shop-mobile-payment-heading"><div><strong>Forma de pagamento</strong><small>Escolha como o cliente vai pagar. Pode alterar na cobrança.</small></div>'+
+   '<button type="button" data-shop-go-checkout>Ir ao pagamento ↓</button></div>'+
+   paymentMethodButtons(method,'shop-methods-mobile-quick','Escolher meio de pagamento no telemóvel')+'</section>'+
    '<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><div class="shop-search"><label for="shop-search">Pesquisar por nome ou código</label>'+
    '<div class="shop-search-control"><input id="shop-search" type="search" value="'+esc(query)+'" autocomplete="off" placeholder="Nome, código ou referência">'+
    '<button class="shop-scan-launch" data-shop-scan type="button" title="Ler QR code ou código de barras" aria-label="Abrir câmara para ler QR code ou código de barras">'+

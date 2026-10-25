@@ -351,6 +351,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const updatePanel=()=>{
   const panel=root.querySelector('#shop-checkout-panel');
   if(panel&&data)panel.outerHTML=shopPaymentPanel({method,cart,products:data.products,discount,session:session(),role:grant.role,credit,selectedCustomerId,creditDue,valueModeProducts:[...valueModeProducts],allowNoSession:cashState?.policy.openingRequired===false});
+  // The mobile payment shortcuts are outside the checkout panel; keep both
+  // groups in sync without replacing the search field or the product list.
+  root.querySelectorAll('.shop-methods-mobile-quick [data-shop-method]').forEach(button=>{
+   const selected=button.dataset.shopMethod===method;
+   button.setAttribute('aria-pressed',String(selected));
+   button.classList.toggle('selected',selected);
+  });
  };
  const cashData=fields=>({business_id:grant.id,branch_id:branchId,...fields});
  const processSale=async()=>{
@@ -736,6 +743,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    control.click();return;
   }
   if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;closeScanner?.();view=el.dataset.shopView;menuOpen=false;notificationsOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
+  if(el.hasAttribute('data-shop-go-checkout')){root.querySelector('#shop-checkout-panel')?.scrollIntoView({block:'start',behavior:'smooth'});return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
   if(el.hasAttribute('data-shop-discard')){
