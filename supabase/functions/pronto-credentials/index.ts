@@ -67,7 +67,8 @@ Deno.serve(async request=>{
   const created=await fetch(origin+"/auth/v1/admin/users",{
    method:"POST",headers:{apikey:secret,Authorization:"Bearer "+secret,
     "Content-Type":"application/json"},
-   body:JSON.stringify({email,password,email_confirm:true,user_metadata:{display_name}}),
+   body:JSON.stringify({email,password,email_confirm:true,user_metadata:{display_name},
+    app_metadata:{pronto_password_change_required:true}}),
    signal:AbortSignal.timeout(15000)
   });
   const createdUser=await created.json().catch(()=>null);

@@ -41,13 +41,20 @@ export function pinError(result){
 }
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function pinScreen({mode='unlock',email='',message='',metrics=null}={}){
- const setup=mode==='create',change=mode==='change',recover=mode==='recover';
- const title=setup?'Criar PIN de 5 dígitos':change?'Alterar PIN':recover?'Recuperar PIN':'Ecrã bloqueado';
- const subtitle=setup?'O PIN pertence à sua conta e será usado para desbloquear este dispositivo.':
+ const setup=mode==='create',change=mode==='change',recover=mode==='recover',passwordSetup=mode==='password';
+ const title=passwordSetup?'Criar nova palavra-passe':setup?'Criar PIN de 5 dígitos':change?'Alterar PIN':recover?'Recuperar PIN':'Ecrã bloqueado';
+ const subtitle=passwordSetup?'Primeiro acesso · Passo 1 de 2. Substitua a palavra-passe provisória. Depois criará o PIN de 5 dígitos.':
+  setup?'Passo 2 de 2. Crie um PIN pessoal para desbloquear o Pronto POS.':
   change?'Introduza o PIN actual e escolha um novo PIN.':
   recover?'Confirme a sua palavra-passe para definir um novo PIN pessoal.':
   'Introduza o seu PIN para continuar sem perder o trabalho.';
- const fields=setup||change||recover?
+ const fields=passwordSetup?
+  '<form id="pronto-pin-form" autocomplete="off">'+
+  '<label>Palavra-passe provisória<input name="current_password" type="password" autocomplete="current-password" minlength="1" maxlength="200" required></label>'+
+  '<label>Nova palavra-passe<input name="new_password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>'+
+  '<label>Confirmar nova palavra-passe<input name="confirm_password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>'+
+  '<p class="pronto-pin-password-tip">Use pelo menos 12 caracteres. Não reutilize a palavra-passe provisória.</p>'+
+  '<button class="pronto-pin-primary" type="submit">Guardar e criar PIN →</button></form>':setup||change||recover?
   '<form id="pronto-pin-form" autocomplete="off">'+
    (recover?'<label>Palavra-passe da conta<input name="password" type="password" autocomplete="current-password" maxlength="200" required></label>':'')+
    (change?'<label>PIN actual<input name="current" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" minlength="5" maxlength="5" required></label>':'')+
@@ -89,7 +96,7 @@ export async function mountProntoPinGate({
  const controller=new AbortController();
  const {signal}=controller;
  let overlay=null,toolbar=null,timer=null,opened=false,locking=false,destroyed=false,processing=false;
- let unloading=false,lastRemembered=0;
+ let unloading=false,lastRemembered=0,pinWasConfigured=false;
  let tabs=tabStorage;
  if(!tabs){try{tabs=win.sessionStorage;}catch{/* private mode */}}
  const forget=()=>clearPinContinuity(tabs,account.userId);
@@ -161,6 +168,36 @@ export async function mountProntoPinGate({
    e.preventDefault();
    if(processing||destroyed)return;
    const values=new FormData(form);
+   if(mode==='password'){
+    const currentPassword=String(values.get('current_password')||'');
+    const newPassword=String(values.get('new_password')||'');
+    const confirmPassword=String(values.get('confirm_password')||'');
+    if(newPassword.length<12||newPassword.length>128){
+     alert.textContent='A nova palavra-passe deve ter entre 12 e 128 caracteres.';return;
+    }
+    if(newPassword!==confirmPassword){
+     alert.textContent='As palavras-passe não coincidem.';return;
+    }
+    if(currentPassword===newPassword){
+     alert.textContent='Escolha uma palavra-passe diferente da provisória.';return;
+    }
+    processing=true;submit.disabled=true;alert.textContent='';
+    try{
+     await client.changeInitialPassword(currentPassword,newPassword);
+     account.requiresPasswordChange=false;
+     // The server commits the new password before the PIN screen appears.
+     show(pinWasConfigured?'unlock':'create');
+    }catch(error){
+     alert.textContent=error.message==='supabase_unauthorized'?
+      'A sessão expirou. Termine a sessão e entre com a sua palavra-passe actual.':
+      error.message==='password_setup_pending'?
+      'Confirme o estado da conta antes de continuar. Se já mudou a palavra-passe, saia e volte a entrar.':
+      error.message==='supabase_rate_limit'?
+      'Muitas tentativas. Tente novamente mais tarde.':
+      'Não foi possível alterar a palavra-passe. Confira a provisória e escolha uma palavra-passe forte.';
+    }finally{processing=false;if(submit.isConnected)submit.disabled=false;}
+    return;
+   }
    const pin=mode==='unlock'?String(values.get('pin')||''):String(values.get('new')||'');
    const current=String(values.get('current')||'');
    if(!valid(pin)||mode==='change'&&!valid(current)){
@@ -256,7 +293,9 @@ export async function mountProntoPinGate({
  try{
   const status=await client.sessionPin('status');
   if(destroyed)return {cleanup,lock:()=>{}};
-  if(status.configured){
+  pinWasConfigured=status.configured===true;
+  if(account.requiresPasswordChange===true){forget();show('password');}
+  else if(status.configured){
    let navigationType='';
    try{navigationType=win.performance?.getEntriesByType('navigation')?.[0]?.type||'';}catch{/* browser */}
    const resumable=allowReloadResume&&

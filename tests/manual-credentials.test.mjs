@@ -10,7 +10,7 @@ test('Manual account receipt contains login, initial password and reference with
  assert.match(message,/Email: ana@example.org/);
  assert.match(message,/Palavra-passe inicial: Private-Pass/);
  assert.match(message,/Referência: POS-AB12CD34/);
- assert.match(message,/defina o seu PIN pessoal/);
+ assert.match(message,/altere a palavra-passe provisória e depois crie o seu PIN pessoal/);
  assert.throws(()=>credentialsText({...data,temporary_password:''},'https://x.test'),/credentials_invalid/);
 });
 test('Production onboarding asks only the admin to create access, not to send invitations',()=>{

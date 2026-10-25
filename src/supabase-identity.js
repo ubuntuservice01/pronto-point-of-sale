@@ -131,7 +131,10 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   const grants=safe.filter(m=>allowed.has(m.business_id)).map(m=>({
    id:m.business_id,name:allowed.get(m.business_id).name,role:m.role
   }));
-  return {userId:user.id,email:user.email||'',ubuntuAdmin,grants};
+  // Only a privileged Auth administrator can flag provisional credentials.
+  const requiresPasswordChange=user.app_metadata?.pronto_password_change_required===true;
+  return {userId:user.id,email:user.email||'',ubuntuAdmin,grants,
+   ...(requiresPasswordChange?{requiresPasswordChange:true}:{})};
  }
  async function signIn(email,password){
   if(!validEmail(email)||typeof password!=='string'||password.length<1||password.length>200)throw Error('supabase_invalid_credentials');
@@ -142,6 +145,23 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    user:{id:result.user.id},expiresAt:expiresAt(result)};
   try{const profile=await account();remember();return profile;}
   catch(error){clearSession();throw error;}
+ }
+ // New accounts must replace their provisional password before PIN enrolment.
+ async function changeInitialPassword(currentPassword,newPassword){
+  if(!session)throw Error('supabase_unauthorized');
+  if(typeof currentPassword!=='string'||!currentPassword||currentPassword.length>200||
+     typeof newPassword!=='string'||newPassword.length<12||newPassword.length>128)
+   throw Error('password_setup_invalid');
+  if(newPassword===currentPassword)throw Error('password_setup_same');
+  const result=await call('/auth/v1/user',{method:'PUT',allowLocked:true,
+   payload:{current_password:currentPassword,password:newPassword}});
+  if(!uuid(result?.id)||result.id!==session.user.id)throw Error('supabase_identity_mismatch');
+  // The auth.users trigger clears the admin-owned marker only after a real
+  // password change; the browser never sets or bypasses that marker.
+  const confirmed=await call('/auth/v1/user',{allowLocked:true});
+  if(confirmed?.id!==session.user.id||confirmed.app_metadata?.pronto_password_change_required===true)
+   throw Error('password_setup_pending');
+  return true;
  }
  // Runs only after startup. The saved refresh credential is exchanged with Supabase,
  // then roles and store permissions are fetched afresh; stored roles are never trusted.
@@ -604,5 +624,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {restoreSession,unlockReloadedScreen,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {restoreSession,unlockReloadedScreen,changeInitialPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
