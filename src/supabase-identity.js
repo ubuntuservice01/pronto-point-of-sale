@@ -572,7 +572,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   });
   let result;try{result=await response.json();}catch{throw Error('pin_recovery_unavailable');}
   if(!response.ok){
-   if(response.status===401){session=null;throw Error('supabase_unauthorized');}
+   if(response.status===401){clearSession();throw Error('supabase_unauthorized');}
    const reason=result?.error;
    if(reason==='incorrect_password')throw Error('pin_recovery_password_incorrect');
    if(reason==='same_pin')throw Error('pin_recovery_same_pin');
@@ -597,7 +597,10 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
  function isScreenLocked(){return sessionLocked;}
  async function signOut(){
   if(session){
-   try{await call('/auth/v1/logout',{method:'POST'});}catch{/* Clear local token even when service unavailable. */}
+   // Log out on the server even when the PIN overlay has locked the UI.
+   // The lock must not prevent revocation of the refresh credential.
+   try{await call('/auth/v1/logout',{method:'POST',allowLocked:true});}
+   catch{/* Clear local token even when service unavailable. */}
   }
   clearSession();
  }

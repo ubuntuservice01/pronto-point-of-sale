@@ -7,7 +7,7 @@ const A='11111111-1111-4111-8111-111111111111';
 const B='22222222-2222-4222-8222-222222222222';
 const C='33333333-3333-4333-8333-333333333333';
 const json=(status,data)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}});
-function mock({suspended=false,member=true,failLogin=false,admin=false}={}){
+function mock({suspended=false,member=true,failLogin=false,admin=false,refreshToken=false,failLogout=false,pinRecoveryUnauthorized=false}={}){
  const calls=[];
  const fetchImpl=async (url,options)=>{
   calls.push({url,method:options.method,authorization:options.headers.Authorization,cache:options.cache});
@@ -16,7 +16,10 @@ function mock({suspended=false,member=true,failLogin=false,admin=false}={}){
    assert.equal(data.email,'cashier@example.com');
    assert.equal(data.password,'correct-password');
    assert.equal(options.headers.Authorization,undefined);
-   return failLogin?json(400,{message:'Invalid login credentials'}):json(200,{access_token:'test-access-token',user:{id:A}});
+   return failLogin?json(400,{message:'Invalid login credentials'}):json(200,{
+    access_token:'test-access-token',user:{id:A},
+    ...(refreshToken?{refresh_token:'refresh-credential-one'}:{})
+   });
   }
   assert.equal(options.headers.Authorization,'Bearer test-access-token');
   if(url.endsWith('/auth/v1/user'))return json(200,{id:A,email:'cashier@example.com'});
@@ -33,7 +36,11 @@ function mock({suspended=false,member=true,failLogin=false,admin=false}={}){
    {id:B,name:'Mercearia da esquina',status:suspended?'suspended':'active'},
    {id:C,name:'Ferragem',status:'active'}
   ]);
-  if(url.endsWith('/auth/v1/logout'))return json(200,{});
+  if(url.endsWith('/auth/v1/logout')){
+   if(failLogout)throw Error('Network unavailable');
+   return json(200,{});
+  }
+  if(url.endsWith('/functions/v1/pronto-pin-recovery')&&pinRecoveryUnauthorized)return json(401,{error:'unauthorized'});
   return json(404,{message:'Not found'});
  };
  return {calls,fetchImpl};
@@ -76,6 +83,45 @@ test('Failed login does not leave a session and never exposes upstream error pay
  await assert.rejects(()=>identity.account(),/supabase_unauthorized/);
  await assert.rejects(()=>identity.signIn('bad-email','pw'),/supabase_invalid_credentials/);
  assert.equal(api.calls.length,1);
+});
+
+test('PIN-locked logout still revokes the Supabase session and forgets the saved refresh credential',async()=>{
+ const entries=new Map();
+ const storage={getItem:k=>entries.get(k)??null,setItem:(k,v)=>entries.set(k,v),removeItem:k=>entries.delete(k)};
+ const api=mock({refreshToken:true});
+ const identity=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:api.fetchImpl,storage});
+ await identity.signIn('cashier@example.com','correct-password');
+ assert.equal(entries.size,1);
+ identity.lockScreen();
+ await identity.signOut();
+ assert.equal(api.calls.filter(c=>c.url.endsWith('/auth/v1/logout')).length,1);
+ assert.equal(entries.size,0);
+ await assert.rejects(()=>identity.account(),/supabase_unauthorized/);
+});
+
+test('Offline logout clears the local credential even if server revocation is unreachable',async()=>{
+ const entries=new Map();
+ const storage={getItem:k=>entries.get(k)??null,setItem:(k,v)=>entries.set(k,v),removeItem:k=>entries.delete(k)};
+ const api=mock({refreshToken:true,failLogout:true});
+ const identity=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:api.fetchImpl,storage});
+ await identity.signIn('cashier@example.com','correct-password');
+ identity.lockScreen();
+ await identity.signOut();
+ assert.equal(api.calls.filter(c=>c.url.endsWith('/auth/v1/logout')).length,1);
+ assert.equal(entries.size,0);
+});
+
+test('An invalidated login during PIN recovery cannot leave a reusable saved refresh credential',async()=>{
+ const entries=new Map();
+ const storage={getItem:k=>entries.get(k)??null,setItem:(k,v)=>entries.set(k,v),removeItem:k=>entries.delete(k)};
+ const api=mock({refreshToken:true,pinRecoveryUnauthorized:true});
+ const identity=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:api.fetchImpl,storage});
+ await identity.signIn('cashier@example.com','correct-password');
+ assert.equal(entries.size,1);
+ identity.lockScreen();
+ await assert.rejects(()=>identity.recoverPinWithPassword({password:'correct-password',pin:'58264'}),/supabase_unauthorized/);
+ assert.equal(entries.size,0);
+ await assert.rejects(()=>identity.account(),/supabase_unauthorized/);
 });
 
 test('Ubuntu Super Administrator is proven only by the protected RPC, even without merchant memberships',async()=>{
