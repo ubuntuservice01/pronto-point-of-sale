@@ -34,6 +34,33 @@ test('Expenses are manual transactions; recurrent expenses are explicit reminder
  assert.ok(html.includes('NÃO são efectuados automaticamente'));
  assert.ok(html.includes('Combustível'));
  assert.ok(html.includes('25,00 MT'));
+ assert.ok(html.includes('Registar despesa diária'));
+ assert.ok(html.includes('Limpeza e higiene'));
+ assert.ok(html.includes('Sabão para limpar o balcão'));
+});
+test('Daily expenses show Maputo-day totals and keep earlier expenses separate',()=>{
+ const finance={...data,expenses:[
+  {id:'one',label:'Sabão de limpeza',category:'Limpeza e higiene',amount:3500,method:'cash',date:'2026-10-24T22:30:00Z'},
+  {id:'two',label:'Água',category:'Água e energia',amount:2000,method:'emola',date:'2026-10-25T13:10:00Z'},
+  {id:'three',label:'Transporte',category:'Transporte',amount:6000,method:'mpesa',date:'2026-10-24T19:00:00Z'}
+ ]};
+ const html=renderFinanceView({view:'expenses',finance,today:'2026-10-25'});
+ const today=html.split('<h4>Despesas de hoje</h4>')[1].split('<h4>Despesas anteriores</h4>')[0];
+ const earlier=html.split('<h4>Despesas anteriores</h4>')[1].split('Despesas recorrentes')[0];
+ assert.ok(today.includes('55,00 MT'));
+ assert.ok(today.includes('2 registo(s)'));
+ assert.ok(today.includes('Sabão de limpeza'));
+ assert.ok(today.includes('e-Mola'));
+ assert.ok(!today.includes('Transporte</strong>'));
+ assert.ok(earlier.includes('Transporte</strong>'));
+ assert.ok(!earlier.includes('Sabão de limpeza'));
+});
+test('Expense labels are escaped and the empty daily state stays clear',()=>{
+ const finance={...data,expenses:[{id:'unsafe',label:'<script>alert(1)</script>',category:'Outras',amount:300,method:'cash',date:'2026-10-23T10:00:00Z'}]};
+ const html=renderFinanceView({view:'expenses',finance,today:'2026-10-25'});
+ assert.ok(html.includes('Ainda não há despesas registadas hoje.'));
+ assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+ assert.ok(!html.includes('<script>'));
 });
 test('Finance RPCs are guarded and scoped to the authenticated tenant',async()=>{
  const calls=[],reply=(status,value)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});

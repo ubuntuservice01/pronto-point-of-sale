@@ -5,6 +5,16 @@ const fmt=c=>MONEY(Number(c)||0);
 const f=(name,label,type='text',extra='',value='')=>'<label>'+esc(label)+'<input name="'+esc(name)+'" type="'+type+'" '+extra+' value="'+esc(value)+'" required></label>';
 const section=(title,desc,body)=>'<section class="shop-box"><h3>'+esc(title)+'</h3><p class="shop-help">'+esc(desc)+'</p>'+body+'</section>';
 const options=(rows,prompt='Seleccione')=>'<option value="">'+esc(prompt)+'</option>'+rows.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
+const mzDate=date=>{
+ const parsed=new Date(date);
+ return Number.isFinite(parsed.getTime())?new Intl.DateTimeFormat('en-CA',{
+  timeZone:'Africa/Maputo',year:'numeric',month:'2-digit',day:'2-digit'
+ }).format(parsed):'';
+};
+const expenseMethods={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco'};
+const expenseRow=e=>'<div class="expense-history-row"><div><strong>'+esc(e.label)+'</strong><small>'+
+ esc(e.category)+' · '+esc(expenseMethods[e.method]||e.method||'Não indicado')+
+ (mzDate(e.date)?' · '+esc(mzDate(e.date)):'')+'</small></div><strong>'+fmt(e.amount)+'</strong></div>';
 export const FINANCE_TABS=['suppliers','purchases','expenses'];
 export function normalizeFinanceSnapshot(raw){
  if(!raw||!['suppliers','purchases','expenses','schedules'].every(key=>Array.isArray(raw[key])))throw Error('finance_snapshot_invalid');
@@ -17,7 +27,7 @@ export function normalizeFinanceSnapshot(raw){
  };
 }
 const payMethods='<option value="cash">Dinheiro</option><option value="mpesa">M-Pesa</option><option value="emola">e-Mola</option><option value="transfer">Transferência</option><option value="bank">Banco</option>';
-export function renderFinanceView({view,finance,products=[],supplierId='',lines=1,role='',session=null}){
+export function renderFinanceView({view,finance,products=[],supplierId='',lines=1,role='',session=null,today=mzDate(new Date())}){
  if(!finance)return section('Compras e despesas','','');
  if(view==='suppliers'){
   const chosen=finance.suppliers.find(x=>x.id===supplierId);
@@ -67,20 +77,29 @@ export function renderFinanceView({view,finance,products=[],supplierId='',lines=
    '<h4>Últimas compras</h4>'+purchases.map(p=>
     '<div class="credit-line">'+esc(p.supplier)+' · '+fmt(p.total)+' · Por pagar: '+fmt(p.balance)+'</div>').join(''))+'</div>';
  }
- const expenses=finance.expenses.slice(0,50);
- const due=finance.schedules.filter(x=>x.active&&x.nextDue<=(new Date()).toISOString().slice(0,10));
- return '<div class="shop-two">'+section('Registar despesa',
-  'As despesas pagas em dinheiro são debitadas no caixa aberto do próprio operador.',
+ const expenses=finance.expenses.slice(0,300);
+ const todayExpenses=expenses.filter(e=>mzDate(e.date)===today);
+ const earlierExpenses=expenses.filter(e=>mzDate(e.date)!==today).slice(0,40);
+ const todayTotal=todayExpenses.reduce((sum,e)=>sum+e.amount,0);
+ const due=finance.schedules.filter(x=>x.active&&x.nextDue<=today);
+ return '<div class="shop-two">'+section('Registar despesa diária',
+  'Registe despesas do funcionamento da loja, como sabão para limpar o balcão, transporte, embalagens ou energia. A data é registada automaticamente.',
   '<form class="shop-form" data-shop-form="expense_add">'+
-  f('label','Descrição','text','maxlength="180"')+
-  f('category','Categoria','text','maxlength="80"','Outras')+
+  f('label','O que foi comprado / motivo','text','maxlength="180" placeholder="Ex.: Sabão para limpar o balcão"')+
+  f('category','Categoria','text','maxlength="80" list="expense-category-suggestions" placeholder="Seleccione ou escreva"')+
+  '<datalist id="expense-category-suggestions">'+
+  ['Limpeza e higiene','Transporte','Água e energia','Embalagens','Manutenção','Renda','Salários','Internet e comunicações','Alimentação','Outras'].map(x=>'<option value="'+esc(x)+'">').join('')+'</datalist>'+
   f('amount','Valor (MT)','number','min="0.01" step="0.01"')+
   '<label>Meio de pagamento<select name="method">'+payMethods+'</select></label>'+
-  f('reference','Referência digital','text','maxlength="128"').replace(' required>','>')+
+  f('reference','Referência (se não for em dinheiro)','text','maxlength="128"').replace(' required>','>')+
+  '<p class="shop-help">Pagamentos em dinheiro são debitados no caixa aberto do operador; os restantes meios devem ser confirmados manualmente.</p>'+
   '<label><input type="checkbox" name="confirmed" required> Confirmo que a despesa foi paga</label>'+
   '<button class="shop-submit" type="submit">Registar despesa</button></form>'+
-  '<h4>Últimas despesas</h4>'+expenses.map(e=>
-   '<div class="credit-line">'+esc(e.label)+' · '+fmt(e.amount)+' · '+esc(e.category)+'</div>').join(''))+
+  '<h4>Despesas de hoje</h4><div class="expense-daily-summary"><small>'+esc(today)+'</small><strong>'+fmt(todayTotal)+'</strong><span>'+todayExpenses.length+' registo(s) entre as despesas carregadas</span></div>'+
+  (todayExpenses.length?todayExpenses.map(expenseRow).join(''):'<p class="shop-help">Ainda não há despesas registadas hoje.</p>')+
+  '<h4>Despesas anteriores</h4>'+
+  (earlierExpenses.length?earlierExpenses.map(expenseRow).join(''):'<p class="shop-help">Sem despesas anteriores neste histórico.</p>')+
+  (expenses.length>=300?'<p class="shop-help">Histórico limitado às 300 despesas mais recentes. Consulte os relatórios para períodos anteriores.</p>':''))+
   section('Despesas recorrentes',
    'Registe lembretes de despesas periódicas. Os pagamentos NÃO são efectuados automaticamente; precisam de confirmação.',
    (due.length?'<p class="credit-warning">'+due.length+' despesa(s) recorrente(s) vencida(s) para confirmar.</p>':'')+
