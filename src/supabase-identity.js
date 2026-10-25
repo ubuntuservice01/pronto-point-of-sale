@@ -366,6 +366,25 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    method:'POST',payload:{p_business:businessId,p_branch:branchId,p_start:from,p_end:to}
   }));
  }
+ async function createProductWithPhoto(data,file){
+  if(!data||typeof data!=='object'||!file||typeof file.size!=='number'||
+   file.size<1||file.size>3145728||
+   !['image/jpeg','image/png','image/webp'].includes(file.type))
+   throw Error('photo_invalid');
+  const created=await call('/rest/v1/rpc/pronto_product_create_pending_photo',{
+   method:'POST',payload:{p_data:data}
+  });
+  if(!uuid(created?.product_id)||typeof created.code!=='string')throw Error('product_creation_unconfirmed');
+  let attached;
+  try{
+   attached=await uploadProductPhoto({businessId:data.business_id,branchId:data.branch_id,
+    productId:created.product_id,expectedRevision:0,file});
+  }catch{
+   // The new product remains inactive and may be completed in Inventory.
+   throw Error('product_photo_pending:'+created.code);
+  }
+  return {...created,revision:Number(attached.revision)};
+ }
  async function uploadProductPhoto({businessId,branchId,productId,expectedRevision,file}){
   if(sessionLocked)throw Error('pin_screen_locked');
   if(!session)throw Error('supabase_unauthorized');
@@ -383,7 +402,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   });
   if(!response.ok)throw Error('photo_upload_failed');
   // The DB verifies the uploaded object really belongs to the current business and product.
-  return call('/rest/v1/rpc/pronto_photo_attach',{method:'POST',
+  return call('/rest/v1/rpc/pronto_product_attach_and_activate',{method:'POST',
    payload:{p_data:{business_id:businessId,branch_id:branchId,product_id:productId,
     photo_path:path,expected_revision:expectedRevision}}});
  }
@@ -678,5 +697,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

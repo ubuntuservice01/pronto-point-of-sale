@@ -93,7 +93,8 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
     '<h4>Fotografia do produto</h4>'+
     '<input type="hidden" name="product_id" value="'+esc(chosen.id)+'">'+
     '<input type="hidden" name="revision" value="'+esc(chosen.revision)+'">'+
-    (chosen.photoPath?'<img class="shop-product-photo shop-photo-preview" data-shop-product-photo="'+esc(chosen.photoPath)+'" alt="Fotografia de '+esc(chosen.name)+'" loading="lazy">':'')+
+    (chosen.photoPath?'<img class="shop-product-photo shop-photo-preview" data-shop-product-photo="'+esc(chosen.photoPath)+'" alt="Fotografia de '+esc(chosen.name)+'" loading="lazy">':
+     '<p class="shop-error">Sem fotografia: envie uma imagem para activar este produto.</p>')+
     '<label>Escolher imagem ou fotografar (JPEG, PNG ou WebP até 3 MB)'+
     '<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" required></label>'+
     '<button class="shop-submit" type="submit">Guardar fotografia</button></form>'+

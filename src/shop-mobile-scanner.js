@@ -20,6 +20,39 @@ function loadZXingReader(doc){
  }).catch(error=>{zxingLoadPromise=null;throw error;});
  return zxingLoadPromise;
 }
+// Different short tones, initialised during the scan-button user gesture.
+export function createShopScannerFeedback(Audio=globalThis.AudioContext||globalThis.webkitAudioContext){
+ let context=null;
+ try{
+  if(typeof Audio==='function'){
+   context=new Audio();
+   context.resume?.()?.catch?.(()=>{});
+  }
+ }catch{return Object.assign(()=>false,{close:()=>{}});}
+ const feedback=kind=>{
+  if(!context)return false;
+  const notes=kind==='success'?[[0,880,.095],[.11,1174,.12]]:
+   [[0,370,.17],[.20,260,.22]];
+  try{
+   const now=context.currentTime;
+   for(const [delay,hz,length] of notes){
+    const osc=context.createOscillator(),gain=context.createGain(),start=now+delay;
+    osc.type='sine';osc.frequency.setValueAtTime(hz,start);
+    gain.gain.setValueAtTime(.0001,start);
+    gain.gain.exponentialRampToValueAtTime(.13,start+.014);
+    gain.gain.exponentialRampToValueAtTime(.0001,start+length);
+    osc.connect(gain);gain.connect(context.destination);
+    osc.start(start);osc.stop(start+length+.01);
+   }
+   context.resume?.()?.catch?.(()=>{});
+   return true;
+  }catch{return false;}
+ };
+ feedback.close=()=>{if(context){const old=context;context=null;
+  setTimeout(()=>{try{old.close?.();}catch{}},600);
+ }};
+ return feedback;
+}
 export function findScannedShopProduct(products,rawCode){
  const code=String(rawCode??'').trim().toLocaleLowerCase();
  if(!code)return null;
@@ -52,6 +85,7 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
  const status=dialog.querySelector('[data-shop-scan-status]');
  const video=dialog.querySelector('[data-shop-scan-video]');
  let stream=null,frame=null,scannerControls=null,stopped=false,reading=false,last=null,lastFrame=0;
+ const audio=createShopScannerFeedback();
  const events=new AbortController();
  const announce=(message,error=false)=>{
   if(stopped)return;
@@ -59,7 +93,7 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
  };
  const stop=()=>{
   if(stopped)return;
-  stopped=true;events.abort();
+  stopped=true;events.abort();audio.close();
   if(frame!==null)cancelAnimationFrame(frame);
   try{scannerControls?.stop();}catch{/* Always release the camera, even if the decoder fails. */}
   stream?.getTracks().forEach(track=>track.stop());
@@ -73,12 +107,12 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
  const readCode=value=>{
   if(stopped)return;
   const code=String(value??'').trim();
-  if(!code)return announce('Introduza ou enquadre um código válido.',true);
+  if(!code){audio('error');return announce('Introduza ou enquadre um código válido.',true);}
   let result;
   try{result=onCode(code);}
-  catch{announce('Não foi possível seleccionar o produto. Tente novamente.',true);return;}
-  if(result===true){finish();return;}
-  announce(typeof result==='string'?result:'Código não encontrado nesta loja.',true);
+  catch{audio('error');announce('Não foi possível seleccionar o produto. Tente novamente.',true);return;}
+  if(result===true){audio('success');finish();return;}
+  audio('error');announce(typeof result==='string'?result:'Código não encontrado nesta loja.',true);
  };
  dialog.querySelector('[data-shop-scan-manual]').addEventListener('submit',event=>{
   event.preventDefault();

@@ -293,9 +293,16 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
    '<label class="fractional-control"><input type="checkbox" name="allow_fractional" disabled> Permite venda fraccionada</label>'+
    '<p class="shop-help">Active para vender por valor (MT) partes de kg, litro ou metro. Não se aplica a artigos por unidade.</p>'+
    field('price','Preço de venda (MT)','','required type="number" min="0.01" step="0.01"')+
-   field('code','Código de fábrica (opcional)','','maxlength="80" placeholder="Será gerado se vazio"')+
+   '<div class="shop-product-code-entry"><label>Código de barras ou referência<input name="code" maxlength="80" autocomplete="off" placeholder="Digitalize ou escreva o código"></label>'+
+    '<button type="button" data-shop-product-scan class="shop-product-scan-button">▣ Ler código com a câmara</button>'+
+    '<label class="shop-generate-code"><input type="checkbox" name="generate_code"> Produto sem código de fábrica — gerar código interno</label></div>'+
+    '<fieldset class="shop-create-photo"><legend>Fotografia obrigatória do produto</legend>'+
+    '<div class="shop-create-photo-choices"><label>📷 Tirar foto<input name="product_camera" type="file" accept="image/jpeg,image/png,image/webp" capture="environment"></label>'+
+    '<label>🖼 Escolher da galeria<input name="product_photo" type="file" accept="image/jpeg,image/png,image/webp"></label></div>'+
+    '<img data-shop-create-photo-preview alt="Pré-visualização da fotografia do produto" hidden>'+
+    '<p class="shop-help" data-shop-create-photo-status>Escolha uma fotografia JPEG, PNG ou WebP (até 3 MB). A imagem é obrigatória antes de guardar.</p></fieldset>'+
    field('min_stock','Stock mínimo','0','type="number" min="0" step="0.001"')+
-   '<button type="submit" class="shop-submit">Cadastrar produto</button></form>','Código interno único, gerado automaticamente quando não houver código de fábrica.')+
+   '<button type="submit" class="shop-submit">Cadastrar produto</button></form>','Código de barras obrigatório ou código interno gerado. A fotografia é obrigatória: o produto só fica à venda após o envio da imagem.')+
    section('Importar produtos por CSV','Até 100 artigos por ficheiro. Colunas obrigatórias: nome;categoria;preco. O stock inicial é opcional. Reveja os dados antes de confirmar.',
    '<form data-shop-form="csv_import" class="shop-form">'+
    '<label>Ficheiro CSV (até 100 produtos)<input type="file" name="csv_file" accept=".csv,text/csv,text/plain" required></label>'+

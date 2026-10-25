@@ -39,6 +39,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
   transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',settingsSection='personalizacao',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,cashierMode=false,accessBlocked=false,accessCheckBusy=false,closeScanner=null;
  const valueModeProducts=new Set();
+ let productPhotoPreviewURL=null;
+ const clearProductPhotoPreview=()=>{
+  if(productPhotoPreviewURL){URL.revokeObjectURL(productPhotoPreviewURL);productPhotoPreviewURL=null;}
+ };
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const alertDaysKey=()=> 'pronto-alert-days:'+grant.id;
  const readAlertDays=()=>{
@@ -137,6 +141,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  };
  const render=()=>{
   if(!data||accessBlocked)return;
+  clearProductPhotoPreview();
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,valueModeProducts:[...valueModeProducts],view,method,discount,query,feedback:notice,pending,
    draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,cashierMode,branding,logoUrl:brandLogoUrl,settingsSection});
   hydrateProductPhotos();
@@ -395,17 +400,19 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    showMessage('Venda ainda sem confirmação. Verifique a sessão e clique em «Repetir o mesmo pedido» para evitar duplicações. ('+String(e.message||'erro')+')',true);
   }finally{busy=false;}
  };
- const execute=async(action,payload)=>{
+ const execute=async(action,payload,productPhoto=null)=>{
   if(busy)return;
   if(disconnected())return showMessage('Sem ligação à internet. A operação não foi enviada.',true);
   busy=true;showMessage('');
   try{
-   const result=['cash_open','cash_close'].includes(action)&&typeof client.cashControl==='function'?
+   const result=action==='product_create'?
+     await client.createProductWithPhoto(cashData(payload),productPhoto):
+     ['cash_open','cash_close'].includes(action)&&typeof client.cashControl==='function'?
     await client.cashControl(action==='cash_open'?'open':'close',cashData(payload)):
     await client.merchantAction(action,cashData(payload));
    if(action==='product_create'&&payload.allow_fractional===true){
     try{await client.productFractionUpdate({businessId:grant.id,branchId,productId:result.product_id,
-     allowFractional:true,expectedRevision:0});}
+     allowFractional:true,expectedRevision:result.revision});}
     catch(error){await refresh();render();showMessage('Produto criado, mas a venda fraccionada não foi activada. Abra Inventário e tente novamente. ('+error.message+')',true);return;}
    }
    await refresh();
@@ -424,7 +431,15 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    showMessage(summary);
   }catch(e){
    if(['supabase_unauthorized','shop_access_required'].includes(e.message)){await leave();return;}
-   showMessage('Operação rejeitada ou sem confirmação. Verifique os dados antes de tentar novamente. ('+String(e.message||'erro')+')',true);
+   if(action==='product_create'&&String(e.message||'').startsWith('product_photo_pending:')){
+    await refresh();
+    view='inventory';render();
+    showMessage('O artigo foi criado, mas permanece INACTIVO porque a fotografia não foi guardada. Abra Inventário, escolha o produto e envie a foto. NÃO volte a cadastrá-lo. Código: '+e.message.split(':').slice(1).join(':'),true);
+    return;
+   }
+   const duplicate=action==='product_create'&&['23505','duplicate_key','unique_violation'].some(key=>String(e.message||'').includes(key));
+   showMessage(duplicate?'Já existe um produto com este código nesta filial. Introduza outro código.':
+    'Operação rejeitada ou sem confirmação. Verifique os dados antes de tentar novamente. ('+String(e.message||'erro')+')',true);
   }finally{busy=false;}
  };
  // Close the notification popover without re-rendering a merchant's input form.
@@ -716,7 +731,21 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     clearShopDraft(localStorage,scope());render();showMessage('Rascunho local apagado.');
    }return;
   }
-  if(el.hasAttribute('data-shop-scan')){
+  if(el.hasAttribute('data-shop-product-scan')){
+    if(view!=='products'||!authorizedView('products')||client.isScreenLocked?.())return;
+    closeScanner?.();
+    closeScanner=openShopCodeScanner({onCode:code=>{
+      const form=root.querySelector('[data-shop-form="product_create"]');
+      const input=form?.elements.namedItem('code');
+      if(!input)return 'Formulário de cadastro indisponível.';
+      input.value=code;
+      const generated=form.elements.namedItem('generate_code');
+      if(generated)generated.checked=false;
+      return true;
+    },onClose:()=>{closeScanner=null;}});
+    return;
+   }
+   if(el.hasAttribute('data-shop-scan')){
    if(!authorizedView('sell')||view!=='sell'||accessBlocked||client.isScreenLocked?.())return;
    closeScanner?.();
    closeScanner=openShopCodeScanner({onCode:scanCode,onClose:()=>{closeScanner=null;}});
@@ -783,6 +812,26 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
  },{signal});
  root.addEventListener('change',event=>{
+   if(['product_photo','product_camera'].includes(event.target?.name)){
+    const form=event.target.closest('[data-shop-form="product_create"]');
+    if(!form)return;
+    const other=form.elements.namedItem(event.target.name==='product_camera'?'product_photo':'product_camera');
+    if(other)other.value='';
+    const img=form.querySelector('[data-shop-create-photo-preview]');
+    const status=form.querySelector('[data-shop-create-photo-status]');
+    clearProductPhotoPreview();
+    const file=event.target.files?.[0];
+    if(img){img.removeAttribute('src');img.hidden=true;}
+    if(file){
+     if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size<1||file.size>3145728){
+      if(status)status.textContent='Imagem inválida. Utilize JPEG, PNG ou WebP até 3 MB.';return;
+     }
+     productPhotoPreviewURL=URL.createObjectURL(file);
+     if(img){img.src=productPhotoPreviewURL;img.hidden=false;}
+     if(status)status.textContent='Foto seleccionada: '+file.name+'. Pronta para guardar.';
+    }else if(status)status.textContent='Seleccione uma fotografia antes de guardar.';
+    return;
+   }
   const el=event.target;
   if(el.name==='unit'){
    const box=el.closest('form')?.querySelector('input[name="allow_fractional"]');
@@ -1421,9 +1470,18 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    let payload;
    if(action==='product_create'){
     if(f.has('allow_fractional')&&!allowsFractionalSale({unit:String(f.get('unit')),allowFractional:true}))throw Error('Esta unidade não permite venda fraccionada.');
+    const code=String(f.get('code')||'').trim(),autoCode=f.has('generate_code');
+    if(!code&&!autoCode)throw Error('Introduza o código de barras ou escolha «Gerar código interno».');
+    if(code&&autoCode)throw Error('Escolha apenas um código: fábrica ou interno.');
+    if(code&&(data?.products||[]).some(p=>p.code.trim().toLowerCase()===code.toLowerCase()))
+     throw Error('Já existe um produto com este código nesta filial.');
+    const photo=f.get('product_photo')?.size?f.get('product_photo'):f.get('product_camera');
+    if(!photo||!photo.size)throw Error('A fotografia é obrigatória. Tire uma foto ou escolha na galeria.');
+    if(!['image/jpeg','image/png','image/webp'].includes(photo.type)||photo.size>3145728)
+     throw Error('A fotografia deve ser JPEG, PNG ou WebP e ter até 3 MB.');
     payload={name:String(f.get('name')||'').trim(),
     category:String(f.get('category')||'').trim(),unit:String(f.get('unit')||'un'),
-    price_cents:toCents(f.get('price')),code:String(f.get('code')||'').trim(),
+    price_cents:toCents(f.get('price')),code:autoCode?'':code,
     min_stock:String(f.get('min_stock')||'0'),allow_fractional:f.has('allow_fractional')};
    }
    else if(action==='stock_receive')payload={product_id:String(f.get('product_id')||''),
@@ -1442,7 +1500,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     if(!await confirmShop('Confirmar contagem de '+(payload.counted_cash_cents/100).toFixed(2)+' MT? Não poderá alterá-la depois.'))return;
    }
    else return;
-   await execute(action,payload);
+   await execute(action,payload,action==='product_create'?
+    (f.get('product_photo')?.size?f.get('product_photo'):f.get('product_camera')):null);
   }catch(e){showMessage('Confira os dados introduzidos. '+String(e.message||''),true);}
  },{signal});
  window.addEventListener('offline',()=>showMessage('Sem internet: as vendas não podem ser concluídas. Guarde um rascunho encriptado e recupere-o depois de entrar novamente com ligação.',true),{signal});
