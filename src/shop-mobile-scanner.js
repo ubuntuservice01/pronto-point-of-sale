@@ -3,6 +3,23 @@
 import {landscapeConstraints,allowDetectedBarcode} from './camera-utils.js';
 
 export const SHOP_SCAN_FORMATS=['qr_code','ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf'];
+let zxingLoadPromise=null;
+// A locally hosted, pinned fallback for Safari/iPhone and other browsers without
+// BarcodeDetector. It is loaded only when required, never from an external CDN.
+function loadZXingReader(doc){
+ if(globalThis.ZXingBrowser?.BrowserMultiFormatReader)return Promise.resolve(globalThis.ZXingBrowser);
+ if(zxingLoadPromise)return zxingLoadPromise;
+ zxingLoadPromise=new Promise((resolve,reject)=>{
+  const script=doc.createElement('script');
+  script.src='/vendor/zxing-browser.min.js';
+  script.async=true;
+  script.onload=()=>globalThis.ZXingBrowser?.BrowserMultiFormatReader?
+   resolve(globalThis.ZXingBrowser):reject(Error('zxing_invalid_bundle'));
+  script.onerror=()=>reject(Error('zxing_unavailable'));
+  doc.head.append(script);
+ }).catch(error=>{zxingLoadPromise=null;throw error;});
+ return zxingLoadPromise;
+}
 export function findScannedShopProduct(products,rawCode){
  const code=String(rawCode??'').trim().toLocaleLowerCase();
  if(!code)return null;
@@ -34,7 +51,7 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
  doc.body.append(dialog);
  const status=dialog.querySelector('[data-shop-scan-status]');
  const video=dialog.querySelector('[data-shop-scan-video]');
- let stream=null,frame=null,stopped=false,reading=false,last=null,lastFrame=0;
+ let stream=null,frame=null,scannerControls=null,stopped=false,reading=false,last=null,lastFrame=0;
  const events=new AbortController();
  const announce=(message,error=false)=>{
   if(stopped)return;
@@ -44,6 +61,7 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
   if(stopped)return;
   stopped=true;events.abort();
   if(frame!==null)cancelAnimationFrame(frame);
+  try{scannerControls?.stop();}catch{/* Always release the camera, even if the decoder fails. */}
   stream?.getTracks().forEach(track=>track.stop());
   video.srcObject=null;
   dialog.remove();
@@ -70,22 +88,14 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
  if(typeof dialog.showModal==='function')dialog.showModal();
  else dialog.setAttribute('open','');
  const initialise=async()=>{
-  if(typeof Detector!=='function'){
-   video.hidden=true;
-   announce('Leitura automática indisponível neste navegador. Use o código manual ou um leitor externo.',true);
-   return;
-  }
   if(!navigatorRef?.mediaDevices?.getUserMedia||globalThis.isSecureContext===false){
    video.hidden=true;
-   announce('A câmara exige HTTPS e autorização. Introduza o código manualmente.',true);
+   announce('A câmara precisa de uma ligação HTTPS e autorização do navegador. Pode introduzir o código manualmente.',true);
    return;
   }
-  let detector;
+  // Camera access must not depend on BarcodeDetector support: it is commonly
+  // unavailable on iPhone even though getUserMedia is fully supported.
   try{
-   const supported=typeof Detector.getSupportedFormats==='function'?await Detector.getSupportedFormats():undefined;
-   const formats=shopSupportedFormats(supported);
-   if(!formats.length)throw Error('unsupported_formats');
-   detector=new Detector({formats});
    const acquired=await navigatorRef.mediaDevices.getUserMedia(landscapeConstraints('environment'));
    if(stopped){acquired.getTracks().forEach(track=>track.stop());return;}
    stream=acquired;video.srcObject=stream;
@@ -95,7 +105,39 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
    video.hidden=true;
    stream?.getTracks().forEach(track=>track.stop());stream=null;
    announce(error?.name==='NotAllowedError'?'Permissão da câmara recusada. Autorize no navegador ou introduza o código.':
-    'Não foi possível activar a leitura automática. Introduza o código ou use um leitor externo.',true);
+    error?.name==='NotFoundError'?'Não foi encontrada uma câmara neste dispositivo. Introduza o código manualmente.':
+    'Não foi possível abrir a câmara. Confirme as permissões e tente novamente.',true);
+   return;
+  }
+  if(stopped)return;
+  announce('Câmara activa. A preparar a leitura de códigos…');
+  let detector=null;
+  if(typeof Detector==='function'){
+   try{
+    const supported=typeof Detector.getSupportedFormats==='function'?await Detector.getSupportedFormats():undefined;
+    const formats=shopSupportedFormats(supported);
+    if(formats.length)detector=new Detector({formats});
+   }catch{/* Use the bundled decoder when the native one rejects or is incomplete. */}
+  }
+  if(stopped)return;
+  if(!detector){
+   try{
+    const zxing=await loadZXingReader(doc);
+    if(stopped)return;
+    const reader=new zxing.BrowserMultiFormatReader(undefined,{delayBetweenScanAttempts:350});
+    const controls=await reader.decodeFromVideoElement(video,result=>{
+     if(stopped||!result)return;
+     const raw=String(result.getText?.()||result.text||'').trim();
+     if(raw&&allowDetectedBarcode(last,raw,Date.now())){
+      last={code:raw,at:Date.now()};readCode(raw);
+     }
+    });
+    if(stopped){controls.stop();return;}
+    scannerControls=controls;
+    announce('Câmara activa. Aponte para o código de barras ou QR code.');
+   }catch{
+    if(!stopped)announce('A câmara está activa, mas não foi possível carregar o leitor automático. Pode introduzir o código manualmente.',true);
+   }
    return;
   }
   announce('Câmara activa. Aponte o código para a área central.');

@@ -135,6 +135,25 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
    'return {closed:!document.querySelector(".shop-scan-dialog"),cart:document.querySelectorAll(".shop-cart-row").length};})()'
   ].join(''));
   assert.deepEqual(scannedManually,{closed:true,cart:1});
+  // On iPhone, BarcodeDetector may be missing. The camera must still open and
+  // the locally bundled fallback must decode and release its video tracks.
+  const fallback=await js([
+   '(async()=>{const {openShopCodeScanner}=await import("/src/shop-mobile-scanner.js");',
+   'const canvas=document.createElement("canvas");canvas.width=64;canvas.height=48;',
+   'canvas.getContext("2d").fillRect(0,0,64,48);const stream=canvas.captureStream(15);',
+   'let decoderStopped=false;window.__fallbackRead="";',
+   'window.ZXingBrowser={BrowserMultiFormatReader:class{async decodeFromVideoElement(v,callback){window.__fallbackDetect=callback;return {stop(){decoderStopped=true;}};}}};',
+   'openShopCodeScanner({Detector:undefined,doc:document,navigatorRef:{mediaDevices:{getUserMedia:async()=>stream}},',
+   'onCode:code=>{window.__fallbackRead=code;return true;}});',
+   'for(let i=0;i<70&&!window.__fallbackDetect;i++)await new Promise(ok=>setTimeout(ok,30));',
+   'const video=document.querySelector(".shop-scan-dialog video");',
+   'const shown=!!video&&!video.hidden&&video.srcObject===stream;',
+   'if(window.__fallbackDetect)window.__fallbackDetect({getText:()=>"PR-000001"});',
+   'await new Promise(ok=>setTimeout(ok,50));delete window.ZXingBrowser;',
+   'return {shown,decoded:window.__fallbackRead,closed:!document.querySelector(".shop-scan-dialog"),',
+   'cameraStopped:stream.getTracks().every(t=>t.readyState==="ended"),decoderStopped};})()'
+  ].join(''));
+  assert.deepEqual(fallback,{shown:true,decoded:'PR-000001',closed:true,cameraStopped:true,decoderStopped:true});
   await debug.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await wait(80);
   const sale=await js([
