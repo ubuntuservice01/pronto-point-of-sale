@@ -467,7 +467,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   if(el.hasAttribute('data-shop-cashier-toggle')){
     if(!authorizedView('sell'))return;
-    cashierMode=!cashierMode;closeScanner?.();
+    cashierMode=!(cashierMode&&view==='sell');closeScanner?.();
     notificationsOpen=false;menuOpen=false;
     // Only presentation changes. The current cart and payment survive.
     view='sell';render();return;
