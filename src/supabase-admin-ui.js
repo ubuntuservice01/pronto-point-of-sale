@@ -43,7 +43,17 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights=
  if(key==='plans')return title('Planos comerciais','Definir e gerir as condições comerciais.')+renderAdmin360Plans(data);
  if(key==='finance')return title('Cobranças da Ubuntu','Apenas pagamentos efectivamente recebidos e registados.')+renderAdmin360Finance(data,insights);
  if(key==='audit')return title('Auditoria','Operações e intervenções administrativas registadas.')+renderAdmin360Audit(data,insights);
- if(key==='security')return title('Controlo e segurança','Bloqueios e suspensão dos serviços.')+renderAdmin360Security(data,insights);
+ if(key==='security')return title('Controlo e segurança','Bloqueios, protecção da conta e suspensão dos serviços.')+
+  '<section class="pronto-admin-panel admin360-password-panel" aria-label="Alterar a minha palavra-passe">'+
+   '<h3>Alterar a minha palavra-passe</h3>'+
+   '<p class="admin360-password-note">Super Administrador: altere apenas a palavra-passe desta conta. O seu PIN mantém-se. Após guardar, deverá iniciar sessão novamente.</p>'+
+   '<form data-admin-password-change class="admin360-password-form" autocomplete="on">'+
+    '<label>Palavra-passe actual<input type="password" name="current_password" autocomplete="current-password" required maxlength="200"></label>'+
+    '<label>Nova palavra-passe<input type="password" name="new_password" autocomplete="new-password" minlength="12" maxlength="128" required></label>'+
+    '<label>Confirmar nova palavra-passe<input type="password" name="confirm_password" autocomplete="new-password" minlength="12" maxlength="128" required></label>'+
+    '<p class="admin360-password-note">Use pelo menos 12 caracteres e uma palavra-passe diferente da actual.</p>'+
+    '<button type="submit" class="admin360-btn admin360-save">Guardar nova palavra-passe</button>'+
+   '</form></section>'+renderAdmin360Security(data,insights);
 
  const summary=adminSummary(data,now);
  if(key==='overview'){

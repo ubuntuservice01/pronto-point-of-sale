@@ -129,6 +129,41 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   }catch(e){await failure(e);}
   finally{if(root.querySelector('#pronto-admin-refresh')===refreshButton)toggleBusy(false);}
  };
+ const changeAdminPassword=async event=>{
+  const form=event.target.closest('form[data-admin-password-change]');
+  if(!form)return;
+  event.preventDefault();
+  if(busy)return;
+  const fields=new FormData(form);
+  // Do not trim, persist, log, or pass secrets to audit records.
+  const current=String(fields.get('current_password')||'');
+  const next=String(fields.get('new_password')||'');
+  const confirm=String(fields.get('confirm_password')||'');
+  if(next.length<12||next.length>128){message.textContent='A nova palavra-passe deve ter entre 12 e 128 caracteres.';return;}
+  if(next!==confirm){message.textContent='A confirmação da palavra-passe não coincide.';return;}
+  if(next===current){message.textContent='Escolha uma palavra-passe diferente da actual.';return;}
+  toggleBusy(true);message.textContent='';
+  try{
+   await client.changeOwnAdminPassword(current,next);
+   form.reset();
+   // End the old session after saving; the next entry uses the new password
+   // and the same personal PIN.
+   await client.signOut();
+   onLogout();
+  }catch(error){
+   if(error.message==='supabase_unauthorized'||error.message==='supabase_identity_mismatch'){
+    form.reset();
+    await expired();return;
+   }
+   message.textContent={
+    admin_current_password_invalid:'A palavra-passe actual não está correcta.',
+    admin_password_same:'Escolha uma palavra-passe diferente da actual.',
+    admin_password_invalid:'A nova palavra-passe deve ter entre 12 e 128 caracteres.',
+    supabase_rate_limit:'Muitas tentativas. Tente novamente mais tarde.',
+    supabase_unavailable:'Sem ligação. Não foi possível alterar a palavra-passe.'
+   }[error.message]||'Não foi possível alterar a palavra-passe. Verifique a ligação e tente novamente.';
+  }finally{if(root.querySelector('#pronto-admin-refresh')===refreshButton)toggleBusy(false);}
+ };
  const controlForm=async event=>{
   const form=event.target.closest('form[data-admin-control]');
   if(!form)return;
@@ -232,6 +267,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    render();message.textContent='Estado actualizado e registado.';
   }catch(e){await failure(e);}finally{toggleBusy(false);}
  };
+ content.addEventListener('submit',changeAdminPassword);
  content.addEventListener('submit',controlForm);
  content.addEventListener('click',event=>{
   const navigate=event.target.closest('[data-admin-navigate]');

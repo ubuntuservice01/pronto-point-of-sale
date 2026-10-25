@@ -163,6 +163,34 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    throw Error('password_setup_pending');
   return true;
  }
+ // An already unlocked super administrator can change ONLY their own password.
+ // Verify the present password with Supabase Auth instead of trusting a
+ // current_password field that some GoTrue versions may ignore on update.
+ async function changeOwnAdminPassword(currentPassword,newPassword){
+  if(!session)throw Error('supabase_unauthorized');
+  if(sessionLocked)throw Error('pin_screen_locked');
+  if(typeof currentPassword!=='string'||currentPassword.length<1||currentPassword.length>200||
+   typeof newPassword!=='string'||newPassword.length<12||newPassword.length>128)
+   throw Error('admin_password_invalid');
+  if(currentPassword===newPassword)throw Error('admin_password_same');
+  const profile=await account();
+  if(profile.ubuntuAdmin!==true)throw Error('admin_required');
+  let verified;
+  try{
+   verified=await call('/auth/v1/token?grant_type=password',{
+    authenticated:false,method:'POST',
+    payload:{email:profile.email,password:currentPassword}
+   });
+  }catch(error){
+   if(error.message==='supabase_rate_limit')throw error;
+   if(error.message==='supabase_unavailable')throw error;
+   throw Error('admin_current_password_invalid');
+  }
+  if(verified?.user?.id!==session.user.id)throw Error('admin_current_password_invalid');
+  const updated=await call('/auth/v1/user',{method:'PUT',payload:{password:newPassword}});
+  if(updated?.id!==session.user.id)throw Error('supabase_identity_mismatch');
+  return true;
+ }
  // Runs only after startup. The saved refresh credential is exchanged with Supabase,
  // then roles and store permissions are fetched afresh; stored roles are never trusted.
  async function restoreSession(){
@@ -624,5 +652,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {restoreSession,unlockReloadedScreen,changeInitialPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

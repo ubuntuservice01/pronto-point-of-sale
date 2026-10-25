@@ -45,3 +45,13 @@
 .pronto-admin-shell .admin360-listrow strong{font-size:13px}
 @media(max-width:1000px){.pronto-admin-shell .admin360-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.pronto-admin-shell .admin360-chart-grid{grid-template-columns:1fr}}
 @media(max-width:580px){.pronto-admin-shell .admin360-kpis{gap:9px}.pronto-admin-shell .admin360-kpis article{padding:13px}.pronto-admin-shell .admin360-chart-grid{gap:10px}.pronto-admin-shell .admin360-edit-form{display:grid;grid-template-columns:1fr}.pronto-admin-shell .admin360-btn{min-height:46px}.pronto-admin-shell .admin360-shop>summary{align-items:flex-start}.pronto-admin-shell .admin360-barline{grid-template-columns:68px 1fr 25px;gap:5px}}
+
+/* Private account settings for the Super Admin. */
+.pronto-admin-shell .admin360-password-panel{border:1px solid #cfe3d7;padding:20px 22px;background:#fff}
+.pronto-admin-shell .admin360-password-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:760px;margin-top:16px}
+.pronto-admin-shell .admin360-password-form label{display:grid;gap:7px;min-width:0;font-size:13px;font-weight:700;color:#365947}
+.pronto-admin-shell .admin360-password-form input{min-width:0;width:100%;min-height:46px;border:1px solid #bfd5c8;border-radius:10px;padding:11px 12px;background:#fff;color:#203a2d;font:inherit}
+.pronto-admin-shell .admin360-password-form input:focus-visible{outline:3px solid #82dcb5;outline-offset:2px}
+.pronto-admin-shell .admin360-password-note{font-size:12px;color:#526f60;line-height:1.6;grid-column:1/-1;margin:0}
+.pronto-admin-shell .admin360-password-form .admin360-btn{grid-column:1/-1;justify-self:start}
+@media(max-width:600px){.pronto-admin-shell .admin360-password-panel{padding:15px}.pronto-admin-shell .admin360-password-form{grid-template-columns:1fr}.pronto-admin-shell .admin360-password-form .admin360-btn{width:100%;justify-content:center}}
