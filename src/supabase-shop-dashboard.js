@@ -37,7 +37,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
   finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
-  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',settingsSection='personalizacao',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,accessBlocked=false,accessCheckBusy=false,closeScanner=null;
+  transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',settingsSection='personalizacao',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,cashierMode=false,accessBlocked=false,accessCheckBusy=false,closeScanner=null;
  const valueModeProducts=new Set();
  const scope=()=>({userId:account.userId,businessId:grant.id,branchId});
  const alertDaysKey=()=> 'pronto-alert-days:'+grant.id;
@@ -138,7 +138,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const render=()=>{
   if(!data||accessBlocked)return;
   root.innerHTML=renderShopScreen({account,grants:account.grants,grant,branches,branchId,data,cart,valueModeProducts:[...valueModeProducts],view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,branding,logoUrl:brandLogoUrl,settingsSection});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,cashierMode,branding,logoUrl:brandLogoUrl,settingsSection});
   hydrateProductPhotos();
  };
  const refresh=async(selectFirst=false)=>{
@@ -465,7 +465,14 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }));
    win.document.close();return;
   }
-  if(el.hasAttribute('data-shop-notifications')){
+  if(el.hasAttribute('data-shop-cashier-toggle')){
+    if(!authorizedView('sell'))return;
+    cashierMode=!cashierMode;closeScanner?.();
+    notificationsOpen=false;menuOpen=false;
+    // Only presentation changes. The current cart and payment survive.
+    view='sell';render();return;
+   }
+   if(el.hasAttribute('data-shop-notifications')){
    notificationsOpen=!notificationsOpen;render();
    root.querySelector('[data-shop-notifications]')?.focus({preventScroll:true});return;
   }

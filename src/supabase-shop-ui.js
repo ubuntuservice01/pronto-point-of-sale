@@ -170,7 +170,7 @@ export function renderShopProductResults(products=[],query=''){
  return cards+(matching.length>80?'<p class="shop-help" role="status">A mostrar 80 de '+matching.length+' produtos. Pesquise pelo nome ou código para encontrar os restantes.</p>':'');
 }
 
-export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,valueModeProducts=[],view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,branding=null,logoUrl='',settingsSection='personalizacao'}){
+export function renderShopScreen({account,grants,grant,branches,branchId,data,cart,valueModeProducts=[],view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,cashierMode=false,branding=null,logoUrl='',settingsSection='personalizacao'}){
  const products=data?.products||[];
  const session=cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
@@ -210,7 +210,12 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  const holdEnabled=cart.length>0&&!pending;
  let body='';
  if(view==='sell'){
-  body='<div class="shop-sales-tabs" role="group" aria-label="Vendas e carrinhos em espera">'+
+  const shortcuts=cashierMode?'<div class="shop-cashier-quick-actions" role="group" aria-label="Acções rápidas do modo caixa">'+
+    '<button type="button" data-shop-scan>▣ Ler código</button>'+
+    '<button type="button" data-shop-hold'+(holdEnabled?'':' disabled')+'>⏸ Em espera</button>'+
+    '<button type="button" data-shop-held-tab>↩ Retomar ('+heldSales.length+')</button>'+
+    '<button type="button" data-shop-go-checkout class="shop-cashier-charge">✓ Cobrar</button></div>':'';
+  body=shortcuts+'<div class="shop-sales-tabs" role="group" aria-label="Vendas e carrinhos em espera">'+
    '<button type="button" class="shop-sales-tab selected" aria-current="page">Venda actual</button>'+
    '<button type="button" class="shop-sales-tab" data-shop-held-tab>Em espera <span>'+heldSales.length+'</span></button></div>'+
    '<div class="shop-sale-hold-toolbar"><button type="button" class="shop-hold-trigger" data-shop-hold'+(holdEnabled?'':' disabled')+'>'+
@@ -326,7 +331,7 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
     '<p class="shop-help">Ainda não existem vendas registadas nesta loja.</p>')+'</div>',
    'Apresentação limitada às últimas 20 vendas autorizadas. Não substitui os relatórios fiscais.');
  }
- return '<div class="shop-shell shop-layout'+(menuOpen?' shop-menu-open':'')+(sidebarCollapsed?' shop-menu-collapsed':'')+'">'+
+ return '<div class="shop-shell shop-layout'+(menuOpen?' shop-menu-open':'')+(sidebarCollapsed?' shop-menu-collapsed':'')+(cashierMode&&view==='sell'?' shop-fast-cashier':'')+'">'+
  '<button type="button" class="shop-sidebar-shade" data-shop-menu-toggle aria-label="Fechar menu" tabindex="-1"></button>'+
  '<aside id="shop-sidebar" class="shop-sidebar" aria-label="Menu principal">'+
  '<div class="shop-sidebar-brand"><img src="/icon.svg" alt=""><span class="shop-nav-label"><strong>Pronto POS</strong><small>Menos complicações, mais negócio</small></span>'+
@@ -336,7 +341,9 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  '<div class="shop-sidebar-footer shop-nav-label">Ubuntu Service, Lda.</div></aside>'+
  '<div class="shop-workspace"><header class="shop-header"><div class="shop-brand"><button type="button" class="shop-mobile-menu-trigger" data-shop-menu-toggle aria-label="Abrir menu" aria-expanded="'+menuOpen+'">☰</button><img src="/icon.svg" alt=""><span><strong>Pronto POS</strong><small>O seu negócio na palma da mão</small></span></div>'+
  '<div class="shop-account"><strong>'+esc(grant.name)+'</strong><small>'+esc(account.email)+' · '+esc(grant.role)+'</small></div>'+
- '<div class="shop-header-actions"><div class="shop-notification-area">'+
+ '<div class="shop-header-actions">'+
+ (nav.some(([key])=>key==='sell')?'<button type="button" class="shop-cashier-toggle" data-shop-cashier-toggle aria-pressed="'+(cashierMode&&view==='sell')+'" aria-label="'+(cashierMode&&view==='sell'?'Desactivar Modo Caixa':'Activar Modo Caixa')+'"><span aria-hidden="true">▦</span><span>'+(cashierMode&&view==='sell'?'Modo normal':'Modo Caixa')+'</span></button>':'')+
+ '<div class="shop-notification-area">'+
  '<button type="button" class="shop-notification-trigger" data-shop-notifications aria-controls="shop-notification-panel" aria-expanded="'+notificationsOpen+'" aria-label="Notificações: '+notificationCount+' alerta(s)" title="Notificações">'+icon('alerts')+badge()+'</button>'+
  notificationPopover+'</div><button type="button" data-shop-logout class="shop-logout">Sair</button></div></header>'+
  '<div class="shop-toolbar"><label>Empresa<select id="shop-business-select">'+grants.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===grant.id?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+

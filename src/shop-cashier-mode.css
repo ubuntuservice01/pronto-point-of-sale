@@ -1,0 +1,31 @@
+/* Touch-first Modo Caixa: fast entry, unchanged permissions and payment flow. */
+.shop-layout .shop-cashier-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #a7d9bd;border-radius:12px;background:#edf9f1;color:#066b54;min-height:46px;padding:8px 13px;font-weight:850;font-size:13px;white-space:nowrap;touch-action:manipulation}
+.shop-layout .shop-cashier-toggle[aria-pressed="true"]{background:#087f68;border-color:#087f68;color:#fff}
+.shop-layout .shop-cashier-toggle:focus-visible{outline:3px solid #61d3a5;outline-offset:2px}
+.shop-layout .shop-cashier-quick-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 15px}
+.shop-layout .shop-cashier-quick-actions button{min-height:64px;padding:10px 8px;border-radius:13px;border:1px solid #b9d8c9;background:#f5fbf7;color:#0b6550;font-size:15px;font-weight:850;touch-action:manipulation}
+.shop-layout .shop-cashier-quick-actions button:disabled{opacity:.45;cursor:not-allowed}
+.shop-layout .shop-cashier-quick-actions button.shop-cashier-charge{background:#087f68;color:#fff;border-color:#087f68}
+.shop-layout .shop-cashier-quick-actions button:focus-visible{outline:3px solid #52b38d;outline-offset:2px}
+.shop-layout.shop-fast-cashier .shop-sales-grid{gap:13px}
+.shop-layout.shop-fast-cashier .shop-product button{width:64px;min-width:64px;height:64px;border-radius:15px;font-size:30px}
+.shop-layout.shop-fast-cashier .shop-product{padding:13px;min-height:85px;gap:14px}
+.shop-layout.shop-fast-cashier .shop-product strong{font-size:16px}
+.shop-layout.shop-fast-cashier .shop-cart-qty button{width:48px;height:49px;border-radius:12px;font-size:24px}
+.shop-layout.shop-fast-cashier .shop-cart-qty input{min-height:49px;width:86px;max-width:90px;font-size:17px}
+.shop-layout.shop-fast-cashier .shop-search input{font-size:18px;min-height:56px}
+.shop-layout.shop-fast-cashier .shop-scan-launch{min-height:56px}
+.shop-layout.shop-fast-cashier .shop-submit{min-height:65px;font-size:19px}
+.shop-layout.shop-fast-cashier .shop-total strong{font-size:30px}
+.shop-layout.shop-fast-cashier .shop-methods button{min-height:63px;font-size:15px}
+.shop-layout.shop-fast-cashier .shop-mobile-payment-shortcut .shop-methods button{min-height:65px;font-size:15px}
+@media(max-width:750px){
+ .shop-layout .shop-cashier-toggle{min-height:45px;padding:8px 10px;font-size:12px;gap:5px}
+ .shop-layout .shop-cashier-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .shop-layout .shop-cashier-quick-actions button{min-height:63px;font-size:14px}
+ .shop-layout.shop-fast-cashier .shop-toolbar{padding-top:7px;padding-bottom:7px}
+ .shop-layout.shop-fast-cashier .shop-main>h2{margin-top:2px;margin-bottom:8px}
+ .shop-layout.shop-fast-cashier .shop-product{padding:12px 10px}
+ .shop-layout.shop-fast-cashier .shop-cart-row{gap:12px}
+}
+@media(max-width:385px){.shop-layout .shop-cashier-toggle{padding:7px 8px;font-size:11px}.shop-layout .shop-cashier-toggle span[aria-hidden]{display:none}}
