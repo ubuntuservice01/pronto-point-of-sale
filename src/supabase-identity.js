@@ -187,8 +187,10 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   try{return await call('/rest/v1/rpc/pronto_self_service_register',{method:'POST',payload:{p_data:data}});}
   catch(error){
    // Surface the exact onboarding refusal raised by register_self_service_business.
+   // invalid_phone / phone_already_registered come from the phone-alias trigger
+   // (20261026192000_phone_login_aliases.sql) that runs inside the same RPC.
    const known=['verify_email_first','account_already_registered','trial_unavailable',
-    'terms_required','invalid_registration','login_required'];
+    'terms_required','invalid_registration','login_required','invalid_phone','phone_already_registered'];
    if(known.includes(error.detail))throw Error(error.detail);
    throw error;
   }
