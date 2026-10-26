@@ -1,0 +1,9 @@
+/* Self-service onboarding uses the current green responsive login design. */
+.pronto-register-form{display:grid;gap:9px}
+.pronto-register-form>label:not(.pronto-register-consent){font-size:13px;font-weight:700;display:grid;gap:5px;color:#234d3b}
+.pronto-register-form input:not([type=checkbox]),.pronto-register-form select{width:100%;min-height:45px;border:1px solid #cde0d4;background:#fff;color:#234d3b;border-radius:10px;padding:10px 12px;font-size:16px}
+.pronto-register-consent{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;color:#456457}
+.pronto-register-consent input{width:18px;height:18px;flex:none;margin-top:1px;accent-color:#087f68}
+#pronto-register-error{font-size:13px;color:#b62b3f;margin:4px 0;line-height:1.5}
+.pronto-login-left:has(.pronto-register-form){justify-content:flex-start;overflow-y:auto;max-height:100dvh}
+@media(max-width:680px){.pronto-login-left:has(.pronto-register-form){max-height:none;overflow:visible}}

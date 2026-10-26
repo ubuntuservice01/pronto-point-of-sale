@@ -136,6 +136,26 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   return {userId:user.id,email:user.email||'',ubuntuAdmin,grants,
    ...(requiresPasswordChange?{requiresPasswordChange:true}:{})};
  }
+ async function selfServiceSignUp(email,password,ownerName){
+  if(!validEmail(email)||typeof password!=='string'||password.length<12||password.length>128||typeof ownerName!=='string'||ownerName.trim().length<2)throw Error('registration_invalid');
+  // The public publishable key is permitted; service-role credentials never reach the browser.
+  const response=await fetchImpl(apiURL.origin+'/auth/v1/signup',{
+   method:'POST',headers:{apikey:publishableKey,Accept:'application/json','Content-Type':'application/json'},
+   cache:'no-store',credentials:'omit',redirect:'error',
+   body:JSON.stringify({email,password,data:{display_name:ownerName.trim()}})
+  });
+  if(response.status===429)throw Error('supabase_rate_limit');
+  if(!response.ok)throw Error('registration_failed');
+  const value=await response.json();
+  if(!uuid(value?.user?.id))throw Error('registration_failed');
+  return {needsEmailConfirmation:!value.access_token};
+ }
+ async function registerSelfServiceBusiness(data){
+  return call('/rest/v1/rpc/pronto_self_service_register',{method:'POST',payload:{p_data:data}});
+ }
+ async function trialOverview(){
+  return call('/rest/v1/rpc/pronto_trial_overview',{method:'POST',payload:{}});
+ }
  async function signIn(email,password){
   if(!validEmail(email)||typeof password!=='string'||password.length<1||password.length>200)throw Error('supabase_invalid_credentials');
   clearSession();
@@ -697,5 +717,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

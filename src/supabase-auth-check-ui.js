@@ -33,6 +33,59 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   '</section>';
  };
  let staffWaitTimer=null;
+ const registration=(alreadySignedIn=false)=>{
+  shell('<div class="pronto-login-heading"><span class="pronto-login-eyebrow">10 dias grátis</span><h2>Registar o meu negócio</h2><p>Crie a sua loja gratuitamente. Sem cartão bancário.</p></div>'+
+   '<form id="pronto-self-register" class="pronto-register-form">'+
+   '<label>O seu nome<input name="owner_name" required minlength="2" maxlength="120" autocomplete="name"></label>'+
+   '<label>Nome do negócio<input name="business_name" required minlength="2" maxlength="120" placeholder="Mercearia da Ana"></label>'+
+   '<label>Tipo de negócio<select name="industry" required><option value="Mercearia">Mercearia</option><option value="Farmácia">Farmácia</option><option value="Loja">Loja</option><option value="Restaurante">Restaurante</option><option value="Outro comércio">Outro comércio</option></select></label>'+
+   '<label>Telemóvel<input name="phone" required minlength="7" maxlength="30" inputmode="tel"></label>'+
+   '<label>WhatsApp<input name="whatsapp" required minlength="7" maxlength="30" inputmode="tel"></label>'+
+   '<label>Localização<input name="address" maxlength="160" placeholder="Distrito, província"></label>'+
+   '<label>Email<input name="email" required type="email" maxlength="254" autocomplete="email"></label>'+
+   '<label>Palavra-passe<input name="password" required type="password" minlength="12" maxlength="128" autocomplete="new-password"></label>'+
+   '<label>Confirmar palavra-passe<input name="confirm" required type="password" minlength="12" maxlength="128" autocomplete="new-password"></label>'+
+   '<label class="pronto-register-consent"><input name="accept_terms" type="checkbox" required> Aceito os termos de utilização e a política de privacidade.</label>'+
+   '<label class="pronto-register-consent"><input name="marketing_consent" type="checkbox"> Autorizo receber novidades e ofertas no WhatsApp.</label>'+
+   '<p id="pronto-register-error" role="alert" aria-live="polite"></p>'+
+   '<button class="primary full" type="submit">Criar negócio e iniciar teste</button></form>'+
+   '<button class="secondary full" type="button" id="pronto-register-back">Já tenho conta · Entrar</button>');
+  root.querySelector('#pronto-register-back').onclick=form;
+  if(alreadySignedIn){
+   for(const field of ['email','password','confirm']){const input=root.querySelector('[name="'+field+'"]');if(input){input.required=false;input.closest('label').hidden=true;}}
+   root.querySelector('.pronto-login-heading p').textContent='Complete os dados para activar o seu teste de 10 dias.';
+  }
+  const node=root.querySelector('#pronto-self-register');
+  node.addEventListener('submit',async event=>{
+   event.preventDefault();const f=new FormData(node),button=node.querySelector('[type="submit"]'),error=root.querySelector('#pronto-register-error');
+   const email=String(f.get('email')||'').trim().toLowerCase(),password=String(f.get('password')||'');
+   if(!alreadySignedIn&&password!==f.get('confirm')){error.textContent='As palavras-passe não coincidem.';return;}
+   const profile={owner_name:String(f.get('owner_name')||'').trim(),business_name:String(f.get('business_name')||'').trim(),
+    phone:String(f.get('phone')||'').trim(),whatsapp:String(f.get('whatsapp')||'').trim(),industry:String(f.get('industry')||''),
+    address:String(f.get('address')||'').trim(),accept_terms:f.get('accept_terms')==='on',
+    marketing_consent:f.get('marketing_consent')==='on'};
+   button.disabled=true;error.textContent='';
+   try{
+    // Auth-first flow supports verified-email projects. Retry on login is safe.
+    if(!alreadySignedIn){
+     const result=await client.selfServiceSignUp(email,password,profile.owner_name);
+     if(result.needsEmailConfirmation){
+      error.textContent='Conta criada. Confirme o email recebido e entre com o seu email para concluir o registo da loja.';
+      button.disabled=false;return;
+     }
+     await client.signIn(email,password);
+    }
+    await client.registerSelfServiceBusiness(profile);
+    node.reset();
+    await ready(await client.account(),false);
+   }catch(e){
+    error.textContent=e.message==='supabase_rate_limit'?'Muitas tentativas. Aguarde e volte a tentar.':
+     e.message==='registration_failed'?'Não foi possível criar a conta. Se o email já existir, utilize Entrar.':
+     'Não foi possível concluir o registo. A conta poderá ter sido criada; entre com o seu email para retomar.';
+    button.disabled=false;
+   }
+  });
+ };
  const form=()=>{
   if(staffWaitTimer){clearInterval(staffWaitTimer);staffWaitTimer=null;}
   shell('<div class="pronto-login-heading"><span class="pronto-login-eyebrow">Acesso à sua loja</span>'+
@@ -50,7 +103,9 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<p id="pronto-auth-check-error" role="alert" aria-live="polite"></p>'+
    '<button class="primary full pronto-login-submit" type="submit">Entrar <span aria-hidden="true">→</span></button>'+
   '</form>'+
+  '<button type="button" class="secondary full" id="pronto-show-register">Registar o meu negócio · 10 dias grátis</button>'+
   '<div class="pronto-login-security"><span aria-hidden="true">✓</span> Acesso seguro para proprietários e colaboradores.</div>');
+  root.querySelector('#pronto-show-register').onclick=registration;
   root.querySelector('#recovery-request').onclick=()=>beginRecovery(null);
   root.querySelector('#pronto-toggle-password').onclick=()=>{
    const field=root.querySelector('#pronto-login-password');
@@ -100,6 +155,14 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      mountUbuntuAdminDashboard({root,client,account,onLogout:leave}):
      mountSupabaseMerchantPilot({root,client,account,onLogout:leave})
    });
+   return;
+  }
+  if(!admin&&!account.grants.length&&staffAccess?.reason!=='blocked'&&staffAccess?.reason!=='outside_schedule'&&staffAccess?.reason!=='suspended'){
+   shell('<h2>Conta confirmada</h2><p>Finalize o registo do seu negócio e active os 10 dias gratuitos.</p>'+
+    '<button type="button" class="primary full" id="pronto-complete-registration">Registar o meu negócio</button>'+
+    '<button type="button" class="secondary full" id="pronto-self-logout">Terminar sessão</button>');
+   root.querySelector('#pronto-complete-registration').onclick=()=>registration(true);
+   root.querySelector('#pronto-self-logout').onclick=async()=>{await client.signOut();form();};
    return;
   }
   const grants=account.grants.length?
