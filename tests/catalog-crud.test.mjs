@@ -47,3 +47,10 @@ test('PWA caches CRUD components',()=>{
   assert.ok(sw.includes(file),file);
  assert.ok(html.includes('/src/ui/pronto-catalog-controls.css'));
 });
+
+test('Product creation screen links directly to CRUD inventory',()=>{
+ const shop=read('src/supabase-shop-ui.js'),dash=read('src/supabase-shop-dashboard.js');
+ assert.match(shop,/data-shop-open-inventory/);
+ assert.match(dash,/el\.hasAttribute\('data-shop-open-inventory'\)/);
+ assert.match(dash,/view='inventory';render\(\)/);
+});

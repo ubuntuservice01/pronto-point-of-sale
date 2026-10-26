@@ -741,6 +741,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    const url=URL.createObjectURL(blob),a=document.createElement('a');
    a.href=url;a.download='relatorio-pronto-pos.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);return;
   }
+  if(el.hasAttribute('data-shop-open-inventory')){if(authorizedView('inventory')){view='inventory';render();}return;}
   if(el.hasAttribute('data-inventory-select')){selectedProductId=el.dataset.inventorySelect;render();return;}
   if(el.hasAttribute('data-inventory-xlsx')){
    if(!inventory||!authorizedView('shopping_list'))return;

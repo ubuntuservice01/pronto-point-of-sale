@@ -276,7 +276,9 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
     (b.active?'Desactivar':'Reactivar')+'</button></div>').join('')+'</div>',
    'Só o proprietário altera filiais. Não é possível desactivar a última filial, uma filial com caixa aberto, stock ou vendas em espera.');
  }else if(view==='products'){
-  body='<div class="shop-two">'+section('Novo produto','<form data-shop-form="product_create" class="shop-form">'+
+  body='<div class="shop-two">'+section('Gerir produtos existentes','Editar, desactivar, reactivar ou eliminar produtos com segurança.',
+   '<button type="button" class="shop-submit" data-shop-open-inventory>Gerir produtos cadastrados</button>')+
+   section('Novo produto','<form data-shop-form="product_create" class="shop-form">'+
    field('name','Nome do produto','','required maxlength="200"')+
    field('category','Categoria','Geral','maxlength="100"')+
    '<label>Unidade<select name="unit">'+UNIT_OPTIONS.map(u=>'<option value="'+esc(u)+'">'+esc(u)+'</option>').join('')+'</select></label>'+
