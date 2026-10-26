@@ -19,7 +19,7 @@ test('Merchants have four mutually exclusive lifecycle states',()=>{
 });
 test('Merchant actions use reversible removal and explain restoration before activation',()=>{
  assert.match(merchantOutcome('business_remove'),/Não houve eliminação definitiva/);
- assert.match(merchantOutcome('business_restore'),/continua suspenso/);
+ assert.match(merchantOutcome('business_restore'),/continua suspenso/i);
  const html=renderAdmin360Businesses({businesses:shops},insights);
  assert.match(html,/Retirar \(reversível\)/);
  assert.match(html,/Restaurar comerciante retirado/);
@@ -41,7 +41,7 @@ test('Business-state filters show only requested shops and preserve data count',
  assert.match(removed,/Mini Mercado Removido/);
  assert.doesNotMatch(removed,/Mercearia Central/);
  assert.match(removed,/aria-pressed="true"/);
- assert.match(removed,/Retirados/);
+ assert.match(removed,/data-admin-business-filter="removed"[^>]*aria-pressed="true">Retirado/);
 });
 test('Archived/removed businesses are excluded from active licenses and counts',()=>{
  const metrics=admin360Metrics({businesses:shops,plans:[]},insights,new Date('2026-10-26T13:00:00Z'));

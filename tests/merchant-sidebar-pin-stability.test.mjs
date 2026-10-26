@@ -65,6 +65,6 @@ test('PIN never locks after product saves; idle protects genuinely inactive sess
  assert.match(pin,/doc\.hidden&&opened&&!locking/);
  assert.match(pin,/pagehide/);
  const shop=read('src/supabase-shop-dashboard.js');
- assert.match(shop,/await execute\(action,payload\)/);
+ assert.match(shop,/await execute\(action,payload,action==='product_create'\?/);
  assert.match(shop,/if\(action==='product_create'\)view='products'/);
 });

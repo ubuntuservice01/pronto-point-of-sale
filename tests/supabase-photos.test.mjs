@@ -36,7 +36,7 @@ test('Image upload requires valid size, type, signed-in session, and belongs to 
   if(url.includes('pronto_memberships?'))return json([{business_id:B,role:'stock',active:true}]);
   if(url.includes('pronto_businesses?'))return json([{id:B,name:'Loja',status:'active'}]);
   if(url.includes('/storage/v1/object/pronto-product-photos/'))return json({Key:'saved'});
-  if(url.endsWith('/rest/v1/rpc/pronto_photo_attach'))return json({product_id:P,revision:4});
+  if(url.endsWith('/rest/v1/rpc/pronto_product_attach_and_activate'))return json({product_id:P,revision:4});
   if(url.includes('/storage/v1/object/sign/'))return json({signedURL:'/object/sign/pronto-product-photos/'+product.photo_path+'?token=test'});
   return json({},404);
  };
@@ -55,7 +55,7 @@ test('Image upload requires valid size, type, signed-in session, and belongs to 
  assert.equal(upload.opts.headers.Authorization,'Bearer mock-jwt');
  assert.equal(upload.opts.headers['Content-Type'],'image/jpeg');
  assert.ok(upload.url.includes(B+'/'+R+'/'+P+'/'));
- const attach=calls.find(c=>c.url.endsWith('/rpc/pronto_photo_attach'));
+ const attach=calls.find(c=>c.url.endsWith('/rpc/pronto_product_attach_and_activate'));
  const payload=JSON.parse(attach.opts.body).p_data;
  assert.ok(payload.photo_path.startsWith(B+'/'+R+'/'+P+'/'));
  assert.equal(payload.expected_revision,3);

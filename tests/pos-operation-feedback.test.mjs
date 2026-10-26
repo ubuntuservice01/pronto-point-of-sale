@@ -32,7 +32,8 @@ test('Supplier/purchase/expenses acknowledgement only happens after server confi
  assert.match(finance,/Pagamento registado!/);
  assert.match(finance,/Despesa registada!/);
  assert.match(finance,/confirmText:'OK'/);
- assert.ok(finance.indexOf('void showSuccessModal(')<finance.indexOf('}catch(error){'));
+ const successPosition=finance.indexOf('void showSuccessModal(');
+ assert.ok(finance.indexOf('}catch(error){',successPosition)>successPosition);
 });
 test('Manual logout requires user confirmation while automatic security logout stays available',()=>{
  const s=read('src/supabase-shop-dashboard.js');
@@ -47,7 +48,7 @@ test('Feedback is cached offline and accessible; server messages use textContent
  assert.match(s,/else if\(safe\)showProntoFeedback/);
  assert.match(mod,/content\.textContent=text/);
  assert.match(mod,/aria-live/);
- assert.match(mod,/pronto-feedback-error/);
+ assert.match(mod,/wrap\.className='pronto-feedback pronto-feedback-'\+state/);
  const index=read('index.html'),sw=read('public/sw.js');
  assert.match(index,/src\/ui\/pronto-feedback\.css/);
  assert.match(sw,/src\/ui\/pronto-feedback\.js/);
@@ -66,6 +67,7 @@ test('Toast element can close safely without HTML injection',()=>{
  globalThis.document={body,createElement:name=>new StubNode(name)};
  try{
   const toast=showProntoFeedback('<script>alert(1)</script>',{kind:'error',duration:2000});
+ assert.ok(toast.className.includes('pronto-feedback-error'));
   assert.equal(toast.attributes.role,'alert');
   assert.equal(toast.children[1].textContent,'<script>alert(1)</script>');
   assert.equal(toast.children.filter(x=>x.tag==='script').length,0);
