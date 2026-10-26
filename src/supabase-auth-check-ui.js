@@ -74,7 +74,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
     if(!resuming){
      const result=await client.selfServiceSignUp(email,password,profile.owner_name);
      if(result.needsEmailConfirmation){
-      error.textContent='A confirmação de e-mail ainda está activa nas definições do Supabase. Desactive «Confirm Email» em Authentication → Providers → Email para permitir a entrada imediata.';
+      error.textContent='O registo foi iniciado. Confirme o e-mail recebido para continuar.';
       button.disabled=false;return;
      }
     }

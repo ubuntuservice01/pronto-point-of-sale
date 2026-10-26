@@ -138,7 +138,7 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
    'for(const [k,v] of Object.entries('+JSON.stringify(values)+')){const el=f.elements[k];'+
    'if(el.type==="checkbox")el.checked=v;else{el.focus();el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));}}'+
    'f.querySelector("[type=submit]").click();return true;})()');
-  const pinScreen='!document.querySelector("#pronto-auth-check-form")&&!document.querySelector("#pronto-self-register")&&/PIN/i.test(document.body.innerText)';
+  const pinScreen='!!document.querySelector("#pronto-pin-form")&&!!document.querySelector("#pronto-pin-title")';
 
   // 1) Phone + password: only the Edge Function is used, never the e-mail grant.
   await fresh({email:'ana@loja.test',hasShop:true});
@@ -187,7 +187,7 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
   await js('document.querySelector("#pronto-show-register").click(),true');
   await until('!!document.querySelector("#pronto-self-register")','registration form (confirmation)');
   await fill('#pronto-self-register',signupData);
-  await until('/Confirm Email/.test(document.querySelector("#pronto-register-error").textContent)','confirmation message');
+  await until('/Confirme o e-mail recebido/.test(document.querySelector("#pronto-register-error").textContent)','confirmation message');
   assert.ok(!state.calls.some(c=>c.path==='/rest/v1/rpc/pronto_self_service_register'),'no shop RPC without a session');
 
   assert.deepEqual(state.unexpected,[],'unsimulated Supabase calls');
