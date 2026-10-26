@@ -161,7 +161,7 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    throw Error(known[reason]||'registration_failed');
   }
   const value=await response.json();
-  if(!uuid(value?.user?.id))throw Error('registration_failed');
+  if(!uuid((value?.user||value)?.id))throw Error('registration_response_invalid');
   return {needsEmailConfirmation:!value.access_token};
  }
  async function registerSelfServiceBusiness(data){
