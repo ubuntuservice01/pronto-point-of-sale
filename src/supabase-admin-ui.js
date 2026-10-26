@@ -80,7 +80,7 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights=
    '<p class="admin360-filter-count" role="status">A mostrar '+list.length+' de '+data.businesses.length+' comerciante(s).</p>'+
    renderAdmin360Businesses({...data,businesses:list},insights);
  }
- if(key==='members')return title('Utilizadores e acessos','Criar, editar, bloquear e reactivar perfis.')+renderAdmin360Members(data);
+ if(key==='members')return title('Utilizadores e acessos','Pesquisar, criar, editar, bloquear e reactivar perfis.')+renderAdmin360Members(data,query);
  if(key==='licenses')return title('Licenças e subscrições','Atribuir, renovar ou cancelar licenças.')+renderAdmin360Licenses(data);
  if(key==='plans')return title('Planos comerciais','Definir e gerir as condições comerciais.')+renderAdmin360Plans(data);
  if(key==='finance')return title('Cobranças da Ubuntu','Apenas pagamentos efectivamente recebidos e registados.')+renderAdmin360Finance(data,insights);
