@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="540" viewBox="0 0 540 540" aria-hidden="true">
+<title>Pronto POS — discreto padrão comercial de produtos e meticais</title>
+<defs><symbol id="umbrella" viewBox="0 0 100 100"><path d="M12 52Q17 16 50 15Q83 16 88 52Q78 43 69 52Q60 43 50 52Q41 43 31 52Q22 43 12 52Z"/><path d="M50 15V72q0 17 13 13q8-3 4-11"/></symbol>
+<symbol id="soap" viewBox="0 0 100 100"><rect x="13" y="30" width="74" height="47" rx="13" transform="rotate(-5 50 54)"/><path d="M25 35q23-16 48 0M32 65h37"/><text x="50" y="57" text-anchor="middle" font-size="15" stroke="none" fill="#75a99b" font-weight="600">SABÃO</text></symbol>
+<symbol id="shoe" viewBox="0 0 100 100"><path d="M10 65q22-3 30-17l8-16q12 18 28 23l13 8v14H12q-7-4-2-12Z"/><path d="M17 70h69M43 51l10 7m-4-14l10 7m-2-13l10 7"/></symbol>
+<symbol id="pills" viewBox="0 0 100 100"><rect x="17" y="10" width="66" height="80" rx="12" transform="rotate(11 50 50)"/><g fill="none"><circle cx="35" cy="27" r="9"/><circle cx="61" cy="34" r="9"/><circle cx="31" cy="54" r="9"/><circle cx="58" cy="61" r="9"/></g></symbol>
+<symbol id="bicycle" viewBox="0 0 100 100"><circle cx="22" cy="71" r="19"/><circle cx="79" cy="71" r="19"/><path d="M22 71l21-37l14 37H22l21-37h19l17 37M35 34h13M54 25h-12M58 44h13"/></symbol>
+<symbol id="cement" viewBox="0 0 100 100"><path d="M22 19h56l-5 20l8 42H18l9-42Z"/><path d="M22 28h56M24 74h52"/><text x="50" y="59" text-anchor="middle" font-size="14" fill="#75a99b" stroke="none" font-weight="700">CIMENTO</text></symbol>
+<symbol id="rice" viewBox="0 0 100 100"><path d="M24 19h52l-9 21l12 41Q49 91 21 81l12-41Z"/><path d="M27 25h46M34 40h33"/><text x="50" y="64" font-size="16" text-anchor="middle" fill="#75a99b" stroke="none" font-weight="700">ARROZ</text></symbol>
+<symbol id="bottle" viewBox="0 0 100 100"><path d="M39 9h22v14h-4v8q17 9 17 22v29q0 7-8 7H34q-8 0-8-7V53q0-13 17-22v-8h-4Z"/><path d="M29 55h42M29 77h42"/><path d="M49 62l5 6-5 5-5-5Z"/></symbol>
+<symbol id="shoppingbag" viewBox="0 0 100 100"><rect x="18" y="34" width="64" height="54" rx="5"/><path d="M34 36V27a16 16 0 0 1 32 0v9M31 50h38"/></symbol>
+<symbol id="shirt" viewBox="0 0 100 100"><path d="M31 15l19 7 19-7 20 21-16 16-9-8v40H36V44l-9 8-16-16Z"/><path d="M38 21q12 15 24 0"/></symbol>
+<symbol id="cart" viewBox="0 0 100 100"><circle cx="34" cy="82" r="5"/><circle cx="76" cy="82" r="5"/><path d="M9 19h12l9 48h51l12-37H25M29 59h54M40 30v29m17-29v29m17-29v29"/></symbol>
+<symbol id="banknote" viewBox="0 0 100 100"><rect x="6" y="24" width="88" height="52" rx="7" transform="rotate(-7 50 50)"/><circle cx="50" cy="50" r="17"/><text x="50" y="56" font-size="19" font-weight="700" text-anchor="middle" stroke="none" fill="#75a99b">MT</text><path d="M20 38h10M71 63h9"/></symbol>
+<symbol id="coin" viewBox="0 0 100 100"><circle cx="50" cy="50" r="38"/><circle cx="50" cy="50" r="30"/><text x="50" y="58" font-size="25" font-weight="700" text-anchor="middle" stroke="none" fill="#75a99b">MT</text></symbol>
+<symbol id="bread" viewBox="0 0 100 100"><path d="M12 64q-6-18 6-30q16-18 42-17q25 0 31 24q9 30-19 34H26q-11 0-14-11Z"/><path d="M31 35l9 21M52 30l9 23M72 34l6 20"/></symbol>
+<symbol id="carton" viewBox="0 0 100 100"><path d="M13 35l37-19 37 19v45L50 93 13 80Z"/><path d="M13 35l37 16 37-16M50 51v42M31 26l38 17"/></symbol>
+<symbol id="phone" viewBox="0 0 100 100"><rect x="26" y="6" width="48" height="88" rx="9"/><path d="M44 15h12M31 77h38"/><circle cx="50" cy="85" r="3"/></symbol>
+<symbol id="terminal" viewBox="0 0 100 100"><path d="M26 17h51q7 0 7 7l8 58q0 7-7 7H24q-7 0-7-7l4-58q1-7 5-7Z"/><rect x="30" y="28" width="47" height="25" rx="3"/><path d="M32 65h7m10 0h7m10 0h7m-41 10h7m10 0h7m10 0h7"/></symbol>
+<symbol id="medicine" viewBox="0 0 100 100"><path d="M29 18h42v12H29Z"/><rect x="22" y="30" width="56" height="60" rx="7"/><path d="M50 43v33M34 59h32"/></symbol>
+<symbol id="umbrellaSmall" viewBox="0 0 100 100"><path d="M14 53Q50 6 86 53q-13-8-22 0q-14-9-28 0q-9-8-22 0Zm36-28v47q0 12 9 12q8-2 6-9"/></symbol>
+<symbol id="bucket" viewBox="0 0 100 100"><path d="M22 35h56L70 88H30Z"/><path d="M26 38Q50 11 74 38M18 35h64M31 73h38"/></symbol>
+<symbol id="moneyStack" viewBox="0 0 100 100"><path d="M19 75h65v11H19Zm8-13h57v11H27Zm-9-14h66v12H18Zm10-13h55v11H28Z"/><circle cx="55" cy="41" r="4"/></symbol>
+<symbol id="oil" viewBox="0 0 100 100"><path d="M35 18h26V9H35Zm-9 0h44l12 27v39q0 6-6 6H24q-6 0-6-6V45Z"/><path d="M38 41h25v32H38Z"/><path d="M50 45q-16 17 0 22q16-6 0-22"/></symbol>
+<symbol id="fruit" viewBox="0 0 100 100"><path d="M51 26Q28 13 18 37Q6 81 36 85q14 0 15-5q3 5 18 5q28-5 15-47Q72 15 51 26Z"/><path d="M50 26q1-14 15-20M50 21q-13-16-27-8q9 15 27 8"/></symbol>
+<symbol id="scissors" viewBox="0 0 100 100"><circle cx="20" cy="73" r="12"/><circle cx="46" cy="73" r="12"/><path d="M27 63l52-49M51 64l28 21"/></symbol>
+<symbol id="hammer" viewBox="0 0 100 100"><path d="M15 23h37l23 20-11 9-25-18H16Z"/><path d="M52 41l-31 43l10 7l32-42"/></symbol>
+<symbol id="bag" viewBox="0 0 100 100"><path d="M26 14h48v12H26Zm3 12h42l13 59H16Z"/><path d="M30 44h40M33 63h34"/></symbol>
+<symbol id="leaf" viewBox="0 0 100 100"><path d="M10 75Q16 17 82 12Q87 77 25 83Q13 84 10 75Zm8 3Q34 54 67 33"/></symbol>
+<symbol id="spark" viewBox="0 0 100 100"><path d="M50 13v19m0 36v19M13 50h19m36 0h19M26 26l11 11m26 26l11 11m0-48L63 37M37 63L26 74"/></symbol></defs>
+<g fill="none" stroke="#75a99b" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" opacity=".27">
+<use href="#umbrella" x="10" y="6" width="70" height="70" transform="rotate(-8 45 41)"/>
+<use href="#soap" x="123" y="8" width="65" height="65" transform="rotate(9 155.5 40.5)"/>
+<use href="#shoe" x="226" y="14" width="70" height="70" transform="rotate(-9 261 49)"/>
+<use href="#pills" x="335" y="7" width="70" height="70" transform="rotate(7 370 42)"/>
+<use href="#bicycle" x="441" y="15" width="76" height="76" transform="rotate(0 479 53)"/>
+<use href="#shirt" x="18" y="115" width="72" height="72" transform="rotate(12 54 151)"/>
+<use href="#rice" x="120" y="105" width="76" height="76" transform="rotate(-5 158 143)"/>
+<use href="#bottle" x="229" y="112" width="70" height="70" transform="rotate(7 264 147)"/>
+<use href="#shoppingbag" x="337" y="111" width="69" height="69" transform="rotate(-8 371.5 145.5)"/>
+<use href="#coin" x="444" y="114" width="63" height="63" transform="rotate(0 475.5 145.5)"/>
+<use href="#banknote" x="8" y="215" width="75" height="75" transform="rotate(-4 45.5 252.5)"/>
+<use href="#cart" x="118" y="213" width="73" height="73" transform="rotate(12 154.5 249.5)"/>
+<use href="#medicine" x="238" y="210" width="68" height="68" transform="rotate(-10 272 244)"/>
+<use href="#cement" x="338" y="218" width="68" height="68" transform="rotate(5 372 252)"/>
+<use href="#terminal" x="448" y="220" width="72" height="72" transform="rotate(-12 484 256)"/>
+<use href="#carton" x="12" y="322" width="69" height="69" transform="rotate(-4 46.5 356.5)"/>
+<use href="#oil" x="114" y="316" width="71" height="71" transform="rotate(12 149.5 351.5)"/>
+<use href="#bread" x="231" y="324" width="71" height="71" transform="rotate(4 266.5 359.5)"/>
+<use href="#moneyStack" x="340" y="325" width="68" height="68" transform="rotate(-12 374 359)"/>
+<use href="#fruit" x="442" y="322" width="72" height="72" transform="rotate(0 478 358)"/>
+<use href="#bucket" x="12" y="421" width="70" height="70" transform="rotate(10 47 456)"/>
+<use href="#phone" x="122" y="421" width="65" height="65" transform="rotate(-8 154.5 453.5)"/>
+<use href="#hammer" x="222" y="422" width="75" height="75" transform="rotate(15 259.5 459.5)"/>
+<use href="#bag" x="333" y="421" width="73" height="73" transform="rotate(-10 369.5 457.5)"/>
+<use href="#scissors" x="438" y="425" width="72" height="72" transform="rotate(7 474 461)"/>
+</g>
+<g fill="none" stroke="#9bc7b8" stroke-width="1.8" opacity=".18"><path d="M91 94q13-24 23-5q-12 15-23 5Z"/>
+<circle cx="212" cy="116" r="2.6"/>
+<circle cx="317" cy="173" r="4"/>
+<path d="M410 92q13-24 23-5q-12 15-23 5Z"/>
+<circle cx="487" cy="305" r="4"/>
+<circle cx="103" cy="292" r="2.6"/>
+<path d="M194 410q13-24 23-5q-12 15-23 5Z"/>
+<circle cx="314" cy="399" r="2.6"/>
+<circle cx="418" cy="497" r="4"/>
+<path d="M12 510q13-24 23-5q-12 15-23 5Z"/>
+<circle cx="520" cy="230" r="4"/>
+<circle cx="195" cy="201" r="2.6"/></g>
+</svg>

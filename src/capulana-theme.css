@@ -28,3 +28,27 @@ body{background-color:#f7faf8;background-image:var(--pronto-capulana);background
  body,.shop-layout,.pronto-admin-shell,.workspace,.login-shell.pronto-auth-test,
  .pronto-pin-backdrop.pin-city-theme .pronto-pin-panel{background-image:none!important;}
 }
+
+/* Multi-sector retail wallpaper, approved 26 October 2026.
+   Inspired by subtle commerce doodle wallpapers. Restrict it to the POS workspace;
+   keep old capulana motif on back-office, login, and PIN screens unchanged. */
+:root{--pronto-commerce-wallpaper:url('/patterns/pronto-commerce-pattern.svg');}
+.shop-layout{
+ background-color:#f3f9f5!important;
+ background-image:var(--pronto-commerce-wallpaper)!important;
+ background-repeat:repeat!important;
+ background-size:540px 540px!important;
+ background-position:top left!important;
+}
+/* White cards remain opaque: the decorative image must never reduce readability. */
+.shop-layout .shop-workspace,.shop-layout .shop-main{background-color:transparent;}
+.shop-layout .shop-header,.shop-layout .shop-sidebar,.shop-layout .shop-mobile-bottom,
+.shop-layout .shop-box,.shop-layout #shop-checkout-panel .shop-box,
+.shop-layout .shop-product,.shop-layout .shop-cart-row,
+.shop-layout .shop-notification-popover{background-color:#fff;}
+@media (max-width:680px){
+ .shop-layout{background-size:480px 480px!important;}
+}
+@media print{
+ .shop-layout{background-image:none!important;background-color:#fff!important;}
+}
