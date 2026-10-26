@@ -145,7 +145,21 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    body:JSON.stringify({email,password,data:{display_name:ownerName.trim()}})
   });
   if(response.status===429)throw Error('supabase_rate_limit');
-  if(!response.ok)throw Error('registration_failed');
+  if(!response.ok){
+   let reason='';
+   try{const payload=await response.json();reason=String(payload?.code||payload?.error_code||'').toLowerCase();}catch{}
+   const known={
+    signup_disabled:'registration_disabled',
+    email_provider_disabled:'registration_disabled',
+    email_exists:'registration_email_exists',
+    user_already_exists:'registration_email_exists',
+    email_address_invalid:'registration_email_invalid',
+    weak_password:'registration_weak_password',
+    over_email_send_rate_limit:'supabase_rate_limit',
+    email_address_not_authorized:'registration_email_invalid'
+   };
+   throw Error(known[reason]||'registration_failed');
+  }
   const value=await response.json();
   if(!uuid(value?.user?.id))throw Error('registration_failed');
   return {needsEmailConfirmation:!value.access_token};

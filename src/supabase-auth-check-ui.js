@@ -79,9 +79,21 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
     node.reset();
     await ready(await client.account(),false);
    }catch(e){
-    error.textContent=e.message==='supabase_rate_limit'?'Muitas tentativas. Aguarde e volte a tentar.':
-     e.message==='registration_failed'?'Não foi possível criar a conta. Se o email já existir, utilize Entrar.':
-     'Não foi possível concluir o registo. A conta poderá ter sido criada; entre com o seu email para retomar.';
+    const errors={
+     supabase_rate_limit:'Muitas tentativas de registo. Aguarde alguns minutos.',
+     registration_disabled:'O registo de novos utilizadores está desactivado no servidor. Contacte o suporte do Pronto POS.',
+     registration_email_exists:'Este e-mail já está registado. Utilize Entrar ou Recuperar palavra-passe.',
+     registration_email_invalid:'Este endereço de e-mail não foi aceite. Verifique os dados.',
+     registration_weak_password:'A palavra-passe foi recusada. Use pelo menos 12 caracteres e evite palavras-passe comuns.',
+     registration_invalid:'Verifique o nome, e-mail e palavra-passe.',
+     registration_failed:'A criação da conta foi rejeitada pelo serviço de autenticação. Nenhuma loja foi criada. Tente novamente ou contacte o suporte.',
+     supabase_unavailable:'Não foi possível comunicar com o servidor. Verifique a ligação.',
+     verify_email_first:'Confirme o endereço de e-mail e volte a entrar para activar a loja.',
+     account_already_registered:'Este utilizador já está associado a um negócio. Entre normalmente.',
+     trial_unavailable:'O teste gratuito está temporariamente indisponível. Contacte o suporte.'
+    };
+    error.textContent=errors[e.message]||
+     'Não foi possível concluir a activação. Entre com o e-mail para verificar se a conta foi criada.';
     button.disabled=false;
    }
   });
