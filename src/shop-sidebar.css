@@ -227,3 +227,7 @@
  .shop-layout .shop-cash-indicator{grid-column:1/-1;justify-self:start;margin-top:2px!important;margin-bottom:0!important;padding:8px 13px!important;border-radius:99px!important}
  .shop-layout .shop-main{padding-top:12px!important}
 }
+
+.pronto-trial-banner{margin:9px 14px;padding:11px 14px;display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;border:1px solid #c3dfce;background:#e9f8ef;color:#175e43;border-radius:13px;font-size:13px}
+.pronto-trial-banner strong{font-weight:850}.pronto-trial-banner .pronto-trial-contact{font-size:11px;color:#48695a}
+@media(max-width:680px){.pronto-trial-banner{margin:5px 12px 9px;padding:9px 11px;display:grid}}
