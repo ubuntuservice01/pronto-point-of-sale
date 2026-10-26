@@ -39,19 +39,28 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights=
   const num=s=>safe.filter(x=>x.status===s).length;
   const fmt=s=>s?date(s):'—';
   const total=safe.length;
+  const soon=safe.filter(x=>x.status==='trial'&&Number.isFinite(Date.parse(x.license_expires_at))&&
+   Date.parse(x.license_expires_at)-now.getTime()<=2*86400000).length;
+  const newToday=safe.filter(x=>Number.isFinite(Date.parse(x.started_at))&&
+   now.getTime()-Date.parse(x.started_at)>=0&&now.getTime()-Date.parse(x.started_at)<86400000).length;
   const rows=safe.map(item=>{
    const whatsapp=String(item.whatsapp||'').replace(/[^\d]/g,'');
    const link=item.marketing_consent===true&&whatsapp.length>=7?
     '<a href="https://wa.me/'+whatsapp+'" target="_blank" rel="noopener noreferrer">WhatsApp</a>':'Sem autorização comercial';
+   const days=item.status==='trial'&&Number.isFinite(Date.parse(item.license_expires_at))?
+    Math.max(0,Math.ceil((Date.parse(item.license_expires_at)-now.getTime())/86400000)):0;
    return '<tr><td><strong>'+esc(item.name)+'</strong><small>'+esc(item.owner_name)+' · '+esc(item.email)+'</small></td>'+
     '<td>'+esc(item.phone)+'<small>'+esc(item.industry)+'</small></td>'+
     '<td>'+esc(item.plan_name)+'<small>'+fmt(item.started_at)+' → '+fmt(item.license_expires_at)+'</small></td>'+
-    '<td>'+esc(item.status==='trial'?'Em teste':item.status==='converted'?'Convertido':'Expirado')+'</td>'+
+    '<td>'+esc(item.status==='trial'?'Em teste · '+days+' dia(s) restantes':item.status==='converted'?'Convertido':'Expirado')+'</td>'+
     '<td>'+link+'</td></tr>';
   }).join('');
   return title('Testes gratuitos','Acompanhe os 10 dias de experiência, expirações e oportunidades de conversão.')+
    '<div class="admin360-kpis">'+stats(total,'Inscritos')+stats(num('trial'),'Em teste')+
    stats(num('expired'),'Expirados')+stats(num('converted'),'Convertidos')+'</div>'+
+   '<div class="pronto-admin-panel" role="status" aria-live="polite"><strong>Alertas de testes</strong>'+
+    '<p>'+newToday+' novo(s) registo(s) nas últimas 24 horas · '+soon+' teste(s) a terminar em até 48 horas · '+num('expired')+' expirado(s).</p>'+
+    '<p>Os alertas são apresentados ao abrir ou actualizar este painel. Mensagens automáticas ainda não estão activadas.</p></div>'+
    '<section class="pronto-admin-panel"><h3>Comerciantes registados</h3>'+
    (rows?'<div class="pronto-admin-table-wrap"><table class="pronto-admin-table"><thead><tr><th>Negócio / Proprietário</th><th>Contacto</th><th>Plano e validade</th><th>Estado</th><th>Acção</th></tr></thead><tbody>'+rows+'</tbody></table></div>':
     empty('Nenhum teste registado','Quando um comerciante concluir o registo autónomo, aparecerá nesta lista.'))+'</section>';
