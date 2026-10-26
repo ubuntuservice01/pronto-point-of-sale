@@ -1,5 +1,6 @@
 import {normalizeCashControl,ownOpenSession,cashSessionsCSV} from './supabase-cash-ui.js';
 import {showConfirmModal,showSuccessModal,showInfoModal} from './ui/pronto-modal.js';
+import {catalogFeedback} from './ui/pronto-catalog-controls.js';
 import {showProntoFeedback,clearProntoFeedback,prontoFeedbackKind} from './ui/pronto-feedback.js';
 import {startProntoLoading} from './ui/pronto-loading.js';
 import {customerMessage} from './customer-copy.js';
@@ -604,6 +605,47 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     }catch(error){showMessage('O movimento não foi confirmado. Actualize a lista e verifique o estado antes de repetir. ('+error.message+')',true);}
     finally{busy=false;}
    })();return;
+  }
+  if(el.hasAttribute('data-catalog-action')){
+   const kind=el.dataset.catalogKind,action=el.dataset.catalogAction,id=el.dataset.catalogId;
+   if(!['owner','manager'].includes(grant.role))return showMessage('Apenas o proprietário ou gerente pode gerir estes registos.',true);
+   if(lockPending()||disconnected())return showMessage('É necessário estar online e concluir as operações pendentes.',true);
+   if(!['product','supplier','customer'].includes(kind)||!['archive','restore','delete'].includes(action))return;
+   const selected=kind==='product'?inventory?.products.find(x=>x.id===id&&x.id===selectedProductId):
+    kind==='supplier'?finance?.suppliers.find(x=>x.id===id&&x.id===supplierId):
+    credit?.customers.find(x=>x.id===id&&x.id===selectedCustomerId);
+   if(!selected)return showMessage('Seleccione novamente o registo antes de continuar.',true);
+   const label={product:'produto',supplier:'fornecedor',customer:'cliente'}[kind];
+   const question=action==='delete'?'Eliminar o '+label+' «'+selected.name+'»? Se existir histórico, será apenas desactivado.':
+    action==='archive'?'Desactivar o '+label+' «'+selected.name+'»?':'Reactivar o '+label+' «'+selected.name+'»?';
+   if(!await confirmShop(question))return;
+   busy=true;showMessage('A confirmar alteração do registo…');
+   try{
+    const result=await client.catalogLifecycle({businessId:grant.id,branchId,kind,action,
+     recordId:id,expectedRevision:kind==='product'?selected.revision:null});
+    if(result?.record_id!==id||!['deleted','archived','restored'].includes(result?.outcome))
+     throw Error('catalog_unconfirmed');
+    if(result.outcome==='deleted'){
+     if(kind==='product')selectedProductId='';
+     else if(kind==='supplier')supplierId='';
+     else selectedCustomerId='';
+    }
+    await refresh();
+    const feedback=catalogFeedback(kind,action,result.outcome);
+    showMessage(feedback.message);
+    void showSuccessModal({...feedback,confirmText:'OK'});
+   }catch(error){
+    const known={
+     product_revision_conflict:'O produto foi alterado por outro utilizador. Actualize a lista e tente novamente.',
+     product_photo_required:'Este produto precisa de fotografia para ser reactivado.',
+     catalog_permission_denied:'Não tem autorização para gerir este registo.',
+     catalog_not_found:'O registo já não está disponível. Actualize os dados.',
+     catalog_branch_unavailable:'A filial não está disponível.',
+     catalog_unconfirmed:'A alteração não foi confirmada. Actualize os dados antes de repetir.'
+    };
+    showMessage(known[error.message]||'Não foi possível confirmar a operação. Actualize a lista antes de repetir.',true);
+   }finally{busy=false;}
+   return;
   }
   if(el.hasAttribute('data-finance-supplier')){supplierId=el.dataset.financeSupplier;render();return;}
   if(el.hasAttribute('data-finance-add-line')){

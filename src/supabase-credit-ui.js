@@ -1,3 +1,4 @@
+import {catalogControls} from './ui/pronto-catalog-controls.js';
 // Supabase customer/credit screens. All user values escaped before interpolation.
 // Data is read only through the authorised RPC; mutations are submitted separately.
 import {esc,MONEY} from './supabase-shop-core.js';
@@ -76,6 +77,7 @@ export function renderCreditView({view,credit,role,query='',filter='open',sessio
    '<label>Observações<input name="note" maxlength="500" value="'+esc(chosen?.note||'')+'"></label>'+
    (chosen?'<label><input name="active" type="checkbox" '+(chosen.active?'checked':'')+'> Cliente activo</label>':'')+
    '<button class="shop-submit" type="submit">'+(chosen?'Guardar alterações':'Registar cliente')+'</button></form>'+
+   (chosen&&['owner','manager'].includes(role)?catalogControls({kind:'customer',id:chosen.id,active:chosen.active}):'')+
    (chosen&&['owner','manager'].includes(role)?
     '<form data-shop-form="credit_policy" class="shop-form">'+
     '<input name="customer_id" type="hidden" value="'+esc(chosen.id)+'">'+

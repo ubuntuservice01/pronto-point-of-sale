@@ -539,6 +539,18 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
     product_id:productId,expected_revision:expectedRevision,allow_fractional:allowFractional}}
   });
  }
+ async function catalogLifecycle({businessId,branchId,kind,action,recordId,expectedRevision=null}={}){
+  if(![businessId,branchId,recordId].every(uuid)||
+   !['product','supplier','customer'].includes(kind)||
+   !['archive','restore','delete'].includes(action)||
+   (kind==='product'&&(!Number.isInteger(expectedRevision)||expectedRevision<0)))
+   throw Error('catalog_invalid_request');
+  if(sessionLocked)throw Error('pin_screen_locked');
+  return call('/rest/v1/rpc/pronto_catalog_lifecycle',{
+   method:'POST',payload:{p_business_id:businessId,p_branch_id:branchId,p_kind:kind,
+    p_action:action,p_record_id:recordId,p_expected_revision:kind==='product'?expectedRevision:null}
+  });
+ }
  async function inventoryAction(action,data){
   if(!['product_update','inventory_adjust','inventory_count'].includes(action)||!data||typeof data!=='object'||Array.isArray(data))throw Error('inventory_action_invalid');
   return call('/rest/v1/rpc/pronto_inventory_action',{
@@ -780,5 +792,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

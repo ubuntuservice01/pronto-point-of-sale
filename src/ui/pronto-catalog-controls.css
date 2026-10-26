@@ -1,0 +1,10 @@
+/* Consistent, accessible CRUD buttons for merchants' catalog records. */
+.pronto-crud-actions{display:flex;flex-wrap:wrap;gap:10px;margin:13px 0 6px}
+.pronto-crud-button{display:inline-flex;align-items:center;justify-content:center;min-height:43px;padding:10px 16px;border:1px solid #c6ded2;border-radius:10px;font:inherit;font-size:14px;font-weight:750;cursor:pointer;background:#edf6f1;color:#175d45}
+.pronto-crud-button:focus-visible{outline:3px solid #6cbaa0;outline-offset:2px}
+.pronto-crud-button:hover{filter:brightness(.96)}
+.pronto-crud-button:disabled{opacity:.55;cursor:not-allowed}
+.pronto-crud-delete{background:#fff0f0;color:#a32434;border-color:#f0bdc3}
+.pronto-crud-restore{background:#e6f5eb;border-color:#addcc3;color:#086e47}
+.pronto-crud-caption{font-size:12px!important;color:#637c6f;line-height:1.5;margin:6px 0 14px}
+@media(max-width:650px){.pronto-crud-actions>*{flex:1;min-width:110px}}

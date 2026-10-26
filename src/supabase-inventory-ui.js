@@ -1,3 +1,4 @@
+import {catalogControls} from './ui/pronto-catalog-controls.js';
 // Authenticated inventory administration and alerts. Snapshot from protected RPC.
 import {esc,MONEY,UNIT_OPTIONS} from './supabase-shop-core.js';
 import {allowsFractionalSale} from './sale-by-value.js';
@@ -110,6 +111,7 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
     field('min_stock','Stock mínimo',chosen.minStock,'required type="number" min="0" step="0.001"')+
     '<label><input type="checkbox" name="active" '+(chosen.active?'checked':'')+'> Activo para venda</label>'+
     '<button class="shop-submit" type="submit">Guardar alterações</button></form>':'')+
+   (['owner','manager'].includes(role)?catalogControls({kind:'product',id:chosen.id,active:chosen.active,revision:chosen.revision}):'')+
    '<h4>Conferência e ajuste físico</h4><form data-shop-form="inventory_count" class="shop-form">'+
     '<input type="hidden" name="product_id" value="'+esc(chosen.id)+'">'+
     '<input type="hidden" name="revision" value="'+esc(chosen.revision)+'">'+

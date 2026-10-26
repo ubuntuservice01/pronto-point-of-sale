@@ -1,3 +1,4 @@
+import {catalogControls} from './ui/pronto-catalog-controls.js';
 // Protected purchase and expenditure screens for the Supabase merchant pilot.
 // Financial operations always use authenticated RPCs and audit on server.
 import {esc,MONEY} from './supabase-shop-core.js';
@@ -44,7 +45,8 @@ export function renderFinanceView({view,finance,products=[],supplierId='',lines=
     f('phone','Contacto','tel','maxlength="60"',chosen?.phone||'').replace(' required>','>')+
     f('address','Localização','text','maxlength="250"',chosen?.address||'').replace(' required>','>')+
     (chosen?'<label><input name="active" type="checkbox" '+(chosen.active?'checked':'')+'> Activo</label>':'')+
-    '<button type="submit" class="shop-submit">Guardar fornecedor</button></form>')+'</div>';
+    '<button type="submit" class="shop-submit">Guardar fornecedor</button></form>'+
+    (chosen&&['owner','manager'].includes(role)?catalogControls({kind:'supplier',id:chosen.id,active:chosen.active}):''))+'</div>';
  }
  if(view==='purchases'){
   const productRows=Array.from({length:Math.max(1,Math.min(15,lines))},(_,i)=>
