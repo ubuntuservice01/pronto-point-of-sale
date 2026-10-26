@@ -1,3 +1,4 @@
+import {merchantCounts,merchantState,merchantLabel,merchantStates} from './admin-merchant-lifecycle.js';
 import {renderAdmin360Overview,renderAdmin360Businesses,renderAdmin360Members,renderAdmin360Licenses,renderAdmin360Plans,renderAdmin360Finance,renderAdmin360Audit,renderAdmin360Security} from './supabase-admin-360.js';
 import {ADMIN_TABS,adminSummary,licenseState,matchAdminBusiness} from './supabase-admin-model.js';
 
@@ -33,7 +34,7 @@ export function renderUbuntuAdminShell(account){
 
 const title=(name,description)=>'<div class="pronto-admin-page-title"><h2>'+esc(name)+'</h2><p>'+esc(description)+'</p></div>';
 const stats=(value,label,info='')=>'<article class="pronto-admin-stat"><small>'+esc(label)+'</small><strong>'+value+'</strong>'+(info?'<span>'+esc(info)+'</span>':'')+'</article>';
-export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights={},trials=[]}={}){
+export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights={},trials=[],businessFilter='all'}={}){
  if(key==='trials'){
   const safe=Array.isArray(trials)?trials:[];
   const num=s=>safe.filter(x=>x.status===s).length;
@@ -68,8 +69,17 @@ export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights=
 
  if(!ADMIN_TABS.includes(key))throw Error('admin_tab');
  if(key==='overview')return title('Painel de controlo','Gestão integral da plataforma e dos seus comerciantes.')+renderAdmin360Overview(data,insights);
- if(key==='businesses')return title('Comerciantes','Administrar lojas, filiais e respectivos estados.')+
-  renderAdmin360Businesses({...data,businesses:data.businesses.filter(b=>matchAdminBusiness(b,query))},insights);
+ if(key==='businesses'){
+  const counts=merchantCounts(data.businesses,insights.businesses);
+  const selected=merchantStates.includes(businessFilter)?businessFilter:'all';
+  const list=data.businesses.filter(b=>matchAdminBusiness(b,query)&&(selected==='all'||merchantState(b,insights.businesses)===selected));
+  return title('Comerciantes','Editar, suspender, arquivar e recuperar lojas com rastreabilidade.')+
+   '<div class="admin360-state-filter" role="group" aria-label="Filtrar comerciantes por estado">'+
+    merchantStates.map(s=>'<button type="button" data-admin-business-filter="'+s+'" aria-pressed="'+(s===selected?'true':'false')+'">'+
+      esc(s==='all'?'Todos':merchantLabel(s))+' <strong>'+counts[s]+'</strong></button>').join('')+'</div>'+
+   '<p class="admin360-filter-count" role="status">A mostrar '+list.length+' de '+data.businesses.length+' comerciante(s).</p>'+
+   renderAdmin360Businesses({...data,businesses:list},insights);
+ }
  if(key==='members')return title('Utilizadores e acessos','Criar, editar, bloquear e reactivar perfis.')+renderAdmin360Members(data);
  if(key==='licenses')return title('Licenças e subscrições','Atribuir, renovar ou cancelar licenças.')+renderAdmin360Licenses(data);
  if(key==='plans')return title('Planos comerciais','Definir e gerir as condições comerciais.')+renderAdmin360Plans(data);

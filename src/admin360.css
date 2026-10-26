@@ -64,3 +64,17 @@
 .pronto-admin-shell .admin360-recovery-check input{width:22px;height:22px;flex:none;margin:0;accent-color:#087f68}
 .pronto-admin-shell .admin360-recovery-form button{justify-self:start;min-height:50px}
 @media(max-width:580px){.pronto-admin-shell .admin360-recovery-form button{width:100%}}
+
+/* Merchant CRUD filters and per-business intervention history. */
+.pronto-admin-shell .admin360-state-filter{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 8px}
+.pronto-admin-shell .admin360-state-filter button{font:inherit;font-size:13px;font-weight:650;display:inline-flex;align-items:center;gap:8px;min-height:41px;padding:9px 13px;border-radius:50px;border:1px solid #cdded5;background:#fff;color:#275542;cursor:pointer}
+.pronto-admin-shell .admin360-state-filter button[aria-pressed="true"]{background:#087f68;border-color:#087f68;color:#fff}
+.pronto-admin-shell .admin360-state-filter button:focus-visible{outline:3px solid #85cbb1;outline-offset:2px}
+.pronto-admin-shell .admin360-state-filter button strong{font-size:12px}
+.pronto-admin-shell .admin360-filter-count{margin:0 0 12px;color:#5e7667;font-size:12px}
+.pronto-admin-shell .admin360-history{padding:4px 8px 4px 22px;margin:0}
+.pronto-admin-shell .admin360-history li{margin:9px 0;padding:5px 0;border-bottom:1px solid #e3ebe5;color:#31563f}
+.pronto-admin-shell .admin360-history li strong{font-size:13px}
+.pronto-admin-shell .admin360-history li small{font-size:12px;margin-left:9px;color:#69796e}
+.pronto-admin-shell .admin360-history li p{font-size:12px;overflow-wrap:anywhere}
+@media(max-width:580px){.pronto-admin-shell .admin360-state-filter button{min-height:44px;padding:10px}.pronto-admin-shell .admin360-shop-actions button{flex:1}}

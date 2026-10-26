@@ -1,3 +1,4 @@
+import {merchantState,merchantCounts,merchantLabel} from './admin-merchant-lifecycle.js';
 // Ubuntu Service administration: real-data charts and tenant-safe controls.
 // All write permissions are re-verified by guarded server RPCs.
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
@@ -15,8 +16,9 @@ const section=(name,body)=>'<section class="pronto-admin-panel admin360-panel"><
 
 export function admin360Metrics(data,insights={},at=new Date()){
  const shops=data.businesses||[],payments=insights.payments||[],plans=data.plans||[];
- const active=shops.filter(b=>b.status==='active'&&!insights.businesses?.some(x=>x.id===b.id&&(x.archived_at||x.removed_at)));
- const license=shops.filter(b=>b.expiresAt&&!b.licenseCancelled&&new Date(b.expiresAt)>at);
+ const states=merchantCounts(shops,insights.businesses);
+ const license=shops.filter(b=>merchantState(b,insights.businesses)==='active'&&
+  b.expiresAt&&!b.licenseCancelled&&new Date(b.expiresAt)>at);
  const collected=Number(insights.payments_total_cents)||0;
  const expiring=license.filter(b=>new Date(b.expiresAt).getTime()-at.getTime()<=7*864e5);
  const byPlan=plans.map(p=>({name:p.name,count:shops.filter(b=>b.planId===p.id).length}));
@@ -25,7 +27,7 @@ export function admin360Metrics(data,insights={},at=new Date()){
   const count=shops.filter(s=>s.createdAt&&new Date(s.createdAt)<=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1))).length;
   return {name:d.toLocaleDateString('pt-PT',{timeZone:'UTC',month:'short'}),count};
  });
- return {total:shops.length,active:active.length,suspended:shops.length-active.length,
+ return {total:shops.length,active:states.active,suspended:states.suspended,archived:states.archived,removed:states.removed,
   operators:shops.reduce((v,s)=>v+(s.operators||0),0),licenses:license.length,
   expiring:expiring.length,collected,payments:payments.length,byPlan,byMonth};
 }
@@ -41,7 +43,8 @@ export function renderAdmin360Overview(data,insights={}){
  const m=admin360Metrics(data,insights);
  return '<div class="admin360-headline">Controlo central da Ubuntu Service <span>'+badge('Dados reais','good')+'</span></div>'+
  '<div class="admin360-kpis">'+[
-  [m.total,'Comerciantes','store'],[m.active,'Lojas activas','check'],[m.suspended,'Suspensos/arquivados','alert'],
+  [m.total,'Comerciantes','store'],[m.active,'Lojas activas','check'],[m.suspended,'Suspensos','alert'],
+  [m.archived,'Arquivados','archive'],[m.removed,'Retirados','trash'],
   [m.operators,'Colaboradores','users'],[m.licenses,'Licenças válidas','shield'],[m.expiring,'Licenças a vencer em 7 dias','alert']
  ].map(([n,label])=>'<article><span>'+escape(label)+'</span><strong>'+n+'</strong></article>').join('')+'</div>'+
  '<div class="admin360-chart-grid">'+barChart('Evolução dos comerciantes',m.byMonth,'Total acumulado dos comerciantes existentes, por mês.')+
@@ -51,33 +54,40 @@ export function renderAdmin360Overview(data,insights={}){
  ['Gerir comerciantes','Gerir utilizadores','Licenças','Planos','Cobranças da Ubuntu','Histórico de auditoria'][i]+'</button>').join('')+'</div>';
 }
 export function renderAdmin360Businesses(data,insights={}){
- const markers=new Map((insights.businesses||[]).map(b=>[b.id,b]));
- const branches=insights.branches||[];
+ const markers=insights.businesses||[];
+ const branches=insights.branches||[],events=insights.events||[];
  return section('Controlo de comerciantes', '<p class="admin360-muted">Editar, suspender, reactivar, arquivar ou retirar da lista. O histórico de vendas e caixa nunca é apagado.</p>'+
  (data.businesses||[]).map(b=>{
-  const mark=markers.get(b.id)||{};
-  const removed=!!mark.removed_at,archived=!!mark.archived_at;
+  const current=merchantState(b,markers);
+  const removed=current==='removed',archived=current==='archived';
   const rows=branches.filter(x=>x.business_id===b.id);
+  const history=events.filter(e=>e.business_id===b.id).slice(0,5);
   return '<details class="admin360-shop" data-business-entry data-search="'+escape([b.name,b.phone,b.address,b.id].join(' '))+'">'+
    '<summary><strong>'+escape(b.name)+'</strong><span>'+
-    badge(removed?'Retirado':archived?'Arquivado':b.status==='active'?'Activo':'Suspenso',
-     removed||archived||b.status!=='active'?'warn':'good')+' · '+b.operators+' colaborador(es)</span></summary>'+
+    badge(merchantLabel(current),current==='active'?'good':removed?'danger':'warn')+' · '+b.operators+' colaborador(es)</span></summary>'+
    '<div class="admin360-shop-actions">'+
     (!removed&&!archived?
       (b.status==='active'?button('business_suspend',b.id,'Suspender','danger'):button('business_activate',b.id,'Reactivar','positive'))+
-      button('business_archive',b.id,'Arquivar','warn')+button('business_remove',b.id,'Eliminar da lista','danger'):
-     button('business_restore',b.id,'Restaurar','positive'))+
+      button('business_archive',b.id,'Arquivar','warn')+button('business_remove',b.id,'Retirar (reversível)','danger'):
+     button('business_restore',b.id,removed?'Restaurar comerciante retirado':'Restaurar comerciante arquivado','positive'))+
      '</div>'+
-   form('business_edit',hidden('business_id',b.id)+
+   ((!removed&&!archived)?form('business_edit',hidden('business_id',b.id)+
      '<label>Nome'+input('name',b.name,'required minlength="2" maxlength="120"')+'</label>'+
      '<label>Telefone'+input('phone',b.phone,'maxlength="60"')+'</label>'+
-     '<label>Localização'+input('address',b.address,'maxlength="250"')+'</label>','Guardar alterações')+
+     '<label>Localização'+input('address',b.address,'maxlength="250"')+'</label>','Guardar alterações'):
+     '<p class="admin360-muted">Restaurar primeiro para editar. A restauração não reactiva automaticamente a loja.</p>')+
    '<details class="admin360-subpanel"><summary>Filiais ('+rows.length+')</summary>'+
     (rows.length?rows.map(br=>form('branch_edit',hidden('business_id',b.id)+hidden('branch_id',br.id)+
       '<label>Filial'+input('name',br.name,'required maxlength="120"')+'</label>'+
       '<label><input name="active" type="checkbox" '+(br.active?'checked':'')+'> Filial activa</label>','Guardar filial')).join(''):
       '<p>Sem filiais disponíveis.</p>')+'</details>'+
-   '<p class="admin360-muted">Acesso e licenças podem ser interrompidos separadamente nas respectivas áreas.</p></details>';
+   '<details class="admin360-subpanel"><summary>Últimas intervenções ('+history.length+')</summary>'+
+    (history.length?'<ul class="admin360-history">'+history.map(e=>
+     '<li><strong>'+escape(String(e.action||'Intervenção').replace(/_/g,' '))+'</strong>'+
+     ' <small>'+time(e.created_at)+'</small>'+
+     (e.reason?'<p>'+escape(e.reason)+'</p>':'')+'</li>').join('')+'</ul>':
+     '<p class="admin360-muted">Sem intervenções administrativas recentes.</p>')+'</details>'+
+   '<p class="admin360-muted">Retirar é reversível: mantém vendas, dívidas e caixa. Após restaurar, a loja continua suspensa até ser activada separadamente.</p></details>';
  }).join('')+'</div>');
 }
 export function renderAdmin360Members(data){

@@ -1,5 +1,6 @@
+import {merchantState,merchantStates,merchantOutcome} from './admin-merchant-lifecycle.js';
 import {admin360AuditCSV} from './supabase-admin-360.js';
-import {showConfirmModal,showPromptModal} from './ui/pronto-modal.js';
+import {showConfirmModal,showPromptModal,showSuccessModal} from './ui/pronto-modal.js';
 import {startProntoLoading} from './ui/pronto-loading.js';
 import {customerMessage} from './customer-copy.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
@@ -54,7 +55,7 @@ const errorMessages={
 export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  if(!account?.ubuntuAdmin)throw Error('admin_required');
  root.innerHTML=renderUbuntuAdminShell(account);
- let data=null,insights=null,trials=[],tab='overview',busy=false;
+ let data=null,insights=null,trials=[],tab='overview',busy=false,businessFilter='all';
  const message=root.querySelector('#pronto-admin-message');
  const content=root.querySelector('#pronto-admin-content');
  const refreshButton=root.querySelector('#pronto-admin-refresh');
@@ -70,7 +71,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   if(!data)return;
   searchWrap.hidden=tab!=='businesses';
   const query=tab==='businesses'?search.value:'';
-  content.innerHTML=renderUbuntuAdminTab(tab,data,{query,insights:insights||{},trials})+renderProvisioningForms(tab,data);
+  content.innerHTML=renderUbuntuAdminTab(tab,data,{query,insights:insights||{},trials,businessFilter})+renderProvisioningForms(tab,data);
   tabs.forEach(button=>{
    const selected=button.dataset.adminTab===tab;
    button.setAttribute('aria-current',selected?'page':'false');
@@ -234,7 +235,8 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   try{
    await client.adminControl(action,payload);
    [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
-   render();message.textContent='Operação confirmada e auditada.';
+   render();message.textContent=action==='business_edit'?merchantOutcome(action):'Operação confirmada e auditada.';
+   if(action==='business_edit')void showSuccessModal({title:'Comerciante actualizado',message:message.textContent,confirmText:'OK'});
   }catch(e){await failure(e);}finally{toggleBusy(false);}
  };
  const quickOperation=async button=>{
@@ -255,10 +257,20 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    payload={plan_id:id,active:!plan.active};
   }else payload={business_id:id};
   const business=data.businesses.find(x=>x.id===payload.business_id);
+  if(action.startsWith('business_')&&!business){message.textContent='Comerciante não encontrado. Actualize a lista.';return;}
+  const current=business?merchantState(business,insights?.businesses):null;
+  if(action==='business_activate'&&(current==='removed'||current==='archived')){
+   message.textContent='Restaure primeiro este comerciante. Depois confirme a licença e active o negócio.';
+   return;
+  }
+  if(action==='business_restore'&&current!=='archived'&&current!=='removed'){
+   message.textContent='Este comerciante não está arquivado nem retirado. Actualize a lista.';
+   return;
+  }
   const label={
    business_suspend:'Suspender comerciante',business_activate:'Reactivar comerciante',
    business_archive:'Arquivar comerciante',business_restore:'Restaurar comerciante',
-   business_remove:'Retirar comerciante da lista',license_cancel:'Cancelar licença',
+   business_remove:'Retirar comerciante (reversível)',license_cancel:'Cancelar licença',
    member_deactivate:'Bloquear utilizador',member_reactivate:'Reactivar utilizador',
    plan_toggle:'Alterar disponibilidade do plano'
   }[action]||'Confirmar operação';
@@ -267,7 +279,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   if(['business_remove','business_archive','business_restore'].includes(action)){
    const safety=action==='business_remove'?'RETIRAR':'CONFIRMAR';
    const typed=await showPromptModal({
-    title:label,message:'Para '+label.toLowerCase()+' de '+resourceName+', escreva '+safety+'. O histórico financeiro não será apagado.',
+    title:label,message:'Para '+label.toLowerCase()+' de '+resourceName+', escreva '+safety+'. Vendas, caixa, stock e dívidas serão preservados; restaurar não reactiva automaticamente o negócio.',
     placeholder:'Escreva '+safety,minLength:safety.length,maxLength:16,danger:dangerous,
     confirmText:'Continuar'
    });
@@ -298,9 +310,11 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   }
   toggleBusy(true);message.textContent='';
   try{
-   await client[request](action,payload);
+   const outcome=await client[request](action,payload);
+   if(!outcome||typeof outcome!=='object')throw Error('admin_operation_unconfirmed');
    [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
-   render();message.textContent='Estado actualizado e registado.';
+   render();message.textContent=merchantOutcome(action,outcome);
+   void showSuccessModal({title:label+' — concluído',message:message.textContent,confirmText:'OK'});
   }catch(e){await failure(e);}finally{toggleBusy(false);}
  };
  content.addEventListener('submit',recoverAccount);
@@ -309,6 +323,12 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  content.addEventListener('click',event=>{
   const navigate=event.target.closest('[data-admin-navigate]');
   if(navigate){search.value='';load(navigate.dataset.adminNavigate);return;}
+  const selector=event.target.closest('[data-admin-business-filter]');
+  if(selector&&!busy){
+   const selected=selector.dataset.adminBusinessFilter;
+   if(merchantStates.includes(selected)){businessFilter=selected;render();}
+   return;
+  }
   const operation=event.target.closest('[data-admin-operation]');
   if(operation){void quickOperation(operation);return;}
   const exporter=event.target.closest('[data-admin-export="audit"]');
