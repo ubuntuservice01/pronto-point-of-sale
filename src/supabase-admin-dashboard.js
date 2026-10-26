@@ -69,8 +69,10 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  };
  const render=()=>{
   if(!data)return;
-  searchWrap.hidden=tab!=='businesses';
-  const query=tab==='businesses'?search.value:'';
+  searchWrap.hidden=tab!=='businesses'&&tab!=='members';
+  search.placeholder=tab==='members'?'Pesquisar nome, email ou loja':'Pesquisar comerciante ou contacto';
+  search.setAttribute('aria-label',tab==='members'?'Pesquisar utilizadores':'Pesquisar comerciantes');
+  const query=tab==='businesses'||tab==='members'?search.value:'';
   content.innerHTML=renderUbuntuAdminTab(tab,data,{query,insights:insights||{},trials,businessFilter})+renderProvisioningForms(tab,data);
   tabs.forEach(button=>{
    const selected=button.dataset.adminTab===tab;
@@ -344,6 +346,6 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  refreshButton.addEventListener('click',()=>load(tab));
  root.querySelector('#pronto-admin-logout').addEventListener('click',logout);
  content.addEventListener('submit',submit);
- search.addEventListener('input',()=>{if(tab==='businesses'&&data&&!busy)render();});
+ search.addEventListener('input',()=>{if((tab==='businesses'||tab==='members')&&data&&!busy)render();});
  await load();
 }
