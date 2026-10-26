@@ -196,3 +196,34 @@
  .shop-layout .owner-settings-body>.shop-box{padding:14px}
  .shop-layout .owner-settings-actions button{flex:1 1 auto}
 }
+
+
+/* Compact Premium: header and shop context. Keep form IDs and event bindings unchanged. */
+.shop-layout .shop-profile-menu{position:relative;margin-left:2px}
+.shop-layout .shop-profile-menu summary{list-style:none;cursor:pointer;border:1px solid #d9e9df;background:#edf7f1;color:#087f68;border-radius:13px;min-width:48px;height:47px;display:flex;gap:7px;align-items:center;justify-content:center}
+.shop-layout .shop-profile-menu summary::-webkit-details-marker{display:none}
+.shop-layout .shop-profile-menu summary span:first-child{font-size:19px;border-radius:50%;background:#bde8d5;width:27px;height:27px;text-align:center;line-height:27px}
+.shop-layout .shop-profile-popover{position:absolute;top:calc(100% + 9px);right:0;z-index:50;min-width:240px;max-width:min(320px,90vw);padding:12px;background:white;border:1px solid #d6e6dc;border-radius:15px;box-shadow:0 12px 32px #123d2933;display:grid;gap:8px}
+.shop-layout .shop-profile-popover strong{font-size:12px;overflow-wrap:anywhere;color:#24483a}
+.shop-layout .shop-profile-popover button{border:0;border-radius:9px;padding:9px 10px;min-height:40px;text-align:left;background:#f0f8f4;color:#087f68;font-size:13px}
+.shop-layout .shop-toolbar [data-shop-refresh]{font-size:27px;line-height:1;background:#e8f7f0;color:#087f68;min-width:48px;width:48px;padding:0;border:1px solid #cde7d7;border-radius:12px}
+@media(max-width:680px){
+ .shop-layout .shop-header{height:66px!important;padding:9px 12px!important;display:flex!important;flex-wrap:nowrap!important;gap:7px;background:#fff;border-radius:0 0 17px 17px}
+ .shop-layout .shop-brand{min-width:0;gap:7px}
+ .shop-layout .shop-brand img{width:37px;height:37px;flex:none}
+ .shop-layout .shop-brand span{min-width:0}
+ .shop-layout .shop-brand strong{font-size:17px;white-space:nowrap}
+ .shop-layout .shop-brand small{display:none}
+ .shop-layout .shop-header-actions{flex:none;gap:7px}
+ .shop-layout .shop-cashier-toggle{display:none!important}
+ .shop-layout .shop-account{display:none!important}
+ .shop-layout .shop-notification-trigger{min-width:42px;width:42px;height:43px}
+ .shop-layout .shop-profile-menu summary{min-width:42px;width:42px;height:43px;gap:2px}
+ .shop-layout .shop-profile-menu summary span:first-child{width:23px;height:23px;line-height:23px;font-size:15px}
+ .shop-layout .shop-toolbar{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 45px;gap:7px!important;padding:12px 13px 9px!important;align-items:center!important}
+ .shop-layout .shop-toolbar label{min-width:0!important;margin:0!important;font-size:10px!important;font-weight:750;color:#4a6d5c}
+ .shop-layout .shop-toolbar select{width:100%!important;max-width:100%!important;min-width:0!important;min-height:43px!important;font-size:13px!important;font-weight:800!important;padding:8px 25px 8px 9px!important;border-radius:12px!important;background-color:white}
+ .shop-layout .shop-toolbar [data-shop-refresh]{width:45px;min-width:45px;min-height:43px;align-self:end}
+ .shop-layout .shop-cash-indicator{grid-column:1/-1;justify-self:start;margin-top:2px!important;margin-bottom:0!important;padding:8px 13px!important;border-radius:99px!important}
+ .shop-layout .shop-main{padding-top:12px!important}
+}

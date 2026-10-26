@@ -342,10 +342,10 @@ export function renderShopScreen({account,grants,grant,branches,branchId,data,ca
  (nav.some(([key])=>key==='sell')?'<button type="button" class="shop-cashier-toggle" data-shop-cashier-toggle aria-pressed="'+(cashierMode&&view==='sell')+'" aria-label="'+(cashierMode&&view==='sell'?'Desactivar Modo Caixa':'Activar Modo Caixa')+'"><span aria-hidden="true">▦</span><span>'+(cashierMode&&view==='sell'?'Modo normal':'Modo Caixa')+'</span></button>':'')+
  '<div class="shop-notification-area">'+
  '<button type="button" class="shop-notification-trigger" data-shop-notifications aria-controls="shop-notification-panel" aria-expanded="'+notificationsOpen+'" aria-label="Notificações: '+notificationCount+' alerta(s)" title="Notificações">'+icon('alerts')+badge()+'</button>'+
- notificationPopover+'</div><button type="button" data-shop-logout class="shop-logout">Sair</button></div></header>'+
+ notificationPopover+'</div><details class="shop-profile-menu"><summary aria-label="Perfil do utilizador" title="Perfil do utilizador"><span aria-hidden="true">●</span><span aria-hidden="true">⌄</span></summary><div class="shop-profile-popover"><strong>'+esc(account.email)+'</strong><small>'+esc(grant.role)+'</small><button type="button" data-shop-logout>Terminar sessão</button></div></details></div></header>'+
  '<div class="shop-toolbar"><label>Empresa<select id="shop-business-select">'+grants.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===grant.id?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
  '<label>Filial<select id="shop-branch-select">'+branches.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===branchId?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
- '<button type="button" data-shop-refresh>Actualizar dados</button><span class="shop-cash-indicator">'+(session?'Caixa aberto':cashState?.policy.openingRequired===false?'Abertura opcional':'Caixa fechado')+'</span></div>'+
+ '<button type="button" data-shop-refresh aria-label="Sincronizar dados" title="Sincronizar dados">⟳</button><span class="shop-cash-indicator">'+(session?'Caixa aberto':cashState?.policy.openingRequired===false?'Abertura opcional':'Caixa fechado')+'</span></div>'+
 
  '<main class="shop-main'+(view==='sell'&&holdEnabled&&!cashierMode?' shop-main-hold-active':'')+'"><div id="shop-message" role="status" aria-live="polite">'+esc(feedback||'')+'</div>'+
  (view==='sell'?'':'<h2>'+esc(branch?.name||'Loja')+'</h2>')+body+
