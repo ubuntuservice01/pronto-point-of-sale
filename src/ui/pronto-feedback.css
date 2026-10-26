@@ -1,0 +1,17 @@
+/* Independent, accessible operation-state toast: survives app re-renders. */
+.pronto-feedback{position:fixed;z-index:1090;right:max(16px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));width:min(420px,calc(100vw - 32px));box-sizing:border-box;display:flex;align-items:flex-start;gap:12px;padding:14px 14px 14px 15px;background:#fff;color:#1c493a;border:1px solid #cce5d6;border-left:4px solid #11976f;border-radius:15px;box-shadow:0 16px 45px rgba(12,50,39,.18);font:inherit;font-size:14px;line-height:1.5;animation:pronto-feedback-enter .18s ease-out}
+.pronto-feedback-icon{flex:none;display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:#e3f5eb;color:#087f68;font-size:16px;font-weight:800}
+.pronto-feedback-text{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:600}
+.pronto-feedback-dismiss{flex:none;display:grid;place-items:center;cursor:pointer;border:0;border-radius:8px;background:transparent;color:#68847a;font:inherit;font-size:22px;line-height:1;min-width:32px;min-height:32px}
+.pronto-feedback-dismiss:hover{background:#f0f5f2}
+.pronto-feedback-error{border-left-color:#d34646;color:#812a32}
+.pronto-feedback-error .pronto-feedback-icon{background:#fdecec;color:#bc303d}
+.pronto-feedback-loading{border-left-color:#298b9a}
+.pronto-feedback-loading .pronto-feedback-icon{background:#e2f2f4;color:#147887;animation:pronto-feedback-rotate 1s linear infinite}
+.pronto-feedback-info{border-left-color:#5585b7}
+.pronto-feedback-info .pronto-feedback-icon{background:#e8f1fa;color:#35688f}
+@keyframes pronto-feedback-enter{from{opacity:0;transform:translateY(-9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pronto-feedback-rotate{to{transform:rotate(360deg)}}
+@media(max-width:680px){.pronto-feedback{top:max(10px,env(safe-area-inset-top));left:12px;right:12px;width:auto;padding:12px 12px;border-radius:13px;font-size:13px}}
+@media(prefers-reduced-motion:reduce){.pronto-feedback,.pronto-feedback-loading .pronto-feedback-icon{animation:none}}
+@media print{.pronto-feedback{display:none!important}}

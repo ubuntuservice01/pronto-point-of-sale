@@ -1,5 +1,6 @@
 import {normalizeCashControl,ownOpenSession,cashSessionsCSV} from './supabase-cash-ui.js';
 import {showConfirmModal,showSuccessModal,showInfoModal} from './ui/pronto-modal.js';
+import {showProntoFeedback,clearProntoFeedback,prontoFeedbackKind} from './ui/pronto-feedback.js';
 import {startProntoLoading} from './ui/pronto-loading.js';
 import {customerMessage} from './customer-copy.js';
 import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/pronto-sale-success.js';
@@ -108,6 +109,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   closeScanner?.();clearPinKPIs(account.userId);
+  clearProntoFeedback();
   aborter.abort();root.innerHTML='';
   try{await client.signOut();}finally{onLogout();}
  };
@@ -118,6 +120,15 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el){el.textContent=safe;el.classList.toggle('shop-error',warning);}
   const inline=root.querySelector('#shop-checkout-feedback');
   if(inline){inline.textContent=warning?safe:'';inline.hidden=!warning;}
+  // Global, screen-reader accessible feedback survives rerender() and empty cards.
+  // Keep the existing inline notices as a secondary source of information.
+  // Legacy customerMessage deliberately hides temporary statuses from inline text.
+  // Show a safe, non-blocking progress indicator while the request is underway.
+  const progress=!warning&&prontoFeedbackKind(text,false)==='loading'?String(text||'').trim():'';
+  if(progress)showProntoFeedback(progress,{kind:'loading'});
+  else if(safe)showProntoFeedback(safe,{kind:prontoFeedbackKind(safe,warning)});
+  else if(busy)showProntoFeedback('A processar operação…',{kind:'loading'});
+  else clearProntoFeedback();
  };
  const session=()=>cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const offlineCount=()=>offlineCashKeys(localStorage,scope()).length;
@@ -513,7 +524,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   if(el.hasAttribute('data-shop-menu-toggle')){menuOpen=!menuOpen;render();return;}
   if(el.hasAttribute('data-shop-sidebar-collapse')){sidebarCollapsed=!sidebarCollapsed;render();return;}
-  if(el.hasAttribute('data-shop-logout'))return void leave();
+  if(el.hasAttribute('data-shop-logout')){
+   if(busy)return showMessage('Conclua a operação em curso antes de sair.',true);
+   if(await confirmShop('Pretende terminar a sessão do Pronto POS?'))await leave();
+   return;
+  }
   if(el.hasAttribute('data-cash-export')){
    if(!['owner','manager'].includes(grant.role)||!cashState)return;
    const blob=new Blob([cashSessionsCSV(cashState)],{type:'text/csv;charset=utf-8'});
@@ -1377,18 +1392,35 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     else if(['purchase_receive','purchase_payment','expense_add'].includes(action))
      pendingFinance={action,payload};
    }catch(error){return showMessage('Reveja o formulário ou a operação pendente: '+error.message,true);}
-   busy=true;showMessage('');
+   busy=true;
+   const submitButton=form.querySelector('button[type="submit"],input[type="submit"]');
+   if(submitButton){submitButton.disabled=true;submitButton.setAttribute('aria-busy','true');}
+   showMessage(action==='supplier_save'?'A guardar fornecedor…':
+    action==='purchase_receive'?'A registar compra e receber stock…':
+    action==='purchase_payment'?'A confirmar pagamento ao fornecedor…':
+    action==='expense_add'?'A guardar despesa…':'A guardar lembrete de despesa…');
    try{
     const result=await client.financeAction(action,{business_id:grant.id,branch_id:branchId,...payload});
     if(pendingFinance?.action===action)pendingFinance=null;
     await refresh();render();
-    showMessage(action==='purchase_receive'?'Compra registada e stock recebido: '+String(result.purchase_id||'').slice(0,8):
-     action==='purchase_payment'?'Pagamento ao fornecedor lançado.':
-     action==='expense_add'?'Despesa registada no livro e no caixa quando aplicável.':
-     action==='expense_schedule_save'?'Lembrete de despesa recorrente guardado.':'Fornecedor actualizado.');
+    const summary=action==='supplier_save'?(payload.supplier_id?'Fornecedor actualizado com sucesso.':'Fornecedor criado com sucesso.'):
+     action==='purchase_receive'?'Compra registada e stock recebido: '+String(result.purchase_id||'').slice(0,8):
+     action==='purchase_payment'?'Pagamento ao fornecedor registado com sucesso.':
+     action==='expense_add'?'Despesa registada com sucesso no livro e no caixa, quando aplicável.':
+     'Lembrete de despesa recorrente guardado com sucesso.';
+    const titles={supplier_save:payload.supplier_id?'Fornecedor actualizado!':'Fornecedor criado!',
+     purchase_receive:'Compra e stock confirmados!',purchase_payment:'Pagamento registado!',
+     expense_add:'Despesa registada!',expense_schedule_save:'Lembrete guardado!'};
+    showMessage(summary);
+    // A single OK acknowledgement after the server confirms and the UI refreshes.
+    // Never show success on a failed or uncertain server response.
+    void showSuccessModal({title:titles[action],message:summary,confirmText:'OK'});
    }catch(error){
     showMessage('A operação pode estar pendente ou foi rejeitada. Confira os registos antes de repetir. '+String(error.message||''),true);
-   }finally{busy=false;}
+   }finally{
+    busy=false;
+    if(submitButton?.isConnected){submitButton.disabled=false;submitButton.removeAttribute('aria-busy');}
+   }
    return;
   }
   if(['customer_save','credit_policy','debt_payment'].includes(action)){
