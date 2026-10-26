@@ -95,11 +95,14 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      registration_network:'Não foi possível contactar o serviço de registo. Verifique a ligação e tente novamente.',
      verify_email_first:'Confirme o endereço de e-mail e volte a entrar para activar a loja.',
      account_already_registered:'Este utilizador já está associado a um negócio. Entre normalmente.',
-     trial_unavailable:'O teste gratuito está temporariamente indisponível. Contacte o suporte.'
+     trial_unavailable:'O teste gratuito está temporariamente indisponível. Contacte o suporte.',
+     terms_required:'Aceite os termos de utilização para activar a loja.',
+     invalid_registration:'Verifique o nome, o nome do negócio, o telemóvel e o WhatsApp (mínimo 7 dígitos).',
+     login_required:'A sessão terminou. Entre com o seu e-mail para concluir o registo da loja.'
     };
     const fallback=stage==='negócio'?'A conta foi criada, mas a loja ainda não foi activada. Entre com o seu e-mail e conclua o registo.':
      stage==='acesso'?'A loja foi criada, mas o painel não abriu. Entre com o seu e-mail para continuar.':
-     'O registo não foi concluído. Verifique os dados e tente novamente.';
+     'O registo não foi concluído. Nenhuma loja foi criada. Verifique os dados e tente novamente.';
     error.textContent=(errors[e.message]||fallback)+' [Etapa: '+stage+']';
     button.disabled=false;
    }
