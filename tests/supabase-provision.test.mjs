@@ -35,7 +35,7 @@ const example=normalizeAdminOverview({businesses:[{
  name:'Dona <Sofia>',email:'sofia@example.org'}]
 }],plans:[{id:P,name:'Mensal',price_cents:100000,duration_days:30,active:true}]});
 test('Six Ubuntu administrative tabs include a specific user-management screen',()=>{
- assert.deepEqual(ADMIN_TABS,['overview','businesses','members','licenses','plans','finance','audit','security']);
+ assert.deepEqual(ADMIN_TABS,['overview','businesses','members','licenses','plans','trials','finance','audit','security']);
  for(const key of ['businesses','members','licenses','plans']){
   assert.ok(renderProvisioningForms(key,example).includes('<form'),key);
  }

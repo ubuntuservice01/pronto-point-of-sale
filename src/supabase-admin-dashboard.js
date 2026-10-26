@@ -54,7 +54,7 @@ const errorMessages={
 export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
  if(!account?.ubuntuAdmin)throw Error('admin_required');
  root.innerHTML=renderUbuntuAdminShell(account);
- let data=null,insights=null,tab='overview',busy=false;
+ let data=null,insights=null,trials=[],tab='overview',busy=false;
  const message=root.querySelector('#pronto-admin-message');
  const content=root.querySelector('#pronto-admin-content');
  const refreshButton=root.querySelector('#pronto-admin-refresh');
@@ -70,7 +70,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   if(!data)return;
   searchWrap.hidden=tab!=='businesses';
   const query=tab==='businesses'?search.value:'';
-  content.innerHTML=renderUbuntuAdminTab(tab,data,{query,insights:insights||{}})+renderProvisioningForms(tab,data);
+  content.innerHTML=renderUbuntuAdminTab(tab,data,{query,insights:insights||{},trials})+renderProvisioningForms(tab,data);
   tabs.forEach(button=>{
    const selected=button.dataset.adminTab===tab;
    button.setAttribute('aria-current',selected?'page':'false');
@@ -97,7 +97,7 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
   let succeeded=false;
   toggleBusy(true);message.textContent='';
   try{
-   [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);tab=nextTab;
+   [data,insights,trials]=await Promise.all([client.adminOverview(),client.adminInsights(),client.trialOverview()]);tab=nextTab;
    message.textContent='';render();succeeded=true;
   }catch(error){
    if(await failure(error))return;

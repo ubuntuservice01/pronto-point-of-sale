@@ -13,7 +13,7 @@ const empty=(title,help)=>'<div class="pronto-admin-empty"><strong>'+esc(title)+
 const sub='Registos, associações e licenças são protegidos por permissões e histórico de alterações.';
 const tabs=[
  ['overview','Visão geral','layout-dashboard'],['businesses','Comerciantes','store'],['members','Utilizadores','users'],
- ['licenses','Licenças','shield-check'],['plans','Planos','package'],['finance','Financeiro','wallet'],['audit','Auditoria','clipboard-list'],['security','Segurança','lock-keyhole']
+ ['licenses','Licenças','shield-check'],['plans','Planos','package'],['trials','Testes gratuitos','gift'],['finance','Financeiro','wallet'],['audit','Auditoria','clipboard-list'],['security','Segurança','lock-keyhole']
 ];
 
 export function renderUbuntuAdminShell(account){
@@ -33,7 +33,30 @@ export function renderUbuntuAdminShell(account){
 
 const title=(name,description)=>'<div class="pronto-admin-page-title"><h2>'+esc(name)+'</h2><p>'+esc(description)+'</p></div>';
 const stats=(value,label,info='')=>'<article class="pronto-admin-stat"><small>'+esc(label)+'</small><strong>'+value+'</strong>'+(info?'<span>'+esc(info)+'</span>':'')+'</article>';
-export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights={}}={}){
+export function renderUbuntuAdminTab(key,data,{query='',now=new Date(),insights={},trials=[]}={}){
+ if(key==='trials'){
+  const safe=Array.isArray(trials)?trials:[];
+  const num=s=>safe.filter(x=>x.status===s).length;
+  const fmt=s=>s?date(s):'—';
+  const total=safe.length;
+  const rows=safe.map(item=>{
+   const whatsapp=String(item.whatsapp||'').replace(/[^\d]/g,'');
+   const link=item.marketing_consent===true&&whatsapp.length>=7?
+    '<a href="https://wa.me/'+whatsapp+'" target="_blank" rel="noopener noreferrer">WhatsApp</a>':'Sem autorização comercial';
+   return '<tr><td><strong>'+esc(item.name)+'</strong><small>'+esc(item.owner_name)+' · '+esc(item.email)+'</small></td>'+
+    '<td>'+esc(item.phone)+'<small>'+esc(item.industry)+'</small></td>'+
+    '<td>'+esc(item.plan_name)+'<small>'+fmt(item.started_at)+' → '+fmt(item.license_expires_at)+'</small></td>'+
+    '<td>'+esc(item.status==='trial'?'Em teste':item.status==='converted'?'Convertido':'Expirado')+'</td>'+
+    '<td>'+link+'</td></tr>';
+  }).join('');
+  return title('Testes gratuitos','Acompanhe os 10 dias de experiência, expirações e oportunidades de conversão.')+
+   '<div class="admin360-kpis">'+stats(total,'Inscritos')+stats(num('trial'),'Em teste')+
+   stats(num('expired'),'Expirados')+stats(num('converted'),'Convertidos')+'</div>'+
+   '<section class="pronto-admin-panel"><h3>Comerciantes registados</h3>'+
+   (rows?'<div class="pronto-admin-table-wrap"><table class="pronto-admin-table"><thead><tr><th>Negócio / Proprietário</th><th>Contacto</th><th>Plano e validade</th><th>Estado</th><th>Acção</th></tr></thead><tbody>'+rows+'</tbody></table></div>':
+    empty('Nenhum teste registado','Quando um comerciante concluir o registo autónomo, aparecerá nesta lista.'))+'</section>';
+ }
+
  if(!ADMIN_TABS.includes(key))throw Error('admin_tab');
  if(key==='overview')return title('Painel de controlo','Gestão integral da plataforma e dos seus comerciantes.')+renderAdmin360Overview(data,insights);
  if(key==='businesses')return title('Comerciantes','Administrar lojas, filiais e respectivos estados.')+
