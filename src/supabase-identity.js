@@ -102,11 +102,15 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   let data;
   try { data=await response.json(); } catch { throw Error('supabase_unavailable'); }
   if(!response.ok) {
-   if(response.status===401){if(authenticated)clearSession();throw Error('supabase_unauthorized');}
+   // Keep the server's short exception code (e.g. 'account_already_registered')
+   // as a non-breaking detail; callers that do not inspect it behave as before.
+   const fail=code=>{const e=Error(code);const m=data?.message;
+    if(typeof m==='string'&&/^[a-z_]{3,60}$/.test(m))e.detail=m;return e;};
+   if(response.status===401){if(authenticated)clearSession();throw fail('supabase_unauthorized');}
    // A forbidden business action does not mean the person's login has expired.
-   if(response.status===403)throw Error('supabase_forbidden');
-   if(response.status===429)throw Error('supabase_rate_limit');
-   throw Error('supabase_request_failed');
+   if(response.status===403)throw fail('supabase_forbidden');
+   if(response.status===429)throw fail('supabase_rate_limit');
+   throw fail('supabase_request_failed');
   }
   return data;
  }
@@ -174,7 +178,14 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   return {needsEmailConfirmation:!value.access_token};
  }
  async function registerSelfServiceBusiness(data){
-  return call('/rest/v1/rpc/pronto_self_service_register',{method:'POST',payload:{p_data:data}});
+  try{return await call('/rest/v1/rpc/pronto_self_service_register',{method:'POST',payload:{p_data:data}});}
+  catch(error){
+   // Surface the exact onboarding refusal raised by register_self_service_business.
+   const known=['verify_email_first','account_already_registered','trial_unavailable',
+    'terms_required','invalid_registration','login_required'];
+   if(known.includes(error.detail))throw Error(error.detail);
+   throw error;
+  }
  }
  async function myTrialStatus(businessId){
   if(!uuid(businessId))throw Error('invalid_business');
