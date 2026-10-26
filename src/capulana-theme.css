@@ -1,0 +1,30 @@
+/* Capulana-inspired watermark: light textile behind every workspace, not behind text.
+   The SVG is embedded to keep the PWA offline-safe (no image requests). */
+:root{--pronto-capulana:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20300%22%3E%3Cg%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%3E%3Cg%20stroke%3D%22%236cae9b%22%20stroke-width%3D%222%22%20opacity%3D%22.20%22%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2292%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2276%22%2F%3E%3Ccircle%20cx%3D%22300%22%20cy%3D%22300%22%20r%3D%2292%22%2F%3E%3Ccircle%20cx%3D%22300%22%20cy%3D%22300%22%20r%3D%2276%22%2F%3E%3Ccircle%20cx%3D%22150%22%20cy%3D%22150%22%20r%3D%2253%22%2F%3E%3Ccircle%20cx%3D%22150%22%20cy%3D%22150%22%20r%3D%2239%22%2F%3E%3Cpath%20d%3D%22M150%2093%20Q180%20135%20150%20150%20Q120%20135%20150%2093ZM207%20150%20Q165%20180%20150%20150%20Q165%20120%20207%20150ZM150%20207%20Q120%20165%20150%20150%20Q180%20165%20150%20207ZM93%20150%20Q135%20120%20150%20150%20Q135%20180%2093%20150Z%22%2F%3E%3Cpath%20d%3D%22M10%20218Q42%20168%2084%20188M216%20112Q253%20146%20289%2090%22%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%22%23e4c895%22%20opacity%3D%22.22%22%3E%3Ccircle%20cx%3D%22150%22%20cy%3D%22150%22%20r%3D%227%22%2F%3E%3Ccircle%20cx%3D%2246%22%20cy%3D%2250%22%20r%3D%224%22%2F%3E%3Ccircle%20cx%3D%22254%22%20cy%3D%22250%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22M38%20221l10%20-23%2010%2023-10%2023zM237%2055l9%20-20%209%2020-9%2020z%22%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%238eb8aa%22%20stroke-width%3D%222%22%20opacity%3D%22.22%22%20stroke-dasharray%3D%222%209%22%3E%3Cpath%20d%3D%22M0%20102Q100%2070%20150%2049T300%20102M0%20198Q100%20230%20150%20251T300%20198%22%2F%3E%3Ccircle%20cx%3D%22150%22%20cy%3D%22150%22%20r%3D%2268%22%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%22%239ccfc1%22%20opacity%3D%22.17%22%3E%3Cpath%20d%3D%22M68%20145Q37%20122%2049%20102Q75%20107%2068%20145ZM232%20155Q263%20178%20251%20198Q225%20193%20232%20155ZM109%2035Q110%2060%2096%2079Q82%2056%20109%2035ZM191%20265Q190%20240%20204%20221Q218%20244%20191%20265Z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E");}
+body{background-color:#f7faf8;background-image:var(--pronto-capulana);background-repeat:repeat;background-size:300px 300px;}
+/* Merchant POS: all tabs inherit the same motif behind opaque white cards. */
+.shop-layout{background-color:#f6faf8!important;background-image:var(--pronto-capulana)!important;background-repeat:repeat!important;background-size:300px 300px!important;}
+.shop-layout .shop-workspace{background:transparent;}
+.shop-layout .shop-main{background:transparent;}
+.shop-layout .shop-box,.shop-layout #shop-checkout-panel .shop-box,
+.shop-layout .shop-header,.shop-layout .shop-sidebar,.shop-layout .shop-mobile-bottom,
+.shop-layout .shop-product,.shop-layout .shop-cart-row,
+.shop-layout .shop-notification-popover{background-color:#fff;}
+/* Back-office and public login share the motif, but white panels remain opaque. */
+.pronto-admin-shell,.workspace,.login-shell.pronto-auth-test{
+ background-image:var(--pronto-capulana)!important;
+ background-repeat:repeat!important;
+ background-size:300px 300px!important;
+ background-color:#f6faf8!important;
+}
+.pronto-auth-test .pronto-login-layout,.pronto-admin-shell .panel{background-color:#fff;}
+/* Keep the PIN cinematic background, while adding only a quiet cultural accent. */
+.pronto-pin-backdrop.pin-city-theme .pronto-pin-panel{
+ background-image:linear-gradient(140deg,rgba(10,58,60,.91),rgba(2,47,42,.94)),var(--pronto-capulana);
+ background-size:cover,300px 300px;
+}
+/* When printing invoices/reports, never print decorative textile patterns. */
+@media print{
+ body,.shop-layout,.pronto-admin-shell,.workspace,.login-shell.pronto-auth-test,
+ .pronto-pin-backdrop.pin-city-theme .pronto-pin-panel{background-image:none!important;}
+}
