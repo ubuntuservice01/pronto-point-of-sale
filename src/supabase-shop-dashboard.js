@@ -1,5 +1,5 @@
 import {normalizeCashControl,ownOpenSession,cashSessionsCSV} from './supabase-cash-ui.js';
-import {showConfirmModal} from './ui/pronto-modal.js';
+import {showConfirmModal,showSuccessModal,showInfoModal} from './ui/pronto-modal.js';
 import {startProntoLoading} from './ui/pronto-loading.js';
 import {customerMessage} from './customer-copy.js';
 import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/pronto-sale-success.js';
@@ -429,6 +429,17 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     action==='debt_payment'?'Pagamento da dívida confirmado.':
     'Operação realizada.';
    showMessage(summary);
+   // Report success only after the server confirms the mutation and refresh completes.
+   // Do not repeat the existing, richer post-sale receipt dialog.
+   void showSuccessModal({
+    title:action==='product_create'?'Produto cadastrado!':
+     action==='stock_receive'?'Recebimento confirmado!':
+     action==='cash_open'?'Caixa aberto!':
+     action==='cash_close'?'Caixa fechado!':
+     action==='customer_save'?'Cliente guardado!':
+     action==='debt_payment'?'Pagamento confirmado!':'Operação concluída!',
+    message:summary,confirmText:'OK'
+   });
   }catch(e){
    if(['supabase_unauthorized','shop_access_required'].includes(e.message)){await leave();return;}
    if(action==='product_create'&&String(e.message||'').startsWith('product_photo_pending:')){
@@ -438,8 +449,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     return;
    }
    const duplicate=action==='product_create'&&['23505','duplicate_key','unique_violation'].some(key=>String(e.message||'').includes(key));
-   showMessage(duplicate?'Já existe um produto com este código nesta filial. Introduza outro código.':
-    'Operação rejeitada ou sem confirmação. Verifique os dados antes de tentar novamente. ('+String(e.message||'erro')+')',true);
+   const detail=duplicate?'Já existe um produto com este código nesta filial. Introduza outro código.':
+    'Operação rejeitada ou sem confirmação. Verifique os dados antes de tentar novamente. ('+String(e.message||'erro')+')';
+   showMessage(detail,true);
+   void showInfoModal({title:'Operação não concluída',message:detail,confirmText:'OK'});
   }finally{busy=false;}
  };
  // Close the notification popover without re-rendering a merchant's input form.
