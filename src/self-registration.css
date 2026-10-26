@@ -7,3 +7,6 @@
 #pronto-register-error{font-size:13px;color:#b62b3f;margin:4px 0;line-height:1.5}
 .pronto-login-left:has(.pronto-register-form){justify-content:flex-start;overflow-y:auto;max-height:100dvh}
 @media(max-width:680px){.pronto-login-left:has(.pronto-register-form){max-height:none;overflow:visible}}
+
+.pronto-learn-more{display:block;margin:14px 0 3px;text-align:center;font-size:12px;font-weight:760;color:#087f68;text-decoration:none}
+.pronto-learn-more:hover,.pronto-learn-more:focus-visible{text-decoration:underline}

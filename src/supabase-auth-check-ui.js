@@ -130,6 +130,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<button class="primary full pronto-login-submit" type="submit">Entrar <span aria-hidden="true">→</span></button>'+
   '</form>'+
   '<button type="button" class="secondary full" id="pronto-show-register">Registar o meu negócio · 10 dias grátis</button>'+
+  '<a class="pronto-learn-more" href="/apresentacao/index.html">Conheça as vantagens e os planos do Pronto POS →</a>'+
   '<div class="pronto-login-security"><span aria-hidden="true">✓</span> Acesso seguro para proprietários e colaboradores.</div>');
   root.querySelector('#pronto-show-register').onclick=()=>registration(false);
   root.querySelector('#recovery-request').onclick=()=>beginRecovery(null);
@@ -226,6 +227,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   try{
    const account=await client.restoreSession();
    if(account)await ready(account,true);
+   else if(new URLSearchParams(location.search).get('register')==='1')registration(false);
    else form();
    await loading.finish(); // Display 100% only after login/PIN or screen is ready.
   }catch(error){
