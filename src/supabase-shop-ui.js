@@ -331,9 +331,8 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
  return '<div class="shop-shell shop-layout'+(menuOpen?' shop-menu-open':'')+(sidebarCollapsed?' shop-menu-collapsed':'')+(cashierMode&&view==='sell'?' shop-fast-cashier':'')+'">'+
  '<button type="button" class="shop-sidebar-shade" data-shop-menu-toggle aria-label="Fechar menu" tabindex="-1"></button>'+
  '<aside id="shop-sidebar" class="shop-sidebar" aria-label="Menu principal">'+
- '<div class="shop-sidebar-brand"><img src="/icon.svg" alt=""><span class="shop-nav-label"><strong>Pronto POS</strong><small>Menos complicações, mais negócio</small></span>'+
+ '<div class="shop-sidebar-top"><div class="shop-sidebar-title shop-nav-label">MENU DO NEGÓCIO</div>'+
  '<button type="button" class="shop-sidebar-collapse" data-shop-sidebar-collapse aria-label="Recolher ou expandir menu" title="Recolher ou expandir menu">⇤</button></div>'+
- '<div class="shop-sidebar-title shop-nav-label">MENU DO NEGÓCIO</div>'+
  '<nav class="shop-nav" aria-label="Áreas da loja">'+menu+'</nav>'+
  '<div class="shop-sidebar-footer shop-nav-label">Ubuntu Service, Lda.</div></aside>'+
  '<div class="shop-workspace"><header class="shop-header"><div class="shop-brand"><button type="button" class="shop-mobile-menu-trigger" data-shop-menu-toggle aria-label="Abrir menu" aria-expanded="'+menuOpen+'">☰</button><img src="/icon.svg" alt=""><span><strong>Pronto POS</strong><small>O seu negócio na palma da mão</small></span></div>'+
