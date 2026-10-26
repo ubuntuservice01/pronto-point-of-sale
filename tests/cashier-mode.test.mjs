@@ -37,7 +37,7 @@ test('Held cart can be accessed; empty cart cannot be held; rendering never muta
  const html=base({cashierMode:true,heldSales:[]});
  assert.match(html,/data-shop-hold disabled/);
  const controller=readFileSync(new URL('../src/supabase-shop-dashboard.js',import.meta.url),'utf8');
- assert.match(controller,/cashierMode=!cashierMode/);
+ assert.match(controller,/cashierMode=!\(cashierMode&&view==='sell'\)/);
  assert.match(controller,/if\(!authorizedView\('sell'\)\)return/);
  assert.match(controller,/view='sell';render\(\);return/);
  assert.match(readFileSync(new URL('../index.html',import.meta.url),'utf8'),/shop-cashier-mode\.css/);
@@ -45,4 +45,38 @@ test('Held cart can be accessed; empty cart cannot be held; rendering never muta
  const css=readFileSync(new URL('../src/shop-cashier-mode.css',import.meta.url),'utf8');
  assert.match(css,/@media\(max-width:750px\)/);
  assert.match(css,/min-height:65px/);
+});
+
+test('Modo Caixa shows scanner, hold, resume and checkout exactly once without duplicated lower controls',()=>{
+ const product={id:'44444444-4444-4444-8444-444444444444',name:'Arroz',code:'EAN-123',
+  category:'Mercearia',unit:'un',stock:10,minStock:1,priceCents:5000};
+ const cart=[{productId:product.id,quantity:2}];
+ const held=[{id:'55555555-5555-4555-8555-555555555555',
+  cart,createdAt:'2026-10-25T16:00:00Z'}];
+ const fast=base({cashierMode:true,cart,data:{products:[product],sales:[],sessions:[]},
+  heldSales:held});
+ const count=selector=>(fast.match(new RegExp(selector,'g'))||[]).length;
+ assert.equal(count('data-shop-scan(?=[ >])'),1,'only the big scan shortcut remains');
+ assert.equal(count('data-shop-hold(?=[ >])'),1,'hold is not repeated in the floating bar');
+ assert.equal(count('data-shop-held-tab(?=[ >])'),1,'resume goes to the held sales screen');
+ assert.equal(count('data-shop-go-checkout(?=[ >])'),1,'the quick action scrolls to checkout');
+ assert.doesNotMatch(fast,/shop-scan-launch|shop-hold-mobile-bar|shop-held-in-sales|shop-main-hold-active/);
+ assert.match(fast,/id="shop-search"/);
+ assert.match(fast,/id="shop-checkout-panel"/);
+ assert.match(fast,/name="cash_received"/);
+ const normal=base({cashierMode:false,cart,data:{products:[product],sales:[],sessions:[]},heldSales:held});
+ assert.match(normal,/shop-scan-launch/);
+ assert.match(normal,/shop-hold-mobile-bar/);
+ assert.match(normal,/shop-held-in-sales/);
+ assert.match(normal,/shop-main-hold-active/);
+ assert.doesNotMatch(normal,/shop-cashier-quick-actions/);
+});
+test('Modo Caixa retains single safe actions with empty cart, pending sale or no held sales',()=>{
+ const empty=base({cashierMode:true,cart:[],heldSales:[]});
+ assert.match(empty,/data-shop-hold disabled/);
+ assert.doesNotMatch(empty,/shop-hold-mobile-bar|shop-held-in-sales|shop-scan-launch/);
+ const pending=base({cashierMode:true,cart:[{productId:'none',quantity:1}],pending:{id:'pending'}});
+ assert.match(pending,/data-shop-hold disabled/);
+ assert.match(pending,/data-shop-retry/);
+ assert.match(pending,/data-shop-discard/);
 });
