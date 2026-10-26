@@ -1,6 +1,6 @@
 import {prontoSupabaseConfig} from './pronto-supabase-config.js';
 import {startProntoLoading} from './ui/pronto-loading.js';
-import {createProntoIdentity} from './supabase-identity.js';
+import {createProntoIdentity,normalizeMozambiquePhone} from './supabase-identity.js';
 import {mountUbuntuAdminDashboard} from './supabase-admin-dashboard.js';
 import {mountSupabaseMerchantPilot} from './supabase-shop-dashboard.js';
 import {mountProntoPinGate} from './supabase-pin-lock.js';
@@ -41,7 +41,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<label>O seu nome<input name="owner_name" required minlength="2" maxlength="120" autocomplete="name"></label>'+
    '<label>Nome do negócio<input name="business_name" required minlength="2" maxlength="120" placeholder="Mercearia da Ana"></label>'+
    '<label>Tipo de negócio<select name="industry" required><option value="Mercearia">Mercearia</option><option value="Farmácia">Farmácia</option><option value="Loja">Loja</option><option value="Restaurante">Restaurante</option><option value="Outro comércio">Outro comércio</option></select></label>'+
-   '<label>Telemóvel<input name="phone" required minlength="7" maxlength="30" inputmode="tel"></label>'+
+   '<label>Telemóvel (também serve para iniciar sessão)<input name="phone" required minlength="9" maxlength="30" inputmode="tel" autocomplete="tel" placeholder="84 123 4567"></label>'+
    '<label>WhatsApp<input name="whatsapp" required minlength="7" maxlength="30" inputmode="tel"></label>'+
    '<label>Localização<input name="address" maxlength="160" placeholder="Distrito, província"></label>'+
    '<label>Email<input name="email" required type="email" maxlength="254" autocomplete="email"></label>'+
@@ -66,6 +66,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
     phone:String(f.get('phone')||'').trim(),whatsapp:String(f.get('whatsapp')||'').trim(),industry:String(f.get('industry')||''),
     address:String(f.get('address')||'').trim(),accept_terms:f.get('accept_terms')==='on',
     marketing_consent:f.get('marketing_consent')==='on'};
+   if(!normalizeMozambiquePhone(profile.phone)){error.textContent='Introduza um número de telemóvel moçambicano válido (por exemplo, 84 123 4567).';return;}
    button.disabled=true;error.textContent='';
    let stage='identidade';
    try{
@@ -73,7 +74,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
     if(!resuming){
      const result=await client.selfServiceSignUp(email,password,profile.owner_name);
      if(result.needsEmailConfirmation){
-      error.textContent='Conta criada. Confirme o email recebido e entre com o seu email para concluir o registo da loja.';
+      error.textContent='A confirmação de e-mail ainda está activa nas definições do Supabase. Desactive «Confirm Email» em Authentication → Providers → Email para permitir a entrada imediata.';
       button.disabled=false;return;
      }
     }
@@ -96,6 +97,9 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      verify_email_first:'Confirme o endereço de e-mail e volte a entrar para activar a loja.',
      account_already_registered:'Este utilizador já está associado a um negócio. Entre normalmente.',
      trial_unavailable:'O teste gratuito está temporariamente indisponível. Contacte o suporte.',
+     invalid_phone:'O número de telemóvel deve ser um número moçambicano válido.',
+     phone_already_registered:'Este número já está associado a uma conta. Entre com o número e a sua palavra-passe.',
+     phone_login_unavailable:'O acesso por telemóvel está temporariamente indisponível.',
      terms_required:'Aceite os termos de utilização para activar a loja.',
      invalid_registration:'Verifique o nome, o nome do negócio, o telemóvel e o WhatsApp (mínimo 7 dígitos).',
      login_required:'A sessão terminou. Entre com o seu e-mail para concluir o registo da loja.'
@@ -114,9 +118,9 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<h2>Bem-vindo</h2>'+
    '<p>Entre para gerir a sua loja com facilidade.</p></div>'+
   '<form id="pronto-auth-check-form">'+
-   '<label for="pronto-login-email">Email de acesso</label>'+
+   '<label for="pronto-login-email">E-mail ou número de telemóvel</label>'+
    '<div class="pronto-field"><span class="pronto-field-icon" aria-hidden="true">✉</span>'+
-    '<input id="pronto-login-email" type="email" name="email" placeholder="email@exemplo.co.mz" autocomplete="username" maxlength="254" required></div>'+
+    '<input id="pronto-login-email" type="text" name="email" placeholder="84 123 4567 ou email@exemplo.co.mz" autocomplete="username" maxlength="254" required></div>'+
    '<label for="pronto-login-password">Palavra-passe</label>'+
    '<div class="pronto-field"><span class="pronto-field-icon" aria-hidden="true">♧</span>'+
     '<input id="pronto-login-password" type="password" name="password" placeholder="Introduza a sua palavra-passe" autocomplete="current-password" maxlength="200" required>'+
@@ -147,7 +151,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    const data=new FormData(node);
    const loading=startProntoLoading();
    try{
-    const account=await client.signIn(String(data.get('email')||''),String(data.get('password')||''));
+    const account=await client.signIn(String(data.get('email')||'').trim(),String(data.get('password')||''));
     node.reset();await ready(account,false);
     await loading.finish();
    }catch(e){
@@ -155,7 +159,8 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
     const messages={
      supabase_rate_limit:'Demasiadas tentativas. Aguarde e volte a tentar.',
      supabase_unauthorized:'Não foi possível autenticar. Confira a conta e as permissões.',
-     supabase_invalid_credentials:'Introduza o email e a palavra-passe.',
+     supabase_invalid_credentials:'Número/e-mail ou palavra-passe incorrectos.',
+     phone_login_unavailable:'O acesso por telemóvel não está disponível neste momento. Tente pelo e-mail.',
      supabase_unavailable:'Não foi possível ligar ao sistema. Verifique a internet.'
     };
     error.textContent=messages[e.message]||'Não foi possível verificar a conta. Confira as credenciais e a ligação.';

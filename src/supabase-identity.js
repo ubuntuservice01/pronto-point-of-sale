@@ -1,6 +1,12 @@
 // Pronto POS identity: the refresh credential persists locally, but access and roles
 // are revalidated against Supabase after every browser restart or page reload.
 // No passwords or PINs are stored by the application.
+export function normalizeMozambiquePhone(value){
+ const digits=String(value||'').replace(/[^0-9]/g,'');
+ if(/^0?8[2-7][0-9]{7}$/.test(digits))return '+258'+digits.slice(-9);
+ if(/^2588[2-7][0-9]{7}$/.test(digits))return '+'+digits;
+ return null;
+}
 const validEmail = value => typeof value === 'string' && value.length > 3 && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 import {normalizeAdminOverview} from './supabase-admin-model.js';
 import {normalizeMerchantSnapshot} from './supabase-shop-core.js';
@@ -194,10 +200,27 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
  async function trialOverview(){
   return call('/rest/v1/rpc/pronto_trial_overview',{method:'POST',payload:{}});
  }
- async function signIn(email,password){
-  if(!validEmail(email)||typeof password!=='string'||password.length<1||password.length>200)throw Error('supabase_invalid_credentials');
+ async function signIn(identifier,password){
+  const phone=normalizeMozambiquePhone(identifier);
+  if((!phone&&!validEmail(identifier))||typeof password!=='string'||password.length<1||password.length>200)
+   throw Error('supabase_invalid_credentials');
   clearSession();
-  const result=await call('/auth/v1/token?grant_type=password',{authenticated:false,method:'POST',payload:{email,password}});
+  let result;
+  if(phone){
+   // This endpoint resolves a private alias only inside the Edge Function.
+   // It verifies the password with GoTrue and never returns the mapped email.
+   let response;
+   try{response=await fetchImpl(apiURL.origin+'/functions/v1/pronto-phone-login',{
+    method:'POST',headers:{'apikey':publishableKey,'Content-Type':'application/json',Accept:'application/json'},
+    body:JSON.stringify({phone,password}),cache:'no-store',credentials:'omit',redirect:'error'
+   });}catch{throw Error('supabase_unavailable');}
+   if(response.status===429)throw Error('supabase_rate_limit');
+   if(response.status===401)throw Error('supabase_invalid_credentials');
+   if(!response.ok)throw Error('phone_login_unavailable');
+   try{result=await response.json();}catch{throw Error('supabase_unavailable');}
+  }else{
+   result=await call('/auth/v1/token?grant_type=password',{authenticated:false,method:'POST',payload:{email:identifier,password}});
+  }
   if(typeof result.access_token!=='string'||!uuid(result.user?.id))throw Error('supabase_response');
   session={access_token:result.access_token,refresh_token:result.refresh_token||null,
    user:{id:result.user.id},expiresAt:expiresAt(result)};
