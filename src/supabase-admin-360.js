@@ -90,9 +90,14 @@ export function renderAdmin360Businesses(data,insights={}){
    '<p class="admin360-muted">Retirar é reversível: mantém vendas, dívidas e caixa. Após restaurar, a loja continua suspensa até ser activada separadamente.</p></details>';
  }).join('')+'</div>');
 }
-export function renderAdmin360Members(data){
- const members=(data.businesses||[]).flatMap(b=>b.members.map(m=>({...m,businessId:b.id,businessName:b.name})));
- return section('Gestão de contas e perfis',members.length?members.map(m=>
+export function renderAdmin360Members(data,query=''){
+ const all=(data.businesses||[]).flatMap(b=>(b.members||[]).map(m=>({...m,businessId:b.id,businessName:b.name})));
+ const term=String(query||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt');
+ const members=term?all.filter(m=>[m.name,m.email,m.businessName,m.role,m.userId].some(value=>
+  String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt').includes(term))):all;
+ return section('Gestão de contas e perfis',
+  '<p class="admin360-muted" role="status">A mostrar '+members.length+' de '+all.length+' conta(s) associada(s). Bloquear um utilizador é reversível e preserva o histórico.</p>'+
+  (members.length?members.map(m=>
   '<details class="admin360-shop"><summary><strong>'+escape(m.name||m.email)+'</strong> '+
    badge(m.active?'Activo':'Bloqueado',m.active?'good':'danger')+
    ' <small>'+escape(m.businessName)+' · '+escape(roleName[m.role]||m.role)+'</small></summary>'+
@@ -109,7 +114,7 @@ export function renderAdmin360Members(data){
     '<label class="admin360-recovery-check"><input type="checkbox" name="identity_verified" required> Confirmei a identidade e a autorização para recuperar esta conta.</label>'+
     '<button type="submit" class="admin360-btn admin360-warn">Repor palavra-passe</button>'+
    '</form></details>'+
-   '</details>').join(''):'<p>Nenhuma conta associada.</p>');
+   '</details>').join(''):(all.length?'<p>Nenhum utilizador corresponde à pesquisa.</p>':'<p>Nenhuma conta associada.</p>')));
 }
 export function renderAdmin360Licenses(data){
  return section('Suspensões e renovações', (data.businesses||[]).map(b=>
