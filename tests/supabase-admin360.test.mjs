@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {normalizeAdminOverview} from '../src/supabase-admin-model.js';
 import {renderUbuntuAdminTab} from '../src/supabase-admin-ui.js';
-import {admin360Metrics,renderAdmin360Overview,renderAdmin360Businesses,renderAdmin360Finance,renderAdmin360Audit,admin360AuditCSV} from '../src/supabase-admin-360.js';
+import {admin360Metrics,renderAdmin360Overview,renderAdmin360Businesses,renderAdmin360Members,renderAdmin360Finance,renderAdmin360Audit,admin360AuditCSV} from '../src/supabase-admin-360.js';
 import {createProntoIdentity} from '../src/supabase-identity.js';
 import {prontoSupabaseConfig} from '../src/pronto-supabase-config.js';
 const U='11111111-1111-4111-8111-111111111111';
@@ -29,6 +29,18 @@ test('Merchant management and user controls are operational HTML forms',()=>{
  assert.match(renderUbuntuAdminTab('members',fixtures,{insights}),/member_deactivate/);
  assert.match(renderUbuntuAdminTab('plans',fixtures,{insights}),/plan_toggle/);
  assert.match(renderUbuntuAdminTab('licenses',fixtures,{insights}),/license_cancel/);
+});
+test('Super Admin can search collaborators by name, email or shop without losing CRUD actions',()=>{
+ const ana=renderAdmin360Members(fixtures,'ANA@EXAMPLE.ORG');
+ assert.match(ana,/member_deactivate/);
+ assert.match(ana,/member_edit/);
+ assert.match(ana,/A mostrar 1 de 1/);
+ assert.match(renderUbuntuAdminTab('members',fixtures,{query:'mercearia niassa'}),/Actualizar colaborador/);
+ const empty=renderUbuntuAdminTab('members',fixtures,{query:'sem correspondencia'});
+ assert.match(empty,/Nenhum utilizador corresponde/);
+ assert.doesNotMatch(empty,/data-admin-control="member_edit"/);
+ const html=renderAdmin360Members(fixtures,'<img src=x onerror=alert(1)>');
+ assert.doesNotMatch(html,/<img/);
 });
 test('Financial results reflect only recorded payments, no guessed M-Pesa success',()=>{
  const html=renderAdmin360Finance(fixtures,insights);
