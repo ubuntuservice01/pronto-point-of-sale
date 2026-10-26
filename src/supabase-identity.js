@@ -139,11 +139,12 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
  async function selfServiceSignUp(email,password,ownerName){
   if(!validEmail(email)||typeof password!=='string'||password.length<12||password.length>128||typeof ownerName!=='string'||ownerName.trim().length<2)throw Error('registration_invalid');
   // The public publishable key is permitted; service-role credentials never reach the browser.
-  const response=await fetchImpl(apiURL.origin+'/auth/v1/signup',{
+  let response;
+  try{response=await fetchImpl(apiURL.origin+'/auth/v1/signup',{
    method:'POST',headers:{apikey:publishableKey,Accept:'application/json','Content-Type':'application/json'},
    cache:'no-store',credentials:'omit',redirect:'error',
    body:JSON.stringify({email,password,data:{display_name:ownerName.trim()}})
-  });
+  });}catch{throw Error('registration_network');}
   if(response.status===429)throw Error('supabase_rate_limit');
   if(!response.ok){
    let reason='';
@@ -161,7 +162,15 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    throw Error(known[reason]||'registration_failed');
   }
   const value=await response.json();
-  if(!uuid((value?.user||value)?.id))throw Error('registration_response_invalid');
+  const user=value?.user||value;
+  if(!uuid(user?.id))throw Error('registration_response_invalid');
+  // A successful signup may already include a session. Reuse it rather than
+  // authenticating again before the business and permissions exist.
+  if(value.access_token){
+   if(typeof value.refresh_token!=='string'||!value.refresh_token)throw Error('registration_response_invalid');
+   session={access_token:value.access_token,refresh_token:value.refresh_token,user:{id:user.id},expiresAt:expiresAt(value)};
+   remember();
+  }
   return {needsEmailConfirmation:!value.access_token};
  }
  async function registerSelfServiceBusiness(data){

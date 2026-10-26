@@ -34,6 +34,8 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
  };
  let staffWaitTimer=null;
  const registration=(alreadySignedIn=false)=>{
+  // Only an explicit true means this account is already authenticated.
+  const resuming=alreadySignedIn===true;
   shell('<div class="pronto-login-heading"><span class="pronto-login-eyebrow">10 dias grátis</span><h2>Registar o meu negócio</h2><p>Crie a sua loja gratuitamente. Sem cartão bancário.</p></div>'+
    '<form id="pronto-self-register" class="pronto-register-form">'+
    '<label>O seu nome<input name="owner_name" required minlength="2" maxlength="120" autocomplete="name"></label>'+
@@ -51,7 +53,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<button class="primary full" type="submit">Criar negócio e iniciar teste</button></form>'+
    '<button class="secondary full" type="button" id="pronto-register-back">Já tenho conta · Entrar</button>');
   root.querySelector('#pronto-register-back').onclick=form;
-  if(alreadySignedIn){
+  if(resuming){
    for(const field of ['email','password','confirm']){const input=root.querySelector('[name="'+field+'"]');if(input){input.required=false;input.closest('label').hidden=true;}}
    root.querySelector('.pronto-login-heading p').textContent='Complete os dados para activar o seu teste de 10 dias.';
   }
@@ -59,24 +61,25 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   node.addEventListener('submit',async event=>{
    event.preventDefault();const f=new FormData(node),button=node.querySelector('[type="submit"]'),error=root.querySelector('#pronto-register-error');
    const email=String(f.get('email')||'').trim().toLowerCase(),password=String(f.get('password')||'');
-   if(!alreadySignedIn&&password!==f.get('confirm')){error.textContent='As palavras-passe não coincidem.';return;}
+   if(!resuming&&password!==f.get('confirm')){error.textContent='As palavras-passe não coincidem.';return;}
    const profile={owner_name:String(f.get('owner_name')||'').trim(),business_name:String(f.get('business_name')||'').trim(),
     phone:String(f.get('phone')||'').trim(),whatsapp:String(f.get('whatsapp')||'').trim(),industry:String(f.get('industry')||''),
     address:String(f.get('address')||'').trim(),accept_terms:f.get('accept_terms')==='on',
     marketing_consent:f.get('marketing_consent')==='on'};
    button.disabled=true;error.textContent='';
+   let stage='identidade';
    try{
     // Auth-first flow supports verified-email projects. Retry on login is safe.
-    if(!alreadySignedIn){
+    if(!resuming){
      const result=await client.selfServiceSignUp(email,password,profile.owner_name);
      if(result.needsEmailConfirmation){
       error.textContent='Conta criada. Confirme o email recebido e entre com o seu email para concluir o registo da loja.';
       button.disabled=false;return;
      }
-     await client.signIn(email,password);
     }
+    stage='negócio';
     await client.registerSelfServiceBusiness(profile);
-    node.reset();
+    stage='acesso';
     await ready(await client.account(),false);
    }catch(e){
     const errors={
@@ -89,12 +92,15 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      registration_failed:'O servidor recusou a criação da conta. Verifique se o registo de utilizadores está activo.',
      registration_response_invalid:'O servidor não confirmou a criação da conta. Use Entrar para verificar antes de repetir.',
      supabase_unavailable:'Não foi possível comunicar com o servidor. Verifique a ligação.',
+     registration_network:'Não foi possível contactar o serviço de registo. Verifique a ligação e tente novamente.',
      verify_email_first:'Confirme o endereço de e-mail e volte a entrar para activar a loja.',
      account_already_registered:'Este utilizador já está associado a um negócio. Entre normalmente.',
      trial_unavailable:'O teste gratuito está temporariamente indisponível. Contacte o suporte.'
     };
-    error.textContent=errors[e.message]||
-     'Não foi possível concluir a activação. Entre com o e-mail para verificar se a conta foi criada.';
+    const fallback=stage==='negócio'?'A conta foi criada, mas a loja ainda não foi activada. Entre com o seu e-mail e conclua o registo.':
+     stage==='acesso'?'A loja foi criada, mas o painel não abriu. Entre com o seu e-mail para continuar.':
+     'O registo não foi concluído. Verifique os dados e tente novamente.';
+    error.textContent=(errors[e.message]||fallback)+' [Etapa: '+stage+']';
     button.disabled=false;
    }
   });
@@ -118,7 +124,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   '</form>'+
   '<button type="button" class="secondary full" id="pronto-show-register">Registar o meu negócio · 10 dias grátis</button>'+
   '<div class="pronto-login-security"><span aria-hidden="true">✓</span> Acesso seguro para proprietários e colaboradores.</div>');
-  root.querySelector('#pronto-show-register').onclick=registration;
+  root.querySelector('#pronto-show-register').onclick=()=>registration(false);
   root.querySelector('#recovery-request').onclick=()=>beginRecovery(null);
   root.querySelector('#pronto-toggle-password').onclick=()=>{
    const field=root.querySelector('#pronto-login-password');
