@@ -132,3 +132,30 @@
  }
  .shop-layout .shop-mobile-cashier-entry:active{transform:scale(.99)}
 }
+
+/* Read-only live list under the camera, updated when each product is found. */
+.shop-scan-dialog .shop-scan-items{margin:12px 0 0;border:1px solid #cbe5d7;
+ border-radius:15px;background:#fff;overflow:hidden}
+.shop-scan-dialog .shop-scan-items-heading{display:flex;justify-content:space-between;
+ align-items:center;gap:12px;padding:12px 13px;background:#edf8f1;color:#0b664f}
+.shop-scan-dialog .shop-scan-items-heading strong{font-size:14px}
+.shop-scan-dialog .shop-scan-items-heading span{font-size:17px;font-weight:900;white-space:nowrap}
+.shop-scan-dialog .shop-scan-items-list{max-height:235px;overflow-y:auto;overscroll-behavior:contain}
+.shop-scan-dialog .shop-scan-items-empty{margin:0;padding:14px;color:#61776c;font-size:13px;line-height:1.5}
+.shop-scan-dialog .shop-scan-item{display:flex;align-items:center;gap:10px;
+ padding:11px 12px;border-top:1px solid #e9f1ec;min-height:56px}
+.shop-scan-dialog .shop-scan-item:first-child{border-top:0}
+.shop-scan-dialog .shop-scan-item-latest{background:#e6f7ed;border-left:4px solid #0c9c68}
+.shop-scan-dialog .shop-scan-item-icon{flex:none;display:grid;place-items:center;
+ width:32px;height:32px;border-radius:9px;background:#def3e7;color:#087f68;font-weight:900}
+.shop-scan-dialog .shop-scan-item-info{display:grid;gap:4px;flex:1;min-width:0}
+.shop-scan-dialog .shop-scan-item-info strong{font-size:14px;line-height:1.25;color:#194d3b;overflow-wrap:anywhere}
+.shop-scan-dialog .shop-scan-item-info small{font-size:11px;color:#648074;line-height:1.4;overflow-wrap:anywhere}
+.shop-scan-dialog .shop-scan-item-price{font-size:13px;font-weight:900;color:#0b6b50;white-space:nowrap}
+.shop-scan-dialog .shop-scan-items-footnote{display:block;padding:9px 12px;font-size:11px;
+ background:#fafdfb;color:#71877b;line-height:1.4;border-top:1px solid #e9f1ec}
+@media(max-width:600px){
+ .shop-scan-dialog .shop-scan-items-list{max-height:180px}
+ .shop-scan-dialog .shop-scan-item{padding:10px}
+ .shop-scan-dialog .shop-scan-item-price{font-size:12px}
+}

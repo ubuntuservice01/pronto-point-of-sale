@@ -12,7 +12,7 @@ import {readMedicineFields,readPharmacyCategory,PHARMACY_OTHER} from './pharmacy
 import {rxItems} from './pharmacy-review-ui.js';
 import {pharmacyTraceCSV} from './pharmacy-trace-ui.js';
 import {validatePharmacyReceipt,maputoToday} from './pharmacy-batches.js';
-import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
+import {findScannedShopProduct,openShopCodeScanner,scannerCartSnapshot} from './shop-mobile-scanner.js';
 import {PAYMENT_METHODS,toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
 import {quantityFromValueCents,validateSaleQuantity,allowsFractionalSale} from './sale-by-value.js';
 import {checkoutCashPreview} from './supabase-checkout-change.js';
@@ -347,9 +347,10 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(!product)return 'Código não encontrado nesta loja.';
   const inCart=cart.find(row=>row.productId===product.id)?.quantity||0;
   if(inCart+1>product.stock)return 'Produto sem stock suficiente para esta venda.';
-  add(product.id);return cashierMode?{accepted:true,name:product.name,
+  add(product.id);return cashierMode?{accepted:true,name:product.name,productId:product.id,
    quantity:cart.find(row=>row.productId===product.id)?.quantity||0,
-   itemCount:cart.reduce((n,row)=>n+Number(row.quantity||0),0)}:true;
+   itemCount:cart.reduce((n,row)=>n+Number(row.quantity||0),0),
+   items:scannerCartSnapshot(cart,data.products)}:true;
  };
  const updateCashChangePreview=()=>{
   const form=root.querySelector('#shop-sale-form');
@@ -838,6 +839,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!authorizedView('sell')||view!=='sell'||accessBlocked||client.isScreenLocked?.())return;
    closeScanner?.();
    closeScanner=openShopCodeScanner({onCode:scanCode,continuous:cashierMode,
+    items:scannerCartSnapshot(cart,data?.products),
     onDone:()=>root.querySelector('#shop-checkout-panel')?.scrollIntoView({block:'start',behavior:'smooth'}),
     onClose:()=>{closeScanner=null;}});
    return;

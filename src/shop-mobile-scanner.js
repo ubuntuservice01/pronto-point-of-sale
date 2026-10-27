@@ -1,6 +1,7 @@
 // Camera code reader for the authenticated merchant point of sale.
 // No sale is recorded here: only an existing product may be added to the cart.
 import {landscapeConstraints,allowDetectedBarcode} from './camera-utils.js';
+import {esc,MONEY} from './supabase-shop-core.js';
 
 export const SHOP_SCAN_FORMATS=['qr_code','ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf'];
 let zxingLoadPromise=null;
@@ -62,6 +63,33 @@ export function findScannedShopProduct(products,rawCode){
 export function shopSupportedFormats(available){
  return Array.isArray(available)?SHOP_SCAN_FORMATS.filter(x=>available.includes(x)):SHOP_SCAN_FORMATS.slice();
 }
+// Snapshot only the products actually present in the merchant's cart.
+export function scannerCartSnapshot(cart=[],products=[]){
+ const byId=new Map((products||[]).map(p=>[p.id,p]));
+ return (cart||[]).map(row=>{
+  const p=byId.get(row.productId),quantity=Number(row.quantity),priceCents=Number(p?.priceCents);
+  return p&&Number.isFinite(quantity)&&quantity>0&&Number.isSafeInteger(priceCents)&&priceCents>=0?
+   {id:p.id,code:p.code,name:p.name,unit:p.unit||'un',quantity,priceCents}:null;
+ }).filter(Boolean);
+}
+export function shopScannerCartSummary(items=[]){
+ const list=Array.isArray(items)?items:[];
+ return {lines:list.length,quantity:list.reduce((sum,row)=>sum+Number(row.quantity||0),0),
+  totalCents:list.reduce((sum,row)=>sum+Math.round(Number(row.priceCents||0)*Number(row.quantity||0)),0)};
+}
+// Escape all merchant-supplied product labels before writing the visible receipt rows.
+export function shopScannerItemsHTML(items=[],latest=''){
+ if(!Array.isArray(items)||!items.length)
+  return '<p class="shop-scan-items-empty">Os produtos identificados vão aparecer aqui automaticamente.</p>';
+ return [...items].sort((a,b)=>Number(b.id===latest)-Number(a.id===latest)).map(item=>
+  '<div class="shop-scan-item'+(item.id===latest?' shop-scan-item-latest':'')+'">'+
+  '<span class="shop-scan-item-icon" aria-hidden="true">✓</span>'+
+  '<div class="shop-scan-item-info"><strong>'+esc(item.name)+'</strong>'+
+  '<small>'+esc(item.code)+' · '+esc(item.quantity)+' '+esc(item.unit||'un')+
+  ' × '+MONEY(Number(item.priceCents))+'</small></div>'+
+  '<strong class="shop-scan-item-price">'+MONEY(Math.round(Number(item.priceCents)*Number(item.quantity)))+
+  '</strong></div>').join('');
+}
 export function shopScannerHTML({continuous=false}={}){
  return '<div class="shop-scan-heading"><div><small>PRONTO POS · LEITOR RÁPIDO</small>'+
  '<h2 id="shop-scan-title">'+(continuous?'Ler produtos':'Ler código do produto')+'</h2></div>'+
@@ -73,13 +101,19 @@ export function shopScannerHTML({continuous=false}={}){
  '<p class="shop-scan-status" data-shop-scan-status role="status" aria-live="polite">A preparar a câmara…</p>'+
  (continuous?'<div class="shop-scan-cart-count" role="status" aria-live="polite" data-shop-scan-counter>'+
   '<strong>0 artigos lidos</strong><span>Leia os produtos um por um.</span></div>'+
+  '<section class="shop-scan-items" aria-label="Produtos adicionados" data-shop-scan-items>'+
+  '<div class="shop-scan-items-heading"><strong>Produtos identificados</strong>'+
+  '<span data-shop-scan-total>0,00 MT</span></div>'+
+  '<div class="shop-scan-items-list" data-shop-scan-items-list aria-live="polite">'+
+  shopScannerItemsHTML()+'</div>'+
+  '<small class="shop-scan-items-footnote">Subtotal dos artigos. Descontos aplicados ao cobrar.</small></section>'+
   '<button type="button" data-shop-scan-repeat class="shop-scan-repeat" hidden>↻ Ler novamente o mesmo código</button>':'')+
  '<form data-shop-scan-manual autocomplete="off"><label for="shop-scan-manual-code">Ou introduza o código manualmente</label>'+
  '<div class="shop-scan-manual-row"><input id="shop-scan-manual-code" name="code" type="text" autocomplete="off" maxlength="120" placeholder="Código do produto" required>'+
  '<button type="submit">Procurar</button></div></form>'+
  (continuous?'<button type="button" data-shop-scan-done class="shop-scan-done">Ver carrinho e cobrar →</button>':'');
 }
-export function openShopCodeScanner({onCode,onClose,onDone,continuous=false,doc=globalThis.document,
+export function openShopCodeScanner({onCode,onClose,onDone,continuous=false,items=[],doc=globalThis.document,
  navigatorRef=globalThis.navigator,Detector=globalThis.BarcodeDetector}={}){
  if(typeof onCode!=='function'||!doc?.body)throw Error('shop_scanner_invalid');
  const dialog=doc.createElement('dialog');
@@ -92,6 +126,17 @@ export function openShopCodeScanner({onCode,onClose,onDone,continuous=false,doc=
  const repeatButton=dialog.querySelector('[data-shop-scan-repeat]');
  const countLabel=dialog.querySelector('[data-shop-scan-counter]');
  const torchButton=dialog.querySelector('[data-shop-scan-torch]');
+ const itemsList=dialog.querySelector('[data-shop-scan-items-list]');
+ const itemsTotal=dialog.querySelector('[data-shop-scan-total]');
+ const showItems=(cartItems,latest='')=>{
+  if(!continuous||!Array.isArray(cartItems))return;
+  if(itemsList){
+   itemsList.innerHTML=shopScannerItemsHTML(cartItems,latest);
+   itemsList.scrollTop=0;
+  }
+  if(itemsTotal)itemsTotal.textContent=MONEY(shopScannerCartSummary(cartItems).totalCents);
+ };
+ showItems(items);
  let stream=null,frame=null,scannerControls=null,stopped=false,reading=false,last=null,lastFrame=0;
  let acceptedCount=0,lastAcceptedCode='',torchOn=false;
  const audio=createShopScannerFeedback();
@@ -142,6 +187,7 @@ export function openShopCodeScanner({onCode,onClose,onDone,continuous=false,doc=
    const quantity=Number(result?.quantity)||acceptedCount;
    announce(name+' adicionado ao carrinho (quantidade: '+quantity+').');
    status.dataset.state='success';
+   if(Array.isArray(result?.items))showItems(result.items,result.productId||'');
    if(countLabel){
     const strong=countLabel.querySelector?.('strong'),note=countLabel.querySelector?.('span');
     if(strong)strong.textContent=acceptedCount+' leitura(s) confirmada(s)';

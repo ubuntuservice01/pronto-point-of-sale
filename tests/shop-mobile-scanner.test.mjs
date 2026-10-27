@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SHOP_SCAN_FORMATS,findScannedShopProduct,shopSupportedFormats,shopScannerHTML,openShopCodeScanner} from '../src/shop-mobile-scanner.js';
+import {SHOP_SCAN_FORMATS,findScannedShopProduct,shopSupportedFormats,shopScannerHTML,openShopCodeScanner,scannerCartSnapshot,shopScannerItemsHTML,shopScannerCartSummary} from '../src/shop-mobile-scanner.js';
 const items=[{id:'a',code:'EAN-0042',active:true,stock:2},{id:'b',code:'QR-2026',active:false,stock:2}];
 test('Leitor identifica apenas o código exacto de artigos activos',()=>{
  assert.equal(findScannedShopProduct(items,' ean-0042 ')?.id,'a');
@@ -111,4 +111,75 @@ test('Fast scanning exposes camera viewfinder, torch option, manual entry and vi
   'data-shop-scan-repeat','data-shop-scan-counter','data-shop-scan-done','data-shop-scan-manual'])
   assert.ok(html.includes(attr)||attr==='data-shop-scan-target'&&html.includes('shop-scan-target'),attr);
  assert.match(html,/Ver carrinho e cobrar/);
+});
+
+test('Live scanner presents each product below camera and derives price from the real cart',()=>{
+ const products=[{id:'a',name:'Arroz',code:'100',unit:'kg',priceCents:7500},
+  {id:'b',name:'Sabão',code:'200',unit:'un',priceCents:2000}];
+ const items=scannerCartSnapshot([{productId:'a',quantity:2},{productId:'b',quantity:3}],products);
+ assert.deepEqual(shopScannerCartSummary(items),{lines:2,quantity:5,totalCents:21000});
+ const html=shopScannerItemsHTML(items,'b');
+ assert.ok(html.indexOf('Sabão')<html.indexOf('Arroz'),'most recent product is first');
+ assert.match(html,/2 kg × 75,00 MT/);
+ assert.match(html,/3 un × 20,00 MT/);
+ assert.match(html,/150,00 MT/);
+ assert.match(html,/60,00 MT/);
+ assert.match(shopScannerHTML({continuous:true}),/Produtos identificados/);
+ assert.match(shopScannerHTML({continuous:true}),/data-shop-scan-items-list/);
+ assert.doesNotMatch(shopScannerHTML(),/data-shop-scan-items-list/);
+});
+test('Scanner escapes merchant input and excludes missing cart products',()=>{
+ const items=scannerCartSnapshot([{productId:'x',quantity:2},{productId:'z',quantity:1}],
+  [{id:'x',name:'<img onerror=alert(1)>',code:'<123',unit:'un',priceCents:100}]);
+ assert.equal(items.length,1);
+ const html=shopScannerItemsHTML(items,'x');
+ assert.match(html,/&lt;img onerror=alert\(1\)&gt;/);
+ assert.match(html,/&lt;123/);
+ assert.doesNotMatch(html,/<img/);
+});
+test('Camera keeps running and displays newly scanned item and cumulative total',async()=>{
+ const prior=globalThis.ZXingBrowser;
+ let emit,closeCount=0;
+ const video={srcObject:null,hidden:false,play:async()=>{}};
+ const status={textContent:'',dataset:{}},list={innerHTML:'',scrollTop:2},total={textContent:''};
+ const controls=new Map([
+  ['[data-shop-scan-status]',status],['[data-shop-scan-video]',video],
+  ['[data-shop-scan-close]',{addEventListener(){}}],
+  ['[data-shop-scan-manual]',{addEventListener(){}}],
+  ['[data-shop-scan-done]',{addEventListener(){}}],
+  ['[data-shop-scan-repeat]',{hidden:true,addEventListener(){}}],
+  ['[data-shop-scan-counter]',{querySelector:()=>({textContent:''})}],
+  ['[data-shop-scan-items-list]',list],['[data-shop-scan-total]',total]
+ ]);
+ const dialog={open:false,setAttribute(){},addEventListener(){},
+  querySelector:selector=>controls.get(selector)||null,
+  showModal(){this.open=true;},close(){this.open=false;},remove(){closeCount++;}};
+ const doc={body:{append(){}},createElement:()=>dialog,addEventListener(){}};
+ const items=[];
+ try{
+  globalThis.ZXingBrowser={BrowserMultiFormatReader:class{
+   async decodeFromVideoElement(v,cb){emit=cb;return {stop(){}};}
+  }};
+  const finish=openShopCodeScanner({continuous:true,doc,Detector:undefined,
+   navigatorRef:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){}}]})}},
+   onCode:code=>{
+    const found=items.find(x=>x.code===code);
+    if(found)found.quantity++;
+    else items.push({id:code,name:code==='111'?'Arroz':'Sabão',code,unit:'un',quantity:1,priceCents:2500});
+    return {accepted:true,name:code,quantity:1,productId:code,
+     itemCount:items.reduce((n,p)=>n+p.quantity,0),items:[...items]};
+   }});
+  for(let i=0;i<30&&!emit;i++)await new Promise(r=>setTimeout(r,0));
+  assert.ok(emit);
+  emit({getText:()=> '111'});
+  assert.match(list.innerHTML,/Arroz/);
+  assert.equal(total.textContent,'25,00 MT');
+  emit({getText:()=> '222'});
+  assert.match(list.innerHTML,/Sabão/);
+  assert.match(list.innerHTML,/Arroz/);
+  assert.equal(total.textContent,'50,00 MT');
+  assert.equal(closeCount,0);
+  finish();
+  assert.equal(closeCount,1);
+ }finally{if(prior===undefined)delete globalThis.ZXingBrowser;else globalThis.ZXingBrowser=prior;}
 });
