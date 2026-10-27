@@ -179,6 +179,10 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
     over_email_send_rate_limit:'supabase_rate_limit',
     email_address_not_authorized:'registration_email_invalid'
    };
+   // Some browsers cannot read gateway diagnostic headers because they are
+   // not exposed by CORS. An unknown 422 is an identity conflict, not evidence
+   // that registration was disabled; direct the customer to existing-account login.
+   if(response.status===422&&!known[reason])throw Error('registration_conflict');
    throw Error(known[reason]||'registration_failed');
   }
   const value=await response.json();

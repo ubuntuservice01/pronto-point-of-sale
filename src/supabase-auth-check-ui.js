@@ -87,6 +87,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      supabase_rate_limit:'Muitas tentativas de registo. Aguarde alguns minutos.',
      registration_disabled:'O registo de novos utilizadores está desactivado no servidor. Contacte o suporte do Pronto POS.',
      registration_email_exists:'Este e-mail já está registado. Toque em «Já tenho conta · Entrar». Se não souber a palavra-passe, escolha «Esqueceu-se da palavra-passe?».',
+     registration_conflict:'Não foi possível registar novamente este e-mail. Se já tem conta, toque em «Já tenho conta · Entrar» e conclua o registo do negócio. Se não tem conta, verifique os dados.',
      registration_email_invalid:'Este endereço de e-mail não foi aceite. Verifique os dados.',
      registration_weak_password:'A palavra-passe foi recusada. Use pelo menos 12 caracteres e evite palavras-passe comuns.',
      registration_invalid:'Verifique o nome, e-mail e palavra-passe.',
@@ -108,6 +109,16 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      stage==='acesso'?'A loja foi criada, mas o painel não abriu. Entre com o seu e-mail para continuar.':
      'O registo não foi concluído. Nenhuma loja foi criada. Verifique os dados e tente novamente.';
     error.textContent=(errors[e.message]||fallback)+' [Etapa: '+stage+']';
+    if(stage==='identidade'&&['registration_email_exists','registration_conflict'].includes(e.message)){
+     const loginButton=root.querySelector('#pronto-register-back');
+     loginButton.textContent='Entrar na conta existente →';
+     loginButton.onclick=()=>{
+      form();
+      const emailInput=root.querySelector('#pronto-login-email');
+      if(emailInput)emailInput.value=email;
+      root.querySelector('#pronto-login-password')?.focus();
+     };
+    }
     button.disabled=false;
    }
   });

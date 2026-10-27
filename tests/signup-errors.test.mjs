@@ -38,3 +38,15 @@ test('Signup keeps distinct messages for genuinely disabled registrations and un
  assert.match(ui,/Já tenho conta · Entrar/);
  assert.doesNotMatch(ui,/Verifique se o registo de utilizadores está activo/);
 });
+
+test('Unknown 422 from Auth gives an actionable identity-conflict error when CORS hides diagnostic headers',async()=>{
+ const {createProntoIdentity}=await import('../src/supabase-identity.js');
+ const {prontoSupabaseConfig}=await import('../src/pronto-supabase-config.js');
+ const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:async()=>new Response(
+  JSON.stringify({message:'signup rejected'}),{status:422,headers:{'content-type':'application/json'}}
+ )});
+ await assert.rejects(client.selfServiceSignUp('some@example.com','a-reasonably-strong-password','Store Owner'),{message:'registration_conflict'});
+ const ui=readFileSync(new URL('../src/supabase-auth-check-ui.js',import.meta.url),'utf8');
+ assert.match(ui,/registration_conflict/);
+ assert.match(ui,/Entrar na conta existente/);
+});
