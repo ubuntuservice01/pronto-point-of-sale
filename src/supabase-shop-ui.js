@@ -299,11 +299,11 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
     '<p class="shop-help" data-shop-create-photo-status>Escolha uma fotografia JPEG, PNG ou WebP (até 3 MB). A imagem é obrigatória antes de guardar.</p></fieldset>'+
    field('min_stock','Stock mínimo','0','type="number" min="0" step="0.001"')+
    '<button type="submit" class="shop-submit">Cadastrar produto</button></form>','Código de barras obrigatório ou código interno gerado. A fotografia é obrigatória: o produto só fica à venda após o envio da imagem.')+
-   (grant.businessType==='pharmacy'?'':section('Importar produtos por CSV','Até 100 artigos por ficheiro. Colunas obrigatórias: nome;categoria;preco. O stock inicial é opcional. Reveja os dados antes de confirmar.',
-   '<form data-shop-form="csv_import" class="shop-form">'+
+   (grant.businessType==='pharmacy'?'':section('Importar produtos por CSV','<form data-shop-form="csv_import" class="shop-form">'+
    '<label>Ficheiro CSV (até 100 produtos)<input type="file" name="csv_file" accept=".csv,text/csv,text/plain" required></label>'+
    '<label><input type="checkbox" name="confirm_import" required> Confirmei os preços, códigos e quantidades do ficheiro</label>'+
-   '<button class="shop-submit" type="submit">Validar e importar produtos</button></form>'))+
+   '<button class="shop-submit" type="submit">Validar e importar produtos</button></form>',
+   'Até 100 artigos por ficheiro. Colunas obrigatórias: nome;categoria;preco. O stock inicial é opcional. Reveja os dados antes de confirmar.'))+
    section('Receber stock','<form data-shop-form="stock_receive" class="shop-form">'+
    '<label>Produto<select name="product_id" required><option value="">Seleccione o artigo</option>'+options(products)+'</select></label>'+
    field('quantity','Quantidade','','required type="number" min="0.001" step="0.001"')+
