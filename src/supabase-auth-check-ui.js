@@ -166,7 +166,9 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      stage==='confirmação'?(alreadyRegistered&&e.message==='activation_unconfirmed'?errors.account_already_registered:
       'Ainda não foi possível confirmar a loja e o teste de 10 dias. Nada foi duplicado. Toque em «Repetir activação do negócio» para verificar novamente.'):
       'O registo não foi concluído. Nenhuma loja foi criada. Verifique os dados e tente novamente.';
-    const known=stage==='confirmação'&&!['supabase_unauthorized','login_required'].includes(e.message)?null:errors[e.message];
+    const known=stage==='negócio'&&e.message==='supabase_unavailable'?
+     'Não foi possível contactar o servidor. A sua conta está criada e os dados do negócio continuam preenchidos. Verifique a Internet e toque em «Repetir activação do negócio».':
+     stage==='confirmação'&&!['supabase_unauthorized','login_required'].includes(e.message)?null:errors[e.message];
     error.textContent=(known||fallback)+' [Etapa: '+stage+']';
     if(identityReady){
      // The account exists from here on: never offer a new signup again.
