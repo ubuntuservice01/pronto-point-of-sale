@@ -86,11 +86,11 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
     const errors={
      supabase_rate_limit:'Muitas tentativas de registo. Aguarde alguns minutos.',
      registration_disabled:'O registo de novos utilizadores está desactivado no servidor. Contacte o suporte do Pronto POS.',
-     registration_email_exists:'Este e-mail já está registado. Utilize Entrar ou Recuperar palavra-passe.',
+     registration_email_exists:'Este e-mail já está registado. Toque em «Já tenho conta · Entrar». Se não souber a palavra-passe, escolha «Esqueceu-se da palavra-passe?».',
      registration_email_invalid:'Este endereço de e-mail não foi aceite. Verifique os dados.',
      registration_weak_password:'A palavra-passe foi recusada. Use pelo menos 12 caracteres e evite palavras-passe comuns.',
      registration_invalid:'Verifique o nome, e-mail e palavra-passe.',
-     registration_failed:'O servidor recusou a criação da conta. Verifique se o registo de utilizadores está activo.',
+     registration_failed:'Não foi possível criar a conta. Tente novamente ou contacte o suporte do Pronto POS.',
      registration_response_invalid:'O servidor não confirmou a criação da conta. Use Entrar para verificar antes de repetir.',
      supabase_unavailable:'Não foi possível comunicar com o servidor. Verifique a ligação.',
      registration_network:'Não foi possível contactar o serviço de registo. Verifique a ligação e tente novamente.',

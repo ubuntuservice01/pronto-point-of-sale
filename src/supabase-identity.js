@@ -158,8 +158,17 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   });}catch{throw Error('registration_network');}
   if(response.status===429)throw Error('supabase_rate_limit');
   if(!response.ok){
-   let reason='';
-   try{const payload=await response.json();reason=String(payload?.code||payload?.error_code||'').toLowerCase();}catch{}
+   // The Supabase gateway can report an Auth code in its response header
+   // even when the JSON body is incomplete or uses a different error format.
+   let reason=String(response.headers?.get?.('x-sb-error-code')||'').toLowerCase();
+   let description='';
+   try{
+    const payload=await response.json();
+    reason=reason||String(payload?.code||payload?.error_code||'').toLowerCase();
+    description=String(payload?.msg||payload?.message||payload?.error_description||payload?.error||'');
+   }catch{/* Some gateway errors return no usable JSON. */}
+   if(!reason&&response.status===422&&/user already registered|already been registered|already exists/i.test(description))
+    reason='user_already_exists';
    const known={
     signup_disabled:'registration_disabled',
     email_provider_disabled:'registration_disabled',
