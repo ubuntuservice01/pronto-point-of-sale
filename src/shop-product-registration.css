@@ -11,3 +11,14 @@
 .shop-create-photo img[data-shop-create-photo-preview]{display:block;width:100%;max-width:350px;aspect-ratio:4/3;object-fit:cover;border-radius:12px;margin:14px auto}
 .shop-create-photo img[hidden]{display:none}
 @media(max-width:680px){.shop-create-photo-choices{grid-template-columns:1fr}.shop-product-scan-button{width:100%}}
+
+/* Pharmacy fields are shown only in pharmacy registration/inventory. */
+.pharmacy-details{display:grid;gap:12px;min-width:0;border:1px solid #a7d9c2;
+ border-radius:15px;background:#f4faf7;padding:15px;margin:12px 0}
+.pharmacy-details legend{font-size:15px;font-weight:800;color:#08664b;padding:0 8px}
+.pharmacy-details .shop-help{margin:0;color:#526b60}
+.shop-form .pharmacy-details label{display:grid;gap:6px;min-width:0}
+.shop-form .pharmacy-details input:not([type="checkbox"]){width:100%;min-height:46px}
+.shop-form .pharmacy-rx{display:flex;flex-direction:row;gap:10px;align-items:center;
+ background:#e8f5ed;border:1px solid #b7ddc4;border-radius:10px;padding:12px}
+.shop-form .pharmacy-rx input{width:20px;height:20px;flex:none;accent-color:#078360}

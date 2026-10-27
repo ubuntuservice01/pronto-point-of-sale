@@ -13,7 +13,8 @@ export function prepareAdminProvisioning(form,FormDataImpl=FormData){
  const action=form.dataset.provisionAction;
  const value=k=>String(fd.get(k)||'').trim();
  if(action==='business_create')return {action,data:{
-  name:value('name'),phone:value('phone'),address:value('address'),branch_name:value('branch_name')
+  name:value('name'),phone:value('phone'),address:value('address'),branch_name:value('branch_name'),
+  ...(value('business_type')?{business_type:value('business_type')}:{})
  }};
  if(action==='plan_create'){
   const raw=value('price_mzn');

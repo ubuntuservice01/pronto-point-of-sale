@@ -449,7 +449,17 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    method:'POST',payload:{p_business:businessId,p_branch:branchId,p_start:from,p_end:to}
   }));
  }
- async function createProductWithPhoto(data,file){
+ async function medicineUpsert(data){
+  if(!data||!uuid(data.business_id)||!uuid(data.product_id))throw Error('medicine_scope');
+  return call('/rest/v1/rpc/pronto_medicine_upsert',{method:'POST',payload:{p_data:data}});
+ }
+ async function medicineDetails(businessId){
+  if(!uuid(businessId))throw Error('medicine_scope');
+  const result=await call('/rest/v1/pronto_medicine_details?select=product_id,active_ingredient,strength,dosage_form,presentation,manufacturer,requires_prescription&business_id=eq.'+businessId);
+  if(!Array.isArray(result))throw Error('supabase_response');
+  return result;
+ }
+ async function createProductWithPhoto(data,file,medicine=null){
   if(!data||typeof data!=='object'||!file||typeof file.size!=='number'||
    file.size<1||file.size>3145728||
    !['image/jpeg','image/png','image/webp'].includes(file.type))
@@ -458,6 +468,10 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    method:'POST',payload:{p_data:data}
   });
   if(!uuid(created?.product_id)||typeof created.code!=='string')throw Error('product_creation_unconfirmed');
+  if(medicine){
+   try{await medicineUpsert({business_id:data.business_id,product_id:created.product_id,...medicine});}
+   catch{throw Error('medicine_details_pending:'+created.code);}
+  }
   let attached;
   try{
    attached=await uploadProductPhoto({businessId:data.business_id,branchId:data.branch_id,
@@ -505,12 +519,17 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    throw Error('photo_url_invalid');
   return u.href;
  }
- async function inventorySnapshot(businessId,branchId){
+ async function inventorySnapshot(businessId,branchId,businessType='general'){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   const result=await call('/rest/v1/rpc/pronto_inventory_snapshot',{
    method:'POST',payload:{p_business:businessId,p_branch:branchId}
   });
-  return normalizeInventorySnapshot({...result,products:await withFractionSettings(result.products,businessId,branchId)});
+  const [products,details]=await Promise.all([
+   withFractionSettings(result.products,businessId,branchId),
+   businessType==='pharmacy'?medicineDetails(businessId):Promise.resolve([])
+  ]);
+  const byProduct=new Map(details.map(item=>[item.product_id,item]));
+  return normalizeInventorySnapshot({...result,products:products.map(p=>({...p,medicine:byProduct.get(p.id)||null}))});
  }
  async function productFractionSettings(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
@@ -792,5 +811,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,medicineUpsert,medicineDetails,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

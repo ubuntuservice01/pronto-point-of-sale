@@ -1,5 +1,6 @@
 // Presentation-only business presets; never change financial or stock rules.
 const presets=[
+ {match:/farm[aá]cia|pharmacy|medicamento/i,icon:'💊',pt:'Farmácia',en:'Pharmacy',hintPt:'Medicamentos, saúde e controlo de lotes.',hintEn:'Medicines, health and batch tracking.',categories:['Medicamentos','Higiene','Primeiros socorros','Outros'],units:['un','caixa','pacote']},
  {match:/mercearia|minimercado|supermercado|alimenta|grocery/i,icon:'🛒',pt:'Mercearia',en:'Grocery',hintPt:'Artigos alimentares e de consumo diário.',hintEn:'Food and everyday goods.',categories:['Alimentação','Bebidas','Higiene','Limpeza'],units:['un','kg','l','pacote']},
  {match:/ferrag|constru|hardware/i,icon:'🧰',pt:'Ferragem',en:'Hardware',hintPt:'Materiais de construção, ferramentas e acessórios.',hintEn:'Construction materials, tools and hardware.',categories:['Construção','Ferramentas','Electricidade','Canalização'],units:['un','m','saco','rolo']},
  {match:/roup|boutique|moda|calçado|calcado|vestu|fashion/i,icon:'👕',pt:'Roupa e calçado',en:'Fashion',hintPt:'Roupas, calçado e acessórios.',hintEn:'Clothing, footwear and accessories.',categories:['Roupa','Calçado','Acessórios','Moda'],units:['un','par','conjunto']},

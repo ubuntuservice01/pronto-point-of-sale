@@ -11,6 +11,7 @@ import {renderTransfersView} from './supabase-transfers-ui.js';
 import {renderStaffManagement} from './supabase-team-management-ui.js';
 import {renderSuspendedCash} from './supabase-staff-cash-ui.js';
 import {renderAuditView} from './supabase-audit-ui.js';
+import {renderMedicineFields,businessTypeLabel} from './pharmacy.js';
 
 const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco',mixed:'Repartido'};
 const paymentMethodButtons=(method,extraClass='',label='Forma de pagamento')=>
@@ -83,7 +84,7 @@ export const OWNER_SETTINGS_TABS=Object.freeze([
  ['seguranca','Segurança e conta','PIN e sessões'],
  ['dados','Dados e backup','Histórico e exportações']
 ]);
-export function renderOwnerSettings({selected='personalizacao',branding=null,logoUrl='',businessName='',email='',branchName='',cashState=null,staffManagement=null,branches=[],alertDays=30,pendingOffline=0}={}){
+export function renderOwnerSettings({selected='personalizacao',branding=null,logoUrl='',businessName='',businessType='general',email='',branchName='',cashState=null,staffManagement=null,branches=[],alertDays=30,pendingOffline=0}={}){
  const active=OWNER_SETTINGS_TABS.some(([key])=>key===selected)?selected:'personalizacao';
  const choose=(key,label)=>'<button type="button" data-shop-settings-section="'+key+'">'+esc(label)+' →</button>';
  const linked=(title,description,target,label)=>'<div class="owner-settings-link"><div><strong>'+esc(title)+'</strong><p>'+esc(description)+'</p></div>'+
@@ -95,6 +96,7 @@ export function renderOwnerSettings({selected='personalizacao',branding=null,log
  let body='';
  if(active==='personalizacao'){
   body='<div class="owner-settings-intro"><h3>Identidade do seu negócio</h3><p>Defina uma vez o nome, endereço, contacto, e-mail, logótipo e cores. Os dados são guardados por negócio e utilizados nos documentos suportados.</p></div>'+
+   '<p class="shop-help">Actividade registada: <strong>'+esc(businessTypeLabel(businessType))+'</strong></p>'+
    renderDocumentBrandingSettings({branding,logoUrl,businessName})+
    '<div class="owner-settings-next">'+choose('documentos','Configuração dos documentos')+'</div>';
  }else if(active==='documentos'){
@@ -248,12 +250,12 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
  }else if(view==='returns'){
   body=renderReturnView({returns,selectedSaleId:selectedReturnSaleId,session});
  }else if(['inventory','alerts','shopping_list'].includes(view)){
-  body=renderInventoryView({view,inventory,role:grant.role,selectedProductId,alertDays,query:inventoryQuery});
+  body=renderInventoryView({view,inventory,role:grant.role,selectedProductId,alertDays,query:inventoryQuery,businessType:grant.businessType});
  }else if(view==='reports'){
   body=renderReportsView({report,from:reportFrom,to:reportTo,scope:reportScope,
    allAllowed:['owner','manager','finance'].includes(grant.role)});
  }else if(view==='settings'&&grant.role==='owner'){
-  body=renderOwnerSettings({selected:settingsSection,branding,logoUrl,businessName:grant.name,email:account.email,branchName:branch?.name,cashState,staffManagement,branches,alertDays,pendingOffline});
+  body=renderOwnerSettings({selected:settingsSection,branding,logoUrl,businessName:grant.name,businessType:grant.businessType,email:account.email,branchName:branch?.name,cashState,staffManagement,branches,alertDays,pendingOffline});
  }else if(view==='branding'&&grant.role==='owner'){
   body=renderDocumentBrandingSettings({branding,logoUrl,businessName:grant.name});
  }else if(view==='transfers'){
@@ -278,9 +280,10 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
  }else if(view==='products'){
   body='<div class="shop-two">'+section('Gerir produtos existentes','Editar, desactivar, reactivar ou eliminar produtos com segurança.',
    '<button type="button" class="shop-submit" data-shop-open-inventory>Gerir produtos cadastrados</button>')+
-   section('Novo produto','<form data-shop-form="product_create" class="shop-form">'+
-   field('name','Nome do produto','','required maxlength="200"')+
-   field('category','Categoria','Geral','maxlength="100"')+
+   section(grant.businessType==='pharmacy'?'Novo medicamento':'Novo produto','<form data-shop-form="product_create" class="shop-form">'+
+   field('name',grant.businessType==='pharmacy'?'Nome comercial':'Nome do produto','','required maxlength="200"')+
+   field('category','Categoria',grant.businessType==='pharmacy'?'Medicamentos':'Geral','maxlength="100"')+
+   (grant.businessType==='pharmacy'?renderMedicineFields():'')+
    '<label>Unidade<select name="unit">'+UNIT_OPTIONS.map(u=>'<option value="'+esc(u)+'">'+esc(u)+'</option>').join('')+'</select></label>'+
    '<label class="fractional-control"><input type="checkbox" name="allow_fractional" disabled> Permite venda fraccionada</label>'+
    '<p class="shop-help">Active para vender por valor (MT) partes de kg, litro ou metro. Não se aplica a artigos por unidade.</p>'+

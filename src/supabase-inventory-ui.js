@@ -2,6 +2,7 @@ import {catalogControls} from './ui/pronto-catalog-controls.js';
 // Authenticated inventory administration and alerts. Snapshot from protected RPC.
 import {esc,MONEY,UNIT_OPTIONS} from './supabase-shop-core.js';
 import {allowsFractionalSale} from './sale-by-value.js';
+import {renderMedicineFields} from './pharmacy.js';
 const qty=x=>new Intl.NumberFormat('pt-PT',{maximumFractionDigits:3}).format(Number(x)||0);
 const str=x=>String(x??'');
 const field=(name,label,value='',attrs='')=>'<label>'+esc(label)+'<input name="'+name+'" value="'+esc(value)+'" '+attrs+'></label>';
@@ -12,7 +13,8 @@ export function normalizeInventorySnapshot(raw){
   products:raw.products.map(p=>({id:p.id,name:str(p.name),code:str(p.code),category:str(p.category),
    unit:str(p.unit),priceCents:Number(p.price_cents),stock:Number(p.stock),minStock:Number(p.min_stock),
    revision:Number(p.revision),active:p.active===true,photoPath:p.photo_path||null,
-   allowFractional:p.allow_fractional===undefined?undefined:p.allow_fractional===true})),
+   allowFractional:p.allow_fractional===undefined?undefined:p.allow_fractional===true,
+   ...(p.medicine?{medicine:p.medicine}:{})})), 
   batches:raw.batches.map(b=>({id:b.id,productId:b.product_id,lot:str(b.lot_number),
    expiry:b.expires_on,qty:Number(b.qty),unitCost:Number(b.unit_cost_cents||0)})),
   movements:raw.movements.map(m=>({id:m.id,productId:m.product_id,kind:m.kind,
@@ -48,9 +50,9 @@ export function inventoryNotificationSummary(inventory,days=30){
  return {total:items.length,items,low:alerts.low.length,expiring:items.filter(item=>item.kind==='expiring').length,expired:items.filter(item=>item.kind==='expired').length};
 }
 const options=items=>items.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+esc(p.code)+'</option>').join('');
-export function renderInventoryView({view,inventory,role,selectedProductId='',alertDays=30,query=''}) {
+export function renderInventoryView({view,inventory,role,selectedProductId='',alertDays=30,query='',businessType='general'}) {
  if(!inventory)return box('Inventário','<p></p>');
- const products=inventory.products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+ const products=inventory.products.filter(p=>(p.name+' '+p.code+' '+(p.medicine?.active_ingredient||'')).toLocaleLowerCase().includes(query.toLocaleLowerCase()));
  const chosen=inventory.products.find(p=>p.id===selectedProductId);
  const alert=inventoryAlerts(inventory,alertDays);
  if(view==='alerts'||view==='shopping_list'){
@@ -99,6 +101,11 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
     '<label>Escolher imagem ou fotografar (JPEG, PNG ou WebP até 3 MB)'+
     '<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" required></label>'+
     '<button class="shop-submit" type="submit">Guardar fotografia</button></form>'+
+   (businessType==='pharmacy'&&['owner','manager'].includes(role)?
+    '<form data-shop-form="medicine_upsert" class="shop-form"><input type="hidden" name="product_id" value="'+esc(chosen.id)+'">'+
+    (chosen.medicine?'':'<p class="shop-error">Ficha farmacêutica ainda não preenchida.</p>')+
+    renderMedicineFields(chosen.medicine||{})+
+    '<button class="shop-submit" type="submit">Guardar ficha do medicamento</button></form>':'')+
    (['owner','manager'].includes(role)?
     '<form data-shop-form="product_update" class="shop-form"><input type="hidden" name="product_id" value="'+esc(chosen.id)+'">'+
     '<input type="hidden" name="revision" value="'+esc(chosen.revision)+'">'+

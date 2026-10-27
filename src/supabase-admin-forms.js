@@ -20,6 +20,7 @@ export function renderProvisioningForms(tab,data){
   return '<div class="pronto-admin-form-sections">'+block('Registar comerciante',
    'A loja e a sua filial principal são criadas sem produtos fictícios. Ficarão disponíveis depois de atribuir um proprietário e uma licença válida.',
    field('Nome da empresa','name','text','minlength="2" maxlength="120"')+
+   '<label>Tipo de estabelecimento<select name="business_type" required><option value="general">Comércio geral</option><option value="grocery">Mercearia</option><option value="pharmacy">Farmácia</option><option value="hardware">Ferragem</option><option value="fashion">Roupa e calçado</option><option value="cosmetics">Cosméticos</option><option value="restaurant">Restaurante</option><option value="other">Outro negócio</option></select></label>'+
    field('Telefone de contacto','phone','tel','maxlength="60"',false)+
    field('Localização / endereço','address','text','maxlength="250"',false)+
    field('Nome da filial principal','branch_name','text','maxlength="120" placeholder="Principal"',false),

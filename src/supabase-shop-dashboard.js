@@ -8,6 +8,7 @@ import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/
 import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,renderShopProductResults,shopPaymentPanel} from './supabase-shop-ui.js';
+import {readMedicineFields} from './pharmacy.js';
 import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
 import {PAYMENT_METHODS,toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
 import {quantityFromValueCents,validateSaleQuantity,allowsFractionalSale} from './sale-by-value.js';
@@ -195,7 +196,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     typeof client.financeSnapshot==='function'?client.financeSnapshot(grant.id,branchId):null,
     typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?client.holdList(grant.id,branchId):[],
     typeof client.returnSnapshot==='function'&&['owner','manager'].includes(grant.role)?client.returnSnapshot(grant.id,branchId):null,
-    typeof client.inventorySnapshot==='function'&&['owner','manager','stock','finance'].includes(grant.role)?client.inventorySnapshot(grant.id,branchId):null
+    typeof client.inventorySnapshot==='function'&&['owner','manager','stock','finance'].includes(grant.role)?client.inventorySnapshot(grant.id,branchId,grant.businessType):null
    ]);
   branding=nextBrand.settings;brandLogoUrl=nextBrand.logoUrl;
   cashState=nextCash?normalizeCashControl(nextCash):null;
@@ -283,7 +284,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   alertRefreshBusy=true;
   const business=grant.id,branch=branchId,user=account.userId;
   try{
-   const next=await client.inventorySnapshot(business,branch);
+   const next=await client.inventorySnapshot(business,branch,grant.businessType);
    if(signal.aborted||accessBlocked||grant.id!==business||branchId!==branch||account.userId!==user||client.isScreenLocked?.())return;
    inventory=next;
    refreshAlertBadges();
@@ -415,13 +416,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    showMessage('Venda ainda sem confirmação. Verifique a sessão e clique em «Repetir o mesmo pedido» para evitar duplicações. ('+String(e.message||'erro')+')',true);
   }finally{busy=false;}
  };
- const execute=async(action,payload,productPhoto=null)=>{
+ const execute=async(action,payload,productPhoto=null,medicine=null)=>{
   if(busy)return;
   if(disconnected())return showMessage('Sem ligação à internet. A operação não foi enviada.',true);
   busy=true;showMessage('');
   try{
    const result=action==='product_create'?
-     await client.createProductWithPhoto(cashData(payload),productPhoto):
+     await client.createProductWithPhoto(cashData(payload),productPhoto,medicine):
      ['cash_open','cash_close'].includes(action)&&typeof client.cashControl==='function'?
     await client.cashControl(action==='cash_open'?'open':'close',cashData(payload)):
     await client.merchantAction(action,cashData(payload));
@@ -457,6 +458,11 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    });
   }catch(e){
    if(['supabase_unauthorized','shop_access_required'].includes(e.message)){await leave();return;}
+   if(action==='product_create'&&String(e.message||'').startsWith('medicine_details_pending:')){
+    await refresh();view='inventory';render();
+    showMessage('O artigo foi criado mas ficou INACTIVO: a ficha do medicamento não foi guardada. Abra Inventário, seleccione o artigo e complete a ficha antes de enviar a fotografia. Código: '+e.message.split(':').slice(1).join(':'),true);
+    return;
+   }
    if(action==='product_create'&&String(e.message||'').startsWith('product_photo_pending:')){
     await refresh();
     view='inventory';render();
@@ -1232,6 +1238,19 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return;
   }
 
+  if(action==='medicine_upsert'){
+   if(disconnected()||pending||pendingFinance||pendingPayment)return showMessage('Conclua as operações pendentes e ligue-se à internet.',true);
+   if(grant.businessType!=='pharmacy'||!['owner','manager'].includes(grant.role))return showMessage('Esta ficha está reservada à gestão da farmácia.',true);
+   const values=new FormData(form),productId=String(values.get('product_id')||'');
+   if(!inventory?.products.some(p=>p.id===productId))return showMessage('Medicamento não encontrado.',true);
+   let medicine;try{medicine=readMedicineFields(values);}catch(error){return showMessage(error.message,true);}
+   busy=true;showMessage('');
+   try{
+    await client.medicineUpsert({business_id:grant.id,product_id:productId,...medicine});
+    await refresh();render();showMessage('Ficha farmacêutica guardada com sucesso.');
+   }catch(error){showMessage('Não foi possível guardar a ficha. Verifique as permissões e tente novamente. ('+error.message+')',true);}
+   finally{busy=false;}return;
+  }
   if(action==='photo_upload'){
    if(pending||pendingFinance||disconnected())return showMessage('Conclua operações pendentes e ligue-se à internet antes de enviar fotografias.',true);
    if(!['owner','manager','stock'].includes(grant.role))return showMessage('Sem permissão para alterar fotografias.',true);
@@ -1560,6 +1579,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   try{
    let payload;
    if(action==='product_create'){
+    if(grant.businessType==='pharmacy')readMedicineFields(f);
     if(f.has('allow_fractional')&&!allowsFractionalSale({unit:String(f.get('unit')),allowFractional:true}))throw Error('Esta unidade não permite venda fraccionada.');
     const code=String(f.get('code')||'').trim(),autoCode=f.has('generate_code');
     if(!code&&!autoCode)throw Error('Introduza o código de barras ou escolha «Gerar código interno».');
@@ -1592,7 +1612,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }
    else return;
    await execute(action,payload,action==='product_create'?
-    (f.get('product_photo')?.size?f.get('product_photo'):f.get('product_camera')):null);
+    (f.get('product_photo')?.size?f.get('product_photo'):f.get('product_camera')):null,
+    action==='product_create'&&grant.businessType==='pharmacy'?readMedicineFields(f):null);
   }catch(e){showMessage('Confira os dados introduzidos. '+String(e.message||''),true);}
  },{signal});
  window.addEventListener('offline',()=>showMessage('Sem internet: as vendas não podem ser concluídas. Guarde um rascunho encriptado e recupere-o depois de entrar novamente com ligação.',true),{signal});
