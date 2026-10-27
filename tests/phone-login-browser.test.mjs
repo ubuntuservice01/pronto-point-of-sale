@@ -197,6 +197,7 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
  }finally{
   debug?.close();browser?.kill('SIGKILL');
   await new Promise(ok=>srv.close(ok));
-  await rm(profile,{recursive:true,force:true});
+  // Chrome may still flush profile files just after SIGKILL; retry transient ENOTEMPTY/EBUSY.
+  await rm(profile,{recursive:true,force:true,maxRetries:25,retryDelay:120});
  }
 });
