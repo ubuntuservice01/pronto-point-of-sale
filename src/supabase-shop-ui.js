@@ -11,7 +11,7 @@ import {renderTransfersView} from './supabase-transfers-ui.js';
 import {renderStaffManagement} from './supabase-team-management-ui.js';
 import {renderSuspendedCash} from './supabase-staff-cash-ui.js';
 import {renderAuditView} from './supabase-audit-ui.js';
-import {renderMedicineFields,businessTypeLabel} from './pharmacy.js';
+import {renderMedicineFields,renderPharmacyCategory,businessTypeLabel} from './pharmacy.js';
 import {maputoToday} from './pharmacy-batches.js';
 import {renderPharmacyReviews} from './pharmacy-review-ui.js';
 import {renderPharmacyTrace} from './pharmacy-trace-ui.js';
@@ -288,11 +288,13 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
     (b.active?'Desactivar':'Reactivar')+'</button></div>').join('')+'</div>',
    'Só o proprietário altera filiais. Não é possível desactivar a última filial, uma filial com caixa aberto, stock ou vendas em espera.');
  }else if(view==='products'){
-  body='<div class="shop-two">'+section('Gerir produtos existentes','Editar, desactivar, reactivar ou eliminar produtos com segurança.',
-   '<button type="button" class="shop-submit" data-shop-open-inventory>Gerir produtos cadastrados</button>')+
+  body='<div class="shop-two">'+section('Gerir produtos existentes',
+   '<button type="button" class="shop-submit" data-shop-open-inventory>Gerir produtos cadastrados</button>',
+   'Editar, desactivar, reactivar ou eliminar produtos com segurança.')+
    section(grant.businessType==='pharmacy'?'Novo medicamento':'Novo produto','<form data-shop-form="product_create" class="shop-form">'+
-   field('name',grant.businessType==='pharmacy'?'Nome comercial':'Nome do produto','','required maxlength="200"')+
-   field('category','Categoria',grant.businessType==='pharmacy'?'Medicamentos':'Geral','maxlength="100"')+
+   field('name',grant.businessType==='pharmacy'?'Nome comercial':'Nome do produto','',grant.businessType==='pharmacy'?'required maxlength="200" list="pronto-medicine-names" placeholder="Nome conforme a embalagem"':'required maxlength="200"')+
+   (grant.businessType==='pharmacy'?'<datalist id="pronto-medicine-names">'+[...new Set(products.map(p=>p.name))].slice(0,40).map(name=>'<option value="'+esc(name)+'"></option>').join('')+'</datalist>'+renderPharmacyCategory():
+    field('category','Categoria','Geral','maxlength="100"'))+
    (grant.businessType==='pharmacy'?renderMedicineFields():'')+
    '<label>Unidade<select name="unit">'+UNIT_OPTIONS.map(u=>'<option value="'+esc(u)+'">'+esc(u)+'</option>').join('')+'</select></label>'+
    '<label class="fractional-control"><input type="checkbox" name="allow_fractional" disabled> Permite venda fraccionada</label>'+

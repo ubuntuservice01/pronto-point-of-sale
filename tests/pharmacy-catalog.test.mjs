@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {readMedicineFields,renderMedicineFields,businessTypeLabel} from '../src/pharmacy.js';
+import * as pharmacyHelpers from '../src/pharmacy.js';
 import {renderProvisioningForms} from '../src/supabase-admin-forms.js';
 import {renderInventoryView} from '../src/supabase-inventory-ui.js';
 
@@ -42,4 +43,47 @@ test('Pharmacy details enforce isolation through tenant constraints and server v
  assert.match(identity,/await uploadProductPhoto/);
  assert.ok(identity.indexOf('await medicineUpsert')<identity.indexOf('await uploadProductPhoto'));
  assert.match(read('public/sw.js'),/\/src\/pharmacy\.js/);
+});
+
+test('Pharmacy fields offer suggestions and unlock typed values for Outro',()=>{
+ const {PHARMACY_SUGGESTIONS,readSuggestedField,readPharmacyCategory,renderPharmacyCategory}=pharmacyHelpers;
+ for(const key of ['active_ingredient','strength','dosage_form','presentation','manufacturer','category']){
+  assert.ok(PHARMACY_SUGGESTIONS[key]?.length>3,key+' suggestions');
+ }
+ const html=renderMedicineFields();
+ assert.match(html,/data-pharmacy-choice/);
+ assert.match(html,/Outro — escrever manualmente/);
+ assert.match(html,/name="dosage_form_other"/);
+ assert.match(html,/name="active_ingredient_other"/);
+ assert.match(html,/pharmacy-other-field" hidden/);
+ const known=new FormData();
+ for(const [key,value] of Object.entries({active_ingredient:'Paracetamol',strength:'500 mg',dosage_form:'Comprimido',presentation:'Caixa de 20 comprimidos',manufacturer:'Cipla'}))known.set(key,value);
+ assert.equal(readMedicineFields(known).active_ingredient,'Paracetamol');
+ known.set('active_ingredient','__other__');
+ known.set('active_ingredient_other','Princípio identificado na embalagem');
+ assert.equal(readMedicineFields(known).active_ingredient,'Princípio identificado na embalagem');
+ known.set('active_ingredient_other','');
+ assert.throws(()=>readMedicineFields(known),/active_ingredient/);
+ const custom=renderMedicineFields({manufacturer:'Fabricante <local>'});
+ assert.match(custom,/Fabricante &lt;local&gt;/);
+ assert.doesNotMatch(custom,/<local>/);
+ const category=renderPharmacyCategory();
+ assert.match(category,/name="category"/);
+ const form=new FormData();form.set('category','__other__');form.set('category_other','Linha personalizada');
+ assert.equal(readPharmacyCategory(form),'Linha personalizada');
+ form.set('category_other',' ');
+ assert.throws(()=>readPharmacyCategory(form),/category/);
+ assert.equal(readSuggestedField(known,'manufacturer',160,0),'Cipla');
+});
+test('Pharmacy registration renders suggestion selectors; merchant action resolves custom values',()=>{
+ const ui=read('src/supabase-shop-ui.js'),controller=read('src/supabase-shop-dashboard.js');
+ const style=read('src/shop-product-registration.css');
+ assert.match(ui,/renderPharmacyCategory\(\)/);
+ assert.match(ui,/list="pronto-medicine-names"/);
+ assert.match(controller,/readPharmacyCategory\(f\)/);
+ assert.match(controller,/data-pharmacy-choice/);
+ assert.match(controller,/custom\.disabled=!useCustom/);
+ assert.match(style,/pharmacy-other-field\[hidden\]/);
+ // The managing-products button must be real HTML, not escaped description text.
+ assert.match(ui,/section\('Gerir produtos existentes',\s*'\<button/);
 });

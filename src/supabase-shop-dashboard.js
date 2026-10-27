@@ -8,7 +8,7 @@ import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/
 import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} from './supabase-cash-offline.js';
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,renderShopProductResults,shopPaymentPanel} from './supabase-shop-ui.js';
-import {readMedicineFields} from './pharmacy.js';
+import {readMedicineFields,readPharmacyCategory,PHARMACY_OTHER} from './pharmacy.js';
 import {rxItems} from './pharmacy-review-ui.js';
 import {pharmacyTraceCSV} from './pharmacy-trace-ui.js';
 import {validatePharmacyReceipt,maputoToday} from './pharmacy-batches.js';
@@ -929,6 +929,18 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     return;
    }
   const el=event.target;
+  if(el.matches?.('[data-pharmacy-choice]')){
+   const holder=el.closest('[data-pharmacy-suggested-field]');
+   const custom=holder?.querySelector('[data-pharmacy-other]');
+   if(custom){
+    const useCustom=el.value===PHARMACY_OTHER;
+    custom.closest('label').hidden=!useCustom;
+    custom.disabled=!useCustom;
+    custom.required=useCustom;
+    if(useCustom)custom.focus();
+   }
+   return;
+  }
   if(el.name==='unit'){
    const box=el.closest('form')?.querySelector('input[name="allow_fractional"]');
    if(box){box.disabled=!allowsFractionalSale({unit:el.value,allowFractional:true});if(box.disabled)box.checked=false;}
@@ -1665,7 +1677,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     if(!['image/jpeg','image/png','image/webp'].includes(photo.type)||photo.size>3145728)
      throw Error('A fotografia deve ser JPEG, PNG ou WebP e ter até 3 MB.');
     payload={name:String(f.get('name')||'').trim(),
-    category:String(f.get('category')||'').trim(),unit:String(f.get('unit')||'un'),
+    category:grant.businessType==='pharmacy'?readPharmacyCategory(f):String(f.get('category')||'').trim(),unit:String(f.get('unit')||'un'),
     price_cents:toCents(f.get('price')),code:autoCode?'':code,
     min_stock:String(f.get('min_stock')||'0'),allow_fractional:f.has('allow_fractional')};
    }
