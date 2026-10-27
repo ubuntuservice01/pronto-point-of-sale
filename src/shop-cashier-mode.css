@@ -29,3 +29,69 @@
  .shop-layout.shop-fast-cashier .shop-cart-row{gap:12px}
 }
 @media(max-width:385px){.shop-layout .shop-cashier-toggle{padding:7px 8px;font-size:11px}.shop-layout .shop-cashier-toggle span[aria-hidden]{display:none}}
+
+/* Clean mobile product list and quick sale actions. */
+.shop-fast-cashier .shop-cashier-workspace{padding:16px;border-radius:20px;border:1px solid #bee3d2;background:linear-gradient(140deg,#edfaf2,#fff);margin-bottom:14px}
+.shop-fast-cashier .shop-cashier-intro{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.shop-fast-cashier .shop-cashier-intro h2{margin:4px 0;font-size:clamp(22px,3vw,28px);color:#075c48;letter-spacing:-.03em}
+.shop-fast-cashier .shop-cashier-intro span{font-size:10px;font-weight:850;letter-spacing:.1em;color:#087f68}
+.shop-fast-cashier .shop-cashier-intro p{margin:0;font-size:12px;color:#52766a}
+.shop-fast-cashier .shop-cashier-cart-pill{display:grid;gap:4px;text-align:right;border-radius:13px;background:#fff;padding:10px 12px;border:1px solid #d1eadd;white-space:nowrap}
+.shop-fast-cashier .shop-cashier-cart-pill strong{font-size:18px;color:#087f68}
+.shop-fast-cashier .shop-cashier-quick-actions{margin:0}
+.shop-fast-cashier .shop-cashier-quick-actions .shop-cashier-scan-primary{background:#087f68;border-color:#087f68;color:#fff}
+.shop-fast-cashier .shop-cashier-quick-actions .shop-cashier-charge{background:#075c48}
+.shop-fast-cashier .shop-cashier-quick-actions button:disabled{opacity:.45}
+.shop-fast-cashier .shop-product-fast{display:flex;gap:11px;align-items:center;background:#fff;box-shadow:0 3px 16px #08422b0a;min-width:0}
+.shop-fast-cashier .shop-product-fast .shop-product-photo,.shop-fast-cashier .shop-cashier-product-placeholder{width:65px;height:65px;flex:none;object-fit:cover;border-radius:12px;background:#eaf5ee;color:#087f68;display:grid;place-items:center;font-size:26px}
+.shop-fast-cashier .shop-product-fast .shop-product-details{flex:1;gap:4px;min-width:0}
+.shop-fast-cashier .shop-product-fast .shop-product-details strong{font-size:15px;line-height:1.25;overflow-wrap:anywhere}
+.shop-fast-cashier .shop-fast-product-actions{display:flex;align-items:center;gap:4px;flex:none}
+.shop-fast-cashier .shop-fast-product-actions button{min-width:44px;width:44px;height:48px;border-radius:11px;font-size:23px}
+.shop-fast-cashier .shop-fast-product-actions button[data-shop-fast-minus]{background:#e9f7ef;color:#075c48;border:1px solid #c6e7d5}
+.shop-fast-cashier .shop-fast-product-qty{min-width:22px;text-align:center;font-size:15px;font-weight:850;color:#063f30}
+.shop-fast-cashier .shop-fast-product-actions button:focus-visible{outline:3px solid #70ddba;outline-offset:2px}
+@media(max-width:750px){
+ .shop-fast-cashier .shop-cashier-workspace{padding:12px;border-radius:16px}
+ .shop-fast-cashier .shop-cashier-intro{align-items:flex-start;gap:7px}
+ .shop-fast-cashier .shop-cashier-intro p{max-width:220px}
+ .shop-fast-cashier .shop-cashier-cart-pill{padding:7px}
+ .shop-fast-cashier .shop-cashier-cart-pill strong{font-size:14px}
+ .shop-fast-cashier .shop-cashier-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .shop-fast-cashier .shop-cashier-quick-actions button{min-height:54px;font-size:13px}
+ .shop-fast-cashier .shop-sales-grid{grid-template-columns:1fr}
+ .shop-fast-cashier .shop-products{grid-template-columns:1fr}
+ .shop-fast-cashier .shop-product-fast{padding:9px;gap:9px;min-height:82px}
+ .shop-fast-cashier .shop-product-fast .shop-product-photo,.shop-fast-cashier .shop-cashier-product-placeholder{width:53px;height:59px}
+ .shop-fast-cashier .shop-fast-product-actions button{min-width:43px;width:43px;height:47px}
+}
+@media(max-width:390px){
+ .shop-fast-cashier .shop-product-fast .shop-product-photo,.shop-fast-cashier .shop-cashier-product-placeholder{width:44px;height:52px}
+ .shop-fast-cashier .shop-fast-product-actions{gap:2px}
+ .shop-fast-cashier .shop-fast-product-actions button{min-width:39px;width:39px}
+ .shop-fast-cashier .shop-cashier-quick-actions .shop-cashier-charge{font-size:11px}
+}
+/* Scanner: STAX-like camera-first interaction with branded Pronto POS treatment. */
+.shop-scan-dialog.shop-scan-continuous{width:min(520px,100vw);max-width:min(520px,100vw);padding:19px;max-height:min(96dvh,920px);border:0;border-radius:23px;background:#f8fdf9}
+.shop-scan-dialog .shop-scan-video-wrap{min-height:195px;isolation:isolate}
+.shop-scan-dialog .shop-scan-video-wrap video{width:100%;aspect-ratio:16/10;max-height:40dvh;object-fit:cover}
+.shop-scan-dialog .shop-scan-target{inset:22% 10%;border:2px solid #98ffcf;border-radius:15px;box-shadow:0 0 0 999px #0005}
+.shop-scan-dialog .shop-scan-guide{position:absolute;top:50%;left:11%;width:78%;border-top:2px solid #83ffbc;box-shadow:0 0 9px #4fffa3;animation:pronto-scan-aim 2.6s ease-in-out infinite;will-change:transform}
+@keyframes pronto-scan-aim{0%,100%{transform:translateY(-37px)}50%{transform:translateY(37px)}}
+.shop-scan-dialog [data-shop-scan-torch]{position:absolute;bottom:12px;right:12px;z-index:2;padding:9px 12px;border:1px solid #ffffff66;background:#092f2bd9;border-radius:10px;color:#fff;font-weight:750}
+.shop-scan-dialog [data-shop-scan-torch][hidden]{display:none}
+.shop-scan-dialog .shop-scan-status[data-state="success"]{background:#e0f6e8;border:1px solid #8ad6a8;color:#096342;font-weight:750}
+.shop-scan-dialog .shop-scan-cart-count{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:13px;border-radius:13px;background:#e7f5ec;border:1px solid #c7e7d3;color:#075d45;margin-top:12px}
+.shop-scan-dialog .shop-scan-cart-count strong{font-size:15px}
+.shop-scan-dialog .shop-scan-cart-count span{font-size:12px;text-align:right;max-width:185px}
+.shop-scan-dialog .shop-scan-repeat{width:100%;padding:10px 12px;border-radius:11px;background:#fff;border:1px solid #9ccdb9;color:#075d45;font-weight:750;margin-top:9px}
+.shop-scan-dialog .shop-scan-repeat[hidden]{display:none}
+.shop-scan-dialog .shop-scan-done{width:100%;min-height:55px;border-radius:13px;background:#087f68;border:0;color:white;font-size:16px;font-weight:850;margin-top:14px}
+.shop-scan-dialog button:focus-visible{outline:3px solid #69eeb0;outline-offset:2px}
+@media(max-width:600px){
+ .shop-scan-dialog.shop-scan-continuous{inset:0;margin:0;width:100%;max-width:100%;height:100dvh;max-height:100dvh;border-radius:0;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 19px) 17px calc(env(safe-area-inset-bottom) + 15px);overflow:auto}
+ .shop-scan-dialog .shop-scan-video-wrap video{max-height:37dvh}
+ .shop-scan-dialog .shop-scan-cart-count{flex-direction:column;align-items:start}
+ .shop-scan-dialog .shop-scan-cart-count span{text-align:left;max-width:unset}
+}
+@media(prefers-reduced-motion:reduce){.shop-scan-dialog .shop-scan-guide{animation:none}}

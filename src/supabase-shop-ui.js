@@ -167,11 +167,24 @@ export function renderOwnerSettings({selected='personalizacao',branding=null,log
 
 // Render only a small window of the matching catalog, not thousands of image
 // elements and buttons. Search still considers the complete product collection.
-export function renderShopProductResults(products=[],query=''){
+export function renderShopProductResults(products=[],query='',{fast=false,cart=[]}={}){
  const search=String(query||'').trim().toLocaleLowerCase();
  const matching=products.filter(p=>(p.name+' '+p.code).toLocaleLowerCase().includes(search));
  const visible=matching.slice(0,80);
- const cards=visible.map(p=>'<article class="shop-product">'+(p.photoPath?'<img class="shop-product-photo" data-shop-product-photo="'+esc(p.photoPath)+'" alt="Fotografia de '+esc(p.name)+'" loading="lazy">':'')+'<div><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong><span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+p.stock+'</small></div><button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></article>').join('');
+ const cards=visible.map(p=>{
+  const qty=cart.find(row=>row.productId===p.id)?.quantity||0;
+  return '<article class="shop-product'+(fast?' shop-product-fast':'')+'">'+
+   (p.photoPath?'<img class="shop-product-photo" data-shop-product-photo="'+esc(p.photoPath)+'" alt="Fotografia de '+esc(p.name)+'" loading="lazy">':
+    (fast?'<span class="shop-cashier-product-placeholder" aria-hidden="true">▦</span>':''))+
+   '<div class="shop-product-details"><small>'+esc(p.code)+' · '+esc(p.category)+'</small><strong>'+esc(p.name)+'</strong>'+
+   '<span>'+MONEY(p.priceCents)+' / '+esc(p.unit)+'</span><small class="'+(p.stock<=p.minStock?'shop-low':'')+'">Disponível: '+esc(p.stock)+'</small></div>'+
+   (fast?'<div class="shop-fast-product-actions">'+
+    (qty>0?'<button type="button" data-shop-fast-minus="'+esc(p.id)+'" aria-label="Retirar uma unidade de '+esc(p.name)+'">−</button>'+
+     '<span class="shop-fast-product-qty" aria-label="'+esc(qty)+' no carrinho">'+esc(qty)+'</span>':'')+
+    '<button type="button" data-shop-add="'+esc(p.id)+'"'+(p.stock<=qty?' disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button></div>':
+    '<button type="button" data-shop-add="'+esc(p.id)+'" '+(p.stock<=0?'disabled':'')+' aria-label="Adicionar '+esc(p.name)+'">+</button>')+
+   '</article>';
+ }).join('');
  if(!matching.length)return '<p class="shop-help" role="status">Não há produtos encontrados.</p>';
  return cards+(matching.length>80?'<p class="shop-help" role="status">A mostrar 80 de '+matching.length+' produtos. Pesquise pelo nome ou código para encontrar os restantes.</p>':'');
 }
@@ -211,16 +224,23 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
     '<p class="shop-notification-empty">'+(canViewAlerts?'Não existem alertas de stock ou validade neste momento.':'Alertas de inventário disponíveis apenas para perfis autorizados.')+'</p>')+
    (canViewAlerts?'<button type="button" data-shop-notifications-all class="shop-notification-all">Ver todos os alertas'+(notificationCount>5?' ('+notificationCount+')':'')+'</button>':'')+
   '</div>':'';
- const prodCards=view==='sell'?renderShopProductResults(products,query):'';
+ const prodCards=view==='sell'?renderShopProductResults(products,query,{fast:cashierMode,cart}):'';
  const holdLabel=cart.length+' artigo'+(cart.length===1?'':'s');
  const holdEnabled=cart.length>0&&!pending;
  let body='';
  if(view==='sell'){
-  const shortcuts=cashierMode?'<div class="shop-cashier-quick-actions" role="group" aria-label="Acções rápidas do modo caixa">'+
-    '<button type="button" data-shop-scan>▣ Ler código</button>'+
+  const cashierQty=cart.reduce((n,row)=>n+Number(row.quantity||0),0);
+  const cashierSubtotal=cart.reduce((n,row)=>n+Math.round((products.find(p=>p.id===row.productId)?.priceCents||0)*Number(row.quantity||0)),0);
+  const shortcuts=cashierMode?'<div class="shop-cashier-workspace">'+
+   '<header class="shop-cashier-intro"><div><span>PRONTO POS · VENDA RÁPIDA</span><h2>Nova venda</h2>'+
+   '<p>Leia o código ou toque num produto para adicionar.</p></div>'+
+   '<div class="shop-cashier-cart-pill"><span>'+esc(cashierQty)+' artigo(s)</span><strong>'+MONEY(cashierSubtotal)+'</strong></div></header>'+
+   '<div class="shop-cashier-quick-actions" role="group" aria-label="Acções rápidas do modo caixa">'+
+    '<button type="button" class="shop-cashier-scan-primary" data-shop-scan aria-label="Abrir a câmara para ler códigos de barras e QR code">▣ Ler código</button>'+
     '<button type="button" data-shop-hold'+(holdEnabled?'':' disabled')+'>⏸ Em espera</button>'+
     '<button type="button" data-shop-held-tab>↩ Retomar ('+heldSales.length+')</button>'+
-    '<button type="button" data-shop-go-checkout class="shop-cashier-charge">✓ Cobrar</button></div>':'';
+    '<button type="button" data-shop-go-checkout class="shop-cashier-charge"'+(cart.length?'':' disabled')+'>Cobrar · '+MONEY(cashierSubtotal)+'</button>'+
+    '</div></div>':'';
   // No duplicated checkout, held-cart or payment controls above the catalog.
   body=shortcuts+
    '<div class="shop-sales-grid"><section class="shop-box"><h3>Produtos</h3><div class="shop-search"><label for="shop-search">Pesquisar por nome ou código</label>'+

@@ -347,7 +347,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(!product)return 'Código não encontrado nesta loja.';
   const inCart=cart.find(row=>row.productId===product.id)?.quantity||0;
   if(inCart+1>product.stock)return 'Produto sem stock suficiente para esta venda.';
-  add(product.id);return true;
+  add(product.id);return cashierMode?{accepted:true,name:product.name,
+   quantity:cart.find(row=>row.productId===product.id)?.quantity||0,
+   itemCount:cart.reduce((n,row)=>n+Number(row.quantity||0),0)}:true;
  };
  const updateCashChangePreview=()=>{
   const form=root.querySelector('#shop-sale-form');
@@ -835,10 +837,13 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(el.hasAttribute('data-shop-scan')){
    if(!authorizedView('sell')||view!=='sell'||accessBlocked||client.isScreenLocked?.())return;
    closeScanner?.();
-   closeScanner=openShopCodeScanner({onCode:scanCode,onClose:()=>{closeScanner=null;}});
+   closeScanner=openShopCodeScanner({onCode:scanCode,continuous:cashierMode,
+    onDone:()=>root.querySelector('#shop-checkout-panel')?.scrollIntoView({block:'start',behavior:'smooth'}),
+    onClose:()=>{closeScanner=null;}});
    return;
   }
   if(el.hasAttribute('data-shop-add'))return void add(el.dataset.shopAdd);
+  if(el.hasAttribute('data-shop-fast-minus'))return void add(el.dataset.shopFastMinus,-1);
   if(el.hasAttribute('data-shop-value-toggle')){
    if(lockPending())return;
    const id=el.dataset.shopValueToggle;
@@ -889,7 +894,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(el.id==='shop-search'){
    query=el.value;
    const results=root.querySelector('#shop-product-results');
-   if(results){results.innerHTML=renderShopProductResults(data?.products||[],query);hydrateProductPhotos(results);}
+   if(results){results.innerHTML=renderShopProductResults(data?.products||[],query,{fast:cashierMode,cart});hydrateProductPhotos(results);}
   }else if(el.id==='shop-inventory-search'){
    inventoryQuery=el.value;
    const term=inventoryQuery.toLocaleLowerCase();

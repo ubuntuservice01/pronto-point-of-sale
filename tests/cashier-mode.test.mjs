@@ -80,3 +80,20 @@ test('Modo Caixa retains single safe actions with empty cart, pending sale or no
  assert.match(pending,/data-shop-retry/);
  assert.match(pending,/data-shop-discard/);
 });
+
+test('Modo Caixa presents an item counter, stock-aware quantity controls and a fast scan path',()=>{
+ const product={id:'44444444-4444-4444-8444-444444444444',name:'Café',code:'789100',
+  category:'Mercearia',unit:'un',stock:5,minStock:1,priceCents:12000};
+ const html=base({cashierMode:true,cart:[{productId:product.id,quantity:2}],
+  data:{products:[product],sales:[],sessions:[]}});
+ assert.match(html,/Nova venda/);
+ assert.match(html,/2 artigo\(s\)/);
+ assert.match(html,/data-shop-fast-minus/);
+ assert.match(html,/shop-fast-product-qty/);
+ assert.match(html,/shop-cashier-scan-primary/);
+ assert.match(html,/Cobrar · 240,00 MT/);
+ const dashboard=readFileSync(new URL('../src/supabase-shop-dashboard.js',import.meta.url),'utf8');
+ assert.match(dashboard,/continuous:cashierMode/);
+ assert.match(dashboard,/data-shop-fast-minus/);
+ assert.match(dashboard,/onDone:/);
+});
