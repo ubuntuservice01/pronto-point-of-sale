@@ -101,10 +101,11 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   if(payload!==undefined)headers['Content-Type']='application/json';
   if(prefer)headers.Prefer=prefer;
   if(authenticated && session?.access_token)headers.Authorization='Bearer '+session.access_token;
-  const response=await fetchImpl(apiURL.origin+endpoint, {
+  let response;
+  try{response=await fetchImpl(apiURL.origin+endpoint, {
    method,headers,cache:'no-store',credentials:'omit',redirect:'error',
    body:payload===undefined?undefined:JSON.stringify(payload)
-  });
+  });}catch{throw Error('supabase_unavailable');}
   let data;
   try { data=await response.json(); } catch { throw Error('supabase_unavailable'); }
   if(!response.ok) {
@@ -150,6 +151,8 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
  async function selfServiceSignUp(email,password,ownerName){
   if(!validEmail(email)||typeof password!=='string'||password.length<12||password.length>128||typeof ownerName!=='string'||ownerName.trim().length<2)throw Error('registration_invalid');
   // The public publishable key is permitted; service-role credentials never reach the browser.
+  // New registration is a switch of identity: never inherit a previous PIN lock.
+  clearSession();
   let response;
   try{response=await fetchImpl(apiURL.origin+'/auth/v1/signup',{
    method:'POST',headers:{apikey:publishableKey,Accept:'application/json','Content-Type':'application/json'},
