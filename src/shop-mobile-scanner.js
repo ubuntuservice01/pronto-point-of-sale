@@ -62,29 +62,38 @@ export function findScannedShopProduct(products,rawCode){
 export function shopSupportedFormats(available){
  return Array.isArray(available)?SHOP_SCAN_FORMATS.filter(x=>available.includes(x)):SHOP_SCAN_FORMATS.slice();
 }
-export function shopScannerHTML(){
- return '<div class="shop-scan-heading"><div><small>PRONTO POS · PONTO DE VENDA</small>'+
- '<h2 id="shop-scan-title">Ler código do produto</h2></div>'+
+export function shopScannerHTML({continuous=false}={}){
+ return '<div class="shop-scan-heading"><div><small>PRONTO POS · LEITOR RÁPIDO</small>'+
+ '<h2 id="shop-scan-title">'+(continuous?'Ler produtos':'Ler código do produto')+'</h2></div>'+
  '<button type="button" data-shop-scan-close aria-label="Fechar leitor">✕</button></div>'+
  '<p class="shop-scan-help">Aponte a câmara para o código de barras ou QR code do produto.</p>'+
  '<div class="shop-scan-video-wrap"><video data-shop-scan-video autoplay muted playsinline aria-label="Câmara para leitura de códigos"></video>'+
- '<div class="shop-scan-target" aria-hidden="true"></div></div>'+
+ '<div class="shop-scan-target" aria-hidden="true"><span class="shop-scan-guide"></span></div>'+
+ '<button type="button" data-shop-scan-torch hidden aria-label="Ligar luz da câmara">☀ Ligar luz</button></div>'+
  '<p class="shop-scan-status" data-shop-scan-status role="status" aria-live="polite">A preparar a câmara…</p>'+
+ (continuous?'<div class="shop-scan-cart-count" role="status" aria-live="polite" data-shop-scan-counter>'+
+  '<strong>0 artigos lidos</strong><span>Leia os produtos um por um.</span></div>'+
+  '<button type="button" data-shop-scan-repeat class="shop-scan-repeat" hidden>↻ Ler novamente o mesmo código</button>':'')+
  '<form data-shop-scan-manual autocomplete="off"><label for="shop-scan-manual-code">Ou introduza o código manualmente</label>'+
  '<div class="shop-scan-manual-row"><input id="shop-scan-manual-code" name="code" type="text" autocomplete="off" maxlength="120" placeholder="Código do produto" required>'+
- '<button type="submit">Procurar</button></div></form>';
+ '<button type="submit">Procurar</button></div></form>'+
+ (continuous?'<button type="button" data-shop-scan-done class="shop-scan-done">Ver carrinho e cobrar →</button>':'');
 }
-export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
+export function openShopCodeScanner({onCode,onClose,onDone,continuous=false,doc=globalThis.document,
  navigatorRef=globalThis.navigator,Detector=globalThis.BarcodeDetector}={}){
  if(typeof onCode!=='function'||!doc?.body)throw Error('shop_scanner_invalid');
  const dialog=doc.createElement('dialog');
- dialog.className='shop-scan-dialog';
+ dialog.className='shop-scan-dialog'+(continuous?' shop-scan-continuous':'');
  dialog.setAttribute('aria-labelledby','shop-scan-title');
- dialog.innerHTML=shopScannerHTML();
+ dialog.innerHTML=shopScannerHTML({continuous});
  doc.body.append(dialog);
  const status=dialog.querySelector('[data-shop-scan-status]');
  const video=dialog.querySelector('[data-shop-scan-video]');
+ const repeatButton=dialog.querySelector('[data-shop-scan-repeat]');
+ const countLabel=dialog.querySelector('[data-shop-scan-counter]');
+ const torchButton=dialog.querySelector('[data-shop-scan-torch]');
  let stream=null,frame=null,scannerControls=null,stopped=false,reading=false,last=null,lastFrame=0;
+ let acceptedCount=0,lastAcceptedCode='',torchOn=false;
  const audio=createShopScannerFeedback();
  const events=new AbortController();
  const announce=(message,error=false)=>{
@@ -102,21 +111,53 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
   onClose?.();
  };
  const finish=()=>{if(typeof dialog.close==='function'&&dialog.open)dialog.close();stop();};
+ // Reading never finalises a sale; it only selects existing, available stock.
+ // Closing the scanner releases all camera tracks even on iOS/Safari.
+ dialog.querySelector('[data-shop-scan-done]')?.addEventListener('click',()=>{
+  finish();onDone?.();
+ },{signal:events.signal});
+ repeatButton?.addEventListener('click',()=>{
+  lastAcceptedCode='';last=null;repeatButton.hidden=true;
+  announce('Pronto para ler novamente o mesmo artigo.');
+ },{signal:events.signal});
  dialog.addEventListener('close',stop,{once:true,signal:events.signal});
  dialog.querySelector('[data-shop-scan-close]').addEventListener('click',finish,{signal:events.signal});
- const readCode=value=>{
+ const readCode=(value,{manual=false}={})=>{
   if(stopped)return;
   const code=String(value??'').trim();
   if(!code){audio('error');return announce('Introduza ou enquadre um código válido.',true);}
+  // Continuous optical scans never add the same item twice merely because the
+  // barcode remains in front of the camera. Re-arm explicitly or type a code.
+  if(continuous&&!manual&&code===lastAcceptedCode)return;
   let result;
   try{result=onCode(code);}
   catch{audio('error');announce('Não foi possível seleccionar o produto. Tente novamente.',true);return;}
-  if(result===true){audio('success');finish();return;}
+  const ok=result===true||result?.accepted===true;
+  if(ok){
+   audio('success');
+   if(!continuous){finish();return;}
+   acceptedCount++;
+   lastAcceptedCode=code;
+   const name=typeof result?.name==='string'?result.name:'Produto';
+   const quantity=Number(result?.quantity)||acceptedCount;
+   announce(name+' adicionado ao carrinho (quantidade: '+quantity+').');
+   status.dataset.state='success';
+   if(countLabel){
+    const strong=countLabel.querySelector?.('strong'),note=countLabel.querySelector?.('span');
+    if(strong)strong.textContent=acceptedCount+' leitura(s) confirmada(s)';
+    if(note)note.textContent=Number.isFinite(result?.itemCount)?
+     result.itemCount+' unidade(s) no carrinho. Continue a ler ou vá cobrar.':
+     'Continue a ler ou vá cobrar.';
+   }
+   if(repeatButton)repeatButton.hidden=false;
+   return;
+  }
   audio('error');announce(typeof result==='string'?result:'Código não encontrado nesta loja.',true);
  };
  dialog.querySelector('[data-shop-scan-manual]').addEventListener('submit',event=>{
   event.preventDefault();
-  readCode(new FormData(event.currentTarget).get('code'));
+  readCode(new FormData(event.currentTarget).get('code'),{manual:true});
+  if(continuous&&event.currentTarget?.reset)event.currentTarget.reset();
  },{signal:events.signal});
  doc.addEventListener('visibilitychange',()=>{if(doc.hidden)finish();},{signal:events.signal});
  if(typeof dialog.showModal==='function')dialog.showModal();
@@ -133,6 +174,22 @@ export function openShopCodeScanner({onCode,onClose,doc=globalThis.document,
    const acquired=await navigatorRef.mediaDevices.getUserMedia(landscapeConstraints('environment'));
    if(stopped){acquired.getTracks().forEach(track=>track.stop());return;}
    stream=acquired;video.srcObject=stream;
+   const cameraTrack=stream.getVideoTracks?.()[0]||stream.getTracks?.().find(t=>t.kind==='video');
+   const capabilities=cameraTrack?.getCapabilities?.();
+   if(torchButton&&capabilities?.torch===true&&typeof cameraTrack.applyConstraints==='function'){
+    torchButton.hidden=false;
+    torchButton.addEventListener('click',async()=>{
+     try{
+      torchOn=!torchOn;
+      await cameraTrack.applyConstraints({advanced:[{torch:torchOn}]});
+      torchButton.textContent=torchOn?'☀ Desligar luz':'☀ Ligar luz';
+      torchButton.setAttribute('aria-pressed',String(torchOn));
+     }catch{
+      torchOn=false;torchButton.hidden=true;
+      announce('A luz da câmara não está disponível neste dispositivo.',true);
+     }
+    },{signal:events.signal});
+   }
    await video.play();
   }catch(error){
    if(stopped)return;

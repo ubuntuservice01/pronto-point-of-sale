@@ -65,3 +65,50 @@ test('Sem BarcodeDetector, a câmara abre e o leitor alternativo detecta e liber
   else globalThis.ZXingBrowser=previous;
  }
 });
+
+test('Modo Caixa can keep the camera open across multiple different barcodes without duplicate re-scans',async()=>{
+ const old=globalThis.ZXingBrowser;
+ let emit,trackStops=0,closeCount=0;
+ const stream={getTracks:()=>[{stop(){trackStops++;}}]};
+ const video={srcObject:null,hidden:false,play:async()=>{}};
+ const status={textContent:'',dataset:{}};
+ const events={addEventListener(){}};
+ const controls=new Map([
+  ['[data-shop-scan-status]',status],['[data-shop-scan-video]',video],
+  ['[data-shop-scan-close]',events],['[data-shop-scan-manual]',events],
+  ['[data-shop-scan-done]',events],['[data-shop-scan-repeat]',{hidden:true,addEventListener(){}}],
+  ['[data-shop-scan-counter]',{querySelector:()=>({textContent:''})}]
+ ]);
+ const dialog={open:false,className:'',setAttribute(){},addEventListener(){},
+  querySelector:key=>controls.get(key)||null,
+  showModal(){this.open=true;},close(){this.open=false;},remove(){closeCount++;}};
+ const doc={body:{append(){}},createElement:()=>dialog,addEventListener(){}};
+ const found=[];
+ try{
+  globalThis.ZXingBrowser={BrowserMultiFormatReader:class{
+   async decodeFromVideoElement(v,cb){emit=cb;return {stop(){}};}
+  }};
+  const stop=openShopCodeScanner({doc,navigatorRef:{mediaDevices:{getUserMedia:async()=>stream}},
+   Detector:undefined,continuous:true,onCode:code=>{
+    found.push(code);return {accepted:true,name:code,quantity:1,itemCount:found.length};
+   }});
+  for(let i=0;i<30&&!emit;i++)await new Promise(r=>setTimeout(r,0));
+  assert.ok(emit,'decoder starts');
+  emit({getText:()=> 'A-001'});
+  emit({getText:()=> 'A-001'});
+  emit({getText:()=> 'B-002'});
+  assert.deepEqual(found,['A-001','B-002'],'holding the same barcode does not add again');
+  assert.equal(closeCount,0,'camera remains open for the next product');
+  assert.match(status.textContent,/adicionado ao carrinho/);
+  stop();
+  assert.equal(trackStops,1,'closing frees camera');
+  assert.equal(closeCount,1);
+ }finally{if(old===undefined)delete globalThis.ZXingBrowser;else globalThis.ZXingBrowser=old;}
+});
+test('Fast scanning exposes camera viewfinder, torch option, manual entry and visible checkout exit',()=>{
+ const html=shopScannerHTML({continuous:true});
+ for(const attr of ['data-shop-scan-video','data-shop-scan-target','data-shop-scan-torch',
+  'data-shop-scan-repeat','data-shop-scan-counter','data-shop-scan-done','data-shop-scan-manual'])
+  assert.ok(html.includes(attr)||attr==='data-shop-scan-target'&&html.includes('shop-scan-target'),attr);
+ assert.match(html,/Ver carrinho e cobrar/);
+});
