@@ -56,7 +56,7 @@ test('registration UI only shows the green success screen after the server confi
  const confirm=ui.indexOf('await confirmSelfServiceActivation(client');
  const shown=ui.indexOf('activated(confirmed)');
  assert.ok(confirm>0&&shown>confirm,'success screen must follow the confirmation');
- assert.equal(ui.match(/activated\(/g).length,2,'one definition and one call only');
+ assert.equal(ui.match(/activated\(/g).length,1,'the success screen has a single entry point');
  // After the identity exists, a retry never calls signup again.
  assert.match(ui,/if\(!identityReady\)\{\s*const result=await client\.selfServiceSignUp/);
 });
