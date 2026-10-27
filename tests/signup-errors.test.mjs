@@ -12,7 +12,7 @@ test('Supabase Auth gateway header reveals an existing account even with an inco
  const {createProntoIdentity}=await import('../src/supabase-identity.js');
  const {prontoSupabaseConfig}=await import('../src/pronto-supabase-config.js');
  const client=createProntoIdentity({...prontoSupabaseConfig,fetchImpl:async(url)=>{
-  assert.match(url,/\\/auth\\/v1\\/signup$/);
+  assert.ok(url.endsWith('/auth/v1/signup'));
   return new Response(JSON.stringify({message:'Signup failed'}),{status:422,headers:{'x-sb-error-code':'user_already_exists'}});
  }});
  await assert.rejects(client.selfServiceSignUp('new@example.com','very-secure-password-123','Owner Name'),{message:'registration_email_exists'});
