@@ -5,6 +5,7 @@ import {mountUbuntuAdminDashboard} from './supabase-admin-dashboard.js';
 import {mountSupabaseMerchantPilot} from './supabase-shop-dashboard.js';
 import {mountProntoPinGate} from './supabase-pin-lock.js';
 import {extractRecoveryFromHash,mountPasswordRecovery} from './supabase-recovery-ui.js';
+import {confirmSelfServiceActivation} from './self-service-activation.js';
 
 // Authenticated public entrypoint. All merchant writes use checked Supabase RPCs.
 export function startSupabaseIdentityCheck(root=document.querySelector('#app')) {
@@ -165,7 +166,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      stage==='confirmação'?(alreadyRegistered&&e.message==='activation_unconfirmed'?errors.account_already_registered:
       'Ainda não foi possível confirmar a loja e o teste de 10 dias. Nada foi duplicado. Toque em «Repetir activação do negócio» para verificar novamente.'):
       'O registo não foi concluído. Nenhuma loja foi criada. Verifique os dados e tente novamente.';
-    const known=stage==='confirmação'?null:errors[e.message];
+    const known=stage==='confirmação'&&!['supabase_unauthorized','login_required'].includes(e.message)?null:errors[e.message];
     error.textContent=(known||fallback)+' [Etapa: '+stage+']';
     if(identityReady){
      // The account exists from here on: never offer a new signup again.
@@ -260,11 +261,11 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    return;
   }
   if(!admin&&!account.grants.length&&staffAccess?.reason!=='blocked'&&staffAccess?.reason!=='outside_schedule'&&staffAccess?.reason!=='suspended'){
-   shell('<h2>Conta confirmada</h2><p>Finalize o registo do seu negócio e active os 10 dias gratuitos.</p>'+
-    '<button type="button" class="primary full" id="pronto-complete-registration">Registar o meu negócio</button>'+
+   shell('<h2>Conta confirmada</h2><p>A sua conta existe, mas o negócio ainda não foi activado. Conclua apenas a activação para começar os 10 dias gratuitos.</p>'+
+    '<button type="button" class="primary full" id="pronto-complete-registration">Activar o meu negócio</button>'+
     '<button type="button" class="secondary full" id="pronto-self-logout">Terminar sessão</button>');
    root.querySelector('#pronto-complete-registration').onclick=()=>registration(true);
-   root.querySelector('#pronto-self-logout').onclick=async()=>{await client.signOut();form();};
+   root.querySelector('#pronto-self-logout').onclick=async()=>{forgetPending();await client.signOut();form();};
    return;
   }
   const grants=account.grants.length?
@@ -292,7 +293,7 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   }
   root.querySelector('#pronto-auth-check-logout').onclick=async()=>{
    const button=root.querySelector('#pronto-auth-check-logout');button.disabled=true;
-   await client.signOut();form();
+   forgetPending();await client.signOut();form();
   };
  };
  const bootstrap=async()=>{
