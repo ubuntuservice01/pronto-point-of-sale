@@ -14,7 +14,7 @@ export function normalizeReturnSnapshot(raw){
  };
 }
 const methods=[['cash','Dinheiro'],['mpesa','M-Pesa'],['emola','e-Mola'],['transfer','Transferência'],['bank','Banco']];
-export function renderReturnView({returns,selectedSaleId='',session=null}={}){
+export function renderReturnView({returns,selectedSaleId='',session=null,businessType='general'}={}){
  if(!returns)return '<section class="shop-box"><h3>Devoluções</h3><p></p></section>';
  const sales=returns.sales.filter(s=>s.status==='completed');
  const sale=sales.find(s=>s.id===selectedSaleId)||null;
@@ -31,8 +31,9 @@ export function renderReturnView({returns,selectedSaleId='',session=null}={}){
     '<small>Vendido: '+esc(i.qty)+' '+esc(i.unit)+' · Já devolvido: '+esc(i.returned)+'</small>'+
     '<input type="hidden" name="product_'+n+'" value="'+esc(i.productId)+'">'+
     '<label>Quantidade a devolver<input type="number" name="qty_'+n+'" min="0" max="'+esc(Math.max(0,i.qty-i.returned))+'" step="0.001" value="0"></label>'+
-    '<label><input type="checkbox" name="resellable_'+n+'"> Artigo em condições de voltar ao stock</label>'+
-    '<label>Validade do artigo devolvido (se aplicável)<input type="date" name="expiry_'+n+'"></label></div>').join('')+
+    (businessType==='pharmacy'?'<p class="shop-help">Medicamento devolvido: não retorna automaticamente ao stock disponível. Separe fisicamente para avaliação e descarte ou encaminhamento seguro.</p>':
+    '<label><input type="checkbox" name="resellable_'+n+'"> Artigo em condições de voltar ao stock</label>')+
+    (businessType==='pharmacy'?'':'<label>Validade do artigo devolvido (se aplicável)<input type="date" name="expiry_'+n+'"></label>')+'</div>').join('')+
    '<label>Meio do reembolso<select name="method">'+methods.map(([id,name])=>
     '<option value="'+id+'">'+name+'</option>').join('')+'</select></label>'+
    '<label>Referência do reembolso digital<input name="reference" maxlength="128"></label>'+

@@ -254,7 +254,7 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
     '<p>'+esc(h.cart.map(i=>products.find(p=>p.id===i.productId)?.name||'Artigo').join(', '))+'</p>'+
     '<div class="credit-debt-actions"><button type="button" data-shop-hold-resume="'+esc(h.id)+'">Retomar</button><button type="button" data-shop-hold-delete="'+esc(h.id)+'">Eliminar</button></div></article>').join(''):'<p class="shop-help">Não existem vendas suspensas nesta filial.</p>')+'</section>';
  }else if(view==='returns'){
-  body=renderReturnView({returns,selectedSaleId:selectedReturnSaleId,session});
+  body=renderReturnView({returns,selectedSaleId:selectedReturnSaleId,session,businessType:grant.businessType});
  }else if(view==='pharmacy'&&grant.businessType==='pharmacy'){
   body=renderPharmacyReviews(pharmacy);
  }else if(view==='trace'&&grant.businessType==='pharmacy'){
