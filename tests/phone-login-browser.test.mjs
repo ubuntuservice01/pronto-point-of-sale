@@ -127,14 +127,23 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
    throw Error('Timeout: '+label+' | text='+await js('document.body.innerText.slice(0,500)').catch(()=>'?')+' | calls='+JSON.stringify(state.calls.map(c=>c.method+' '+c.path)));
   }
   async function fresh(scenario){
-   state.scenario=scenario;state.calls.length=0;state.shopCreated=false;
-   // Clear a previous simulated login before the app can attempt token refresh.
+   // Leave the old document first; neither its PIN gate nor asynchronous requests
+   // may satisfy the next scenario's DOM checks.
+   await debug.send('Page.navigate',{url:'about:blank'});
+   await until('location.href==="about:blank"','previous page closed');
    await debug.send('Storage.clearDataForOrigin',{origin,storageTypes:'all'});
+   state.scenario=scenario;state.calls.length=0;state.shopCreated=false;
    await debug.send('Page.navigate',{url:origin+'/?mode=supabase'});
-   await until('!!document.querySelector("#pronto-auth-check-form")','login form');
-   await js('localStorage.clear(),sessionStorage.clear(),true');
-   await debug.send('Page.reload',{ignoreCache:true});
-   await until('!!document.querySelector("#pronto-auth-check-form")','login form after reset');
+   await until('location.pathname==="/" && !!document.querySelector("#pronto-auth-check-form")','fresh login form');
+  }
+  async function waitForCall(path,label,ms=12000){
+   const deadline=Date.now()+ms;
+   while(Date.now()<deadline){
+    const call=state.calls.find(c=>c.path===path&&c.method==='POST');
+    if(call)return call;
+    await wait(100);
+   }
+   throw Error('Timeout: '+label+' | calls='+JSON.stringify(state.calls.map(c=>c.method+' '+c.path)));
   }
   const fill=(selector,values)=>js('(()=>{const f=document.querySelector('+JSON.stringify(selector)+');'+
    'for(const [k,v] of Object.entries('+JSON.stringify(values)+')){const el=f.elements[k];'+
@@ -167,8 +176,9 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
   const signupData={owner_name:'Ana Macuácua',business_name:'Mercearia da Ana',phone:'84 123 4567',whatsapp:'84 123 4567',address:'KaMpfumo, Maputo',
    email:'Nova@Loja.test',password:'senha-forte-12345',confirm:'senha-forte-12345',accept_terms:true};
   await fill('#pronto-self-register',signupData);
+  const signup=await waitForCall('/auth/v1/signup','signup request from registration form');
+  await waitForCall('/rest/v1/rpc/pronto_self_service_register','shop registration request');
   await until(pinScreen,'PIN screen after signup');
-  const signup=state.calls.find(c=>c.path==='/auth/v1/signup');
   assert.equal(signup.payload.email,'nova@loja.test');
   assert.equal(signup.payload.data.display_name,'Ana Macuácua');
   const register=state.calls.find(c=>c.path==='/rest/v1/rpc/pronto_self_service_register');
