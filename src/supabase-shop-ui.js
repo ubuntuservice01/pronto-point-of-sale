@@ -382,6 +382,16 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
  '<div class="shop-toolbar"><label>Empresa<select id="shop-business-select">'+grants.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===grant.id?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
  '<label>Filial<select id="shop-branch-select">'+branches.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===branchId?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></label>'+
  '<button type="button" data-shop-refresh aria-label="Sincronizar dados" title="Sincronizar dados">⟳</button><span class="shop-cash-indicator">'+(session?'Caixa aberto':cashState?.policy.openingRequired===false?'Abertura opcional':'Caixa fechado')+'</span></div>'+
+ // Preserve the desktop Modo Caixa button in the header. The compact mobile
+ // header deliberately hides it, so provide a mobile-only, equally authorised
+ // action directly below the unchanged business and branch selectors.
+ (nav.some(([key])=>key==='sell')?
+  '<button type="button" class="shop-mobile-cashier-entry" data-shop-cashier-toggle aria-pressed="'+(cashierMode&&view==='sell')+
+  '" aria-label="'+(cashierMode&&view==='sell'?'Voltar ao modo normal':'Activar Modo Caixa')+'">'+
+  '<span class="shop-mobile-cashier-icon" aria-hidden="true">▦</span>'+
+  '<span class="shop-mobile-cashier-copy"><strong>'+(cashierMode&&view==='sell'?'Modo Caixa activo':'Modo Caixa')+'</strong>'+
+  '<small>'+(cashierMode&&view==='sell'?'Voltar ao modo normal':'Abrir venda rápida com leitor de códigos')+'</small></span>'+
+  '<span class="shop-mobile-cashier-arrow" aria-hidden="true">›</span></button>':'')+
 
  (trialStatus?.is_trial===true?'<div class="pronto-trial-banner" role="status"><strong>🎁 Teste gratuito</strong><span>'+(
   trialStatus.expired?'O seu teste terminou. Escolha um plano para continuar.':

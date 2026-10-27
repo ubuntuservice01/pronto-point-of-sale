@@ -97,3 +97,27 @@ test('Modo Caixa presents an item counter, stock-aware quantity controls and a f
  assert.match(dashboard,/data-shop-fast-minus/);
  assert.match(dashboard,/onDone:/);
 });
+
+test('Mobile cashier action stays visible outside the narrow header and preserves every navigation',()=>{
+ const html=base();
+ const css=readFileSync(new URL('../src/shop-cashier-mode.css',import.meta.url),'utf8');
+ const sidebar=readFileSync(new URL('../src/shop-sidebar.css',import.meta.url),'utf8');
+ assert.match(html,/shop-mobile-cashier-entry/);
+ assert.match(html,/shop-mobile-cashier-copy/);
+ assert.match(html,/Abrir venda rápida com leitor de códigos/);
+ assert.equal((html.match(/data-shop-cashier-toggle/g)||[]).length,2);
+ assert.ok(html.indexOf('shop-mobile-cashier-entry')>html.indexOf('shop-toolbar'));
+ assert.match(css,/\.shop-layout \.shop-mobile-cashier-entry\{display:none\}/);
+ assert.match(css,/@media\(max-width:680px\)/);
+ assert.match(css,/\.shop-layout \.shop-mobile-cashier-entry\{[\s\S]*?display:flex/);
+ assert.match(sidebar,/\.shop-layout \.shop-cashier-toggle\{display:none!important\}/);
+ const active=base({cashierMode:true});
+ assert.match(active,/Modo Caixa activo/);
+ assert.match(active,/Voltar ao modo normal/);
+ assert.match(active,/shop-mobile-cashier-entry" data-shop-cashier-toggle aria-pressed="true"/);
+ const stock=base({grant:{id:'22222222-2222-4222-8222-222222222222',name:'Loja',role:'stock'},view:'inventory'});
+ assert.doesNotMatch(stock,/shop-mobile-cashier-entry/);
+ assert.match(html,/shop-mobile-bottom/);
+ assert.match(html,/data-shop-notifications/);
+ assert.match(html,/shop-profile-menu/);
+});

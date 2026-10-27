@@ -100,3 +100,35 @@
 .shop-layout.shop-fast-cashier .shop-product-fast .shop-fast-product-actions button{width:44px;min-width:44px;height:48px}
 .shop-layout.shop-fast-cashier .shop-product-fast .shop-fast-product-actions button:disabled{opacity:.4}
 @media(max-width:390px){.shop-layout.shop-fast-cashier .shop-product-fast .shop-fast-product-actions button{width:39px;min-width:39px;height:44px}}
+
+/* Mobile-only mode switch: the desktop control remains in the compact header
+   but cannot fit beside notifications and profile at <=680px. */
+.shop-layout .shop-mobile-cashier-entry{display:none}
+@media(max-width:680px){
+ .shop-layout .shop-mobile-cashier-entry{
+  display:flex;align-items:center;gap:12px;box-sizing:border-box;
+  width:calc(100% - 26px);min-height:67px;margin:5px 13px 11px;
+  padding:10px 15px;border:1px solid #b5e0ca;border-radius:15px;
+  background:#ebf8f0;color:#075b47;box-shadow:0 3px 15px #0c553013;
+  text-align:left;cursor:pointer;touch-action:manipulation;
+ }
+ .shop-layout .shop-mobile-cashier-entry .shop-mobile-cashier-icon{
+  display:grid;place-items:center;flex:none;width:46px;height:46px;
+  border-radius:12px;background:#d3f1df;font-size:28px;color:#087f68;
+ }
+ .shop-layout .shop-mobile-cashier-copy{display:grid;gap:3px;min-width:0;flex:1}
+ .shop-layout .shop-mobile-cashier-copy strong{font-size:16px;font-weight:850;line-height:1.3}
+ .shop-layout .shop-mobile-cashier-copy small{font-size:11px;line-height:1.35;color:#527268}
+ .shop-layout .shop-mobile-cashier-arrow{flex:none;font-size:29px;line-height:1;color:inherit}
+ .shop-layout .shop-mobile-cashier-entry[aria-pressed="true"]{
+  background:#087f68;border-color:#087f68;color:#fff;
+ }
+ .shop-layout .shop-mobile-cashier-entry[aria-pressed="true"] .shop-mobile-cashier-icon{
+  background:#ffffff24;color:#fff;
+ }
+ .shop-layout .shop-mobile-cashier-entry[aria-pressed="true"] small{color:#d9fff0}
+ .shop-layout .shop-mobile-cashier-entry:focus-visible{
+  outline:3px solid #4ecb96;outline-offset:3px;
+ }
+ .shop-layout .shop-mobile-cashier-entry:active{transform:scale(.99)}
+}
