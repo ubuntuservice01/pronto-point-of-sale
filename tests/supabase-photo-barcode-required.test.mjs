@@ -73,7 +73,8 @@ test('Audio confirms recognised product with high bip, unknown product with lowe
  signal.close();
  assert.equal(createShopScannerFeedback(null)('success'),false);
  const scanner=readFileSync(new URL('../src/shop-mobile-scanner.js',import.meta.url),'utf8');
- assert.match(scanner,/if\(result===true\)\{audio\('success'\)/);
+ assert.match(scanner,/const ok=result===true\|\|result\?\.accepted===true/);
+ assert.match(scanner,/if\(ok\)\{\s*audio\('success'\)/);
  assert.match(scanner,/audio\('error'\)/);
  assert.match(shopScannerHTML(),/data-shop-scan-video/);
 });
