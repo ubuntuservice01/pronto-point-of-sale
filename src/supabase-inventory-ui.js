@@ -3,6 +3,7 @@ import {catalogControls} from './ui/pronto-catalog-controls.js';
 import {esc,MONEY,UNIT_OPTIONS} from './supabase-shop-core.js';
 import {allowsFractionalSale} from './sale-by-value.js';
 import {renderMedicineFields} from './pharmacy.js';
+import {pharmacyExpiryBuckets} from './pharmacy-batches.js';
 const qty=x=>new Intl.NumberFormat('pt-PT',{maximumFractionDigits:3}).format(Number(x)||0);
 const str=x=>String(x??'');
 const field=(name,label,value='',attrs='')=>'<label>'+esc(label)+'<input name="'+name+'" value="'+esc(value)+'" '+attrs+'></label>';
@@ -38,14 +39,15 @@ export function inventoryAlerts(inventory,days=30){
 }
 // One notification per actionable low-stock product or expiring/expired stock lot.
 // The numbers are derived only from the authenticated, branch-scoped inventory snapshot.
-export function inventoryNotificationSummary(inventory,days=30){
+export function inventoryNotificationSummary(inventory,days=30,businessType='general'){
  const alerts=inventoryAlerts(inventory,days);
+ const pharmacy=businessType==='pharmacy'?pharmacyExpiryBuckets(inventory):null;
  const products=inventory?.products||[];
  const name=productId=>products.find(p=>p.id===productId)?.name||'Produto';
  const items=[
-  ...alerts.expired.filter(batch=>batch.qty>0).map(batch=>({kind:'expired',title:'Produto vencido',detail:name(batch.productId)+' · Validade '+batch.expiry})),
+  ...(pharmacy?pharmacy.expired:alerts.expired).filter(batch=>batch.qty>0).map(batch=>({kind:'expired',title:'Produto vencido',detail:name(batch.productId)+' · Lote '+(batch.lot||'Sem número')+' · Validade '+batch.expiry})),
   ...alerts.low.map(product=>({kind:'low',title:'Stock baixo',detail:product.name+' · Disponível '+qty(product.available)+' / mínimo '+qty(product.minimum)})),
-  ...alerts.expiring.filter(batch=>batch.qty>0).map(batch=>({kind:'expiring',title:'Validade próxima',detail:name(batch.productId)+' · Validade '+batch.expiry}))
+  ...(pharmacy?[...pharmacy.days30,...pharmacy.days60,...pharmacy.days90]:alerts.expiring).filter(batch=>batch.qty>0).map(batch=>({kind:'expiring',title:'Validade próxima',detail:name(batch.productId)+' · Validade '+batch.expiry}))
  ];
  return {total:items.length,items,low:alerts.low.length,expiring:items.filter(item=>item.kind==='expiring').length,expired:items.filter(item=>item.kind==='expired').length};
 }
@@ -56,12 +58,22 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
  const chosen=inventory.products.find(p=>p.id===selectedProductId);
  const alert=inventoryAlerts(inventory,alertDays);
  if(view==='alerts'||view==='shopping_list'){
+  const pharmacy=businessType==='pharmacy'?pharmacyExpiryBuckets(inventory):null;
+  const group=(title,rows)=>'<h4>'+title+' ('+rows.length+')</h4>'+(rows.length?rows.map(x=>'<div class="credit-line"><strong>'+esc(inventory.products.find(p=>p.id===x.productId)?.name||'Produto')+'</strong> · Lote '+esc(x.lot||'Sem número')+' · '+esc(x.expiry||'Sem data')+' · '+qty(x.qty)+' unidade(s)</div>').join(''):'<p class="shop-help">Sem lotes nesta situação.</p>');
+  const pharmacyPanel=pharmacy?box('💊 Alertas de medicamentos por validade',
+   '<p class="shop-help">Controlo por data de Moçambique. Os lotes vencidos (incluindo os que vencem hoje) não podem ser vendidos.</p>'+
+   group('Vencidos — retirar da área de venda',pharmacy.expired)+
+   group('Vencem nos próximos 30 dias',pharmacy.days30)+
+   group('Vencem entre 31 e 60 dias',pharmacy.days60)+
+   group('Vencem entre 61 e 90 dias',pharmacy.days90)+
+   group('Lotes sem validade — verificar histórico',pharmacy.undated),
+   'Os lotes vencidos devem ser separados fisicamente; a baixa de stock é uma operação registada no Inventário.') :'';
   const table=alert.suggestions.map(x=>{
    const p=inventory.products.find(p=>p.id===x.productId);
    return '<tr><td>'+esc(x.name)+'</td><td>'+qty(x.available)+' '+esc(p?.unit||'')+'</td>'+
     '<td>'+qty(x.sold30)+'</td><td><strong>'+qty(x.suggested)+'</strong></td></tr>';
   }).join('');
-  return '<div class="shop-two">'+box('Alertas inteligentes',
+  return '<div class="shop-two">'+pharmacyPanel+box('Alertas inteligentes',
    '<label>Dias de antecedência<select id="shop-alert-days">'+[7,15,30,60,90].map(v=>
     '<option value="'+v+'"'+(v===alertDays?' selected':'')+'>'+v+' dias</option>').join('')+'</select></label>'+
    '<p class="credit-warning">'+alert.low.length+' artigo(s) com stock baixo · '+alert.expiring.length+
@@ -119,18 +131,19 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
     '<label><input type="checkbox" name="active" '+(chosen.active?'checked':'')+'> Activo para venda</label>'+
     '<button class="shop-submit" type="submit">Guardar alterações</button></form>':'')+
    (['owner','manager'].includes(role)?catalogControls({kind:'product',id:chosen.id,active:chosen.active,revision:chosen.revision}):'')+
-   '<h4>Conferência e ajuste físico</h4><form data-shop-form="inventory_count" class="shop-form">'+
+   (businessType==='pharmacy'?'':'<h4>Conferência e ajuste físico</h4><form data-shop-form="inventory_count" class="shop-form">'+
     '<input type="hidden" name="product_id" value="'+esc(chosen.id)+'">'+
     '<input type="hidden" name="revision" value="'+esc(chosen.revision)+'">'+
     field('counted_qty','Quantidade contada',chosen.stock,'required type="number" min="0" step="0.001"')+
     field('reason','Motivo da conferência','','required minlength="3" maxlength="180"')+
-    '<button class="shop-submit" type="submit">Confirmar inventário físico</button></form>'+
-   '<form data-shop-form="inventory_adjust" class="shop-form"><h4>Ajuste de stock com motivo</h4>'+
+    '<button class="shop-submit" type="submit">Confirmar inventário físico</button></form>')+
+   '<form data-shop-form="inventory_adjust" class="shop-form"><h4>'+(businessType==='pharmacy'?'Retirar stock danificado ou vencido':'Ajuste de stock com motivo')+'</h4>'+ 
+   (businessType==='pharmacy'?'<p class="shop-help">Para entradas de medicamentos utilize Receber stock, com lote e validade obrigatórios. Neste formulário apenas são permitidas baixas justificadas.</p>':'')+
     '<input type="hidden" name="product_id" value="'+esc(chosen.id)+'">'+
     '<input type="hidden" name="revision" value="'+esc(chosen.revision)+'">'+
-    field('delta','Quantidade (+ entrada; - quebra)','','required type="number" step="0.001"')+
+    field('delta',businessType==='pharmacy'?'Quantidade a retirar (valor negativo)':'Quantidade (+ entrada; - quebra)','','required type="number" step="0.001"'+(businessType==='pharmacy'?' max="-0.001"':''))+
     field('reason','Justificação','','required minlength="3" maxlength="180"')+
-    '<label>Validade em caso de entrada<input type="date" name="expires_on"></label>'+
+    (businessType==='pharmacy'?'':'<label>Validade em caso de entrada<input type="date" name="expires_on"></label>')+
     '<button class="shop-submit" type="submit">Registar ajuste</button></form>'+
    '<h4>Lotes disponíveis</h4>'+inventory.batches.filter(b=>b.productId===chosen.id)
     .map(b=>'<div class="credit-line">'+esc(b.lot||'Sem número')+' · '+qty(b.qty)+

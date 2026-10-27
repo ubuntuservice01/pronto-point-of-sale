@@ -9,6 +9,7 @@ import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} fro
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,renderShopProductResults,shopPaymentPanel} from './supabase-shop-ui.js';
 import {readMedicineFields} from './pharmacy.js';
+import {validatePharmacyReceipt,maputoToday} from './pharmacy-batches.js';
 import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
 import {PAYMENT_METHODS,toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
 import {quantityFromValueCents,validateSaleQuantity,allowsFractionalSale} from './sale-by-value.js';
@@ -270,7 +271,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
  // in the current branch. Updating badges in place preserves open forms and drafts.
  let alertRefreshBusy=false;
  const refreshAlertBadges=()=>{
-  const count=authorizedView('alerts')?inventoryNotificationSummary(inventory,alertDays).total:0;
+  const count=authorizedView('alerts')?inventoryNotificationSummary(inventory,grant.businessType==='pharmacy'?90:alertDays,grant.businessType).total:0;
   root.querySelectorAll('[data-shop-alert-count]').forEach(badge=>{
    badge.hidden=count===0;badge.textContent=count>99?'99+':String(count);
    badge.setAttribute('aria-label',count+' alerta(s)');
@@ -1279,12 +1280,14 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
       unit:get('unit'),price_cents:toCents(get('price')),min_stock:Number(get('min_stock')),
       active:values.has('active')};
     }else if(action==='inventory_count'){
+     if(grant.businessType==='pharmacy')throw Error('Na farmácia utilize recepção por lote e baixa justificada.');
      const counted=Number(get('counted_qty'));
      if(!Number.isFinite(counted)||counted<0)throw Error('invalid_count');
      payload={product_id:p.id,expected_revision:revision,counted_qty:counted,reason:get('reason')};
     }else{
      const delta=Number(get('delta'));
      if(!Number.isFinite(delta)||delta===0)throw Error('invalid_adjustment');
+     if(grant.businessType==='pharmacy'&&delta>0)throw Error('Para entrada de medicamentos, use Receber stock com lote e validade.');
      payload={product_id:p.id,expected_revision:revision,delta,reason:get('reason'),
       expires_on:get('expires_on')};
     }
@@ -1595,10 +1598,14 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     price_cents:toCents(f.get('price')),code:autoCode?'':code,
     min_stock:String(f.get('min_stock')||'0'),allow_fractional:f.has('allow_fractional')};
    }
-   else if(action==='stock_receive')payload={product_id:String(f.get('product_id')||''),
-    quantity:toQuantity(f.get('quantity'),data.products.find(p=>p.id===f.get('product_id'))?.unit),
-    lot_number:String(f.get('lot_number')||'').trim(),expires_on:String(f.get('expires_on')||''),
-    unit_cost_cents:f.get('unit_cost')?toCents(f.get('unit_cost')):null};
+   else if(action==='stock_receive'){
+    const lot=String(f.get('lot_number')||'').trim(),expiry=String(f.get('expires_on')||'');
+    if(grant.businessType==='pharmacy')validatePharmacyReceipt({lot,expiry,today:maputoToday()});
+    payload={product_id:String(f.get('product_id')||''),
+     quantity:toQuantity(f.get('quantity'),data.products.find(p=>p.id===f.get('product_id'))?.unit),
+     lot_number:lot,expires_on:expiry,
+     unit_cost_cents:f.get('unit_cost')?toCents(f.get('unit_cost')):null};
+   }
    else if(action==='cash_open'){
     payload={device_id:String(f.get('device_id')||'').trim(),
      opening_cash_cents:toCents(f.get('opening_cash'))};

@@ -12,6 +12,7 @@ import {renderStaffManagement} from './supabase-team-management-ui.js';
 import {renderSuspendedCash} from './supabase-staff-cash-ui.js';
 import {renderAuditView} from './supabase-audit-ui.js';
 import {renderMedicineFields,businessTypeLabel} from './pharmacy.js';
+import {maputoToday} from './pharmacy-batches.js';
 
 const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco',mixed:'Repartido'};
 const paymentMethodButtons=(method,extraClass='',label='Forma de pagamento')=>
@@ -178,7 +179,7 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
  const branch=branches.find(b=>b.id===branchId);
  const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['settings','Definições'],['audit','Auditoria'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],settings:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
  const canViewAlerts=nav.some(([key])=>key==='alerts');
- const notificationData=canViewAlerts?inventoryNotificationSummary(inventory,alertDays):{total:0,items:[]};
+ const notificationData=canViewAlerts?inventoryNotificationSummary(inventory,grant.businessType==='pharmacy'?90:alertDays):{total:0,items:[]};
  const notificationCount=notificationData.total;
  const badgeText=count=>count>99?'99+':String(count);
  const alertLabel='Alertas'+(notificationCount?' ('+notificationCount+')':'');
@@ -298,18 +299,18 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
     '<p class="shop-help" data-shop-create-photo-status>Escolha uma fotografia JPEG, PNG ou WebP (até 3 MB). A imagem é obrigatória antes de guardar.</p></fieldset>'+
    field('min_stock','Stock mínimo','0','type="number" min="0" step="0.001"')+
    '<button type="submit" class="shop-submit">Cadastrar produto</button></form>','Código de barras obrigatório ou código interno gerado. A fotografia é obrigatória: o produto só fica à venda após o envio da imagem.')+
-   section('Importar produtos por CSV','Até 100 artigos por ficheiro. Colunas obrigatórias: nome;categoria;preco. O stock inicial é opcional. Reveja os dados antes de confirmar.',
+   (grant.businessType==='pharmacy'?'':section('Importar produtos por CSV','Até 100 artigos por ficheiro. Colunas obrigatórias: nome;categoria;preco. O stock inicial é opcional. Reveja os dados antes de confirmar.',
    '<form data-shop-form="csv_import" class="shop-form">'+
    '<label>Ficheiro CSV (até 100 produtos)<input type="file" name="csv_file" accept=".csv,text/csv,text/plain" required></label>'+
    '<label><input type="checkbox" name="confirm_import" required> Confirmei os preços, códigos e quantidades do ficheiro</label>'+
-   '<button class="shop-submit" type="submit">Validar e importar produtos</button></form>')+
+   '<button class="shop-submit" type="submit">Validar e importar produtos</button></form>'))+
    section('Receber stock','<form data-shop-form="stock_receive" class="shop-form">'+
    '<label>Produto<select name="product_id" required><option value="">Seleccione o artigo</option>'+options(products)+'</select></label>'+
    field('quantity','Quantidade','','required type="number" min="0.001" step="0.001"')+
-   field('lot_number','Número do lote (opcional)','','maxlength="100"')+
-   field('expires_on','Data de validade (opcional)','','type="date"')+
+   field('lot_number',grant.businessType==='pharmacy'?'Número do lote (obrigatório)':'Número do lote (opcional)','','maxlength="100"'+(grant.businessType==='pharmacy'?' required':''))+
+   field('expires_on',grant.businessType==='pharmacy'?'Data de validade (obrigatória)':'Data de validade (opcional)','','type="date"'+(grant.businessType==='pharmacy'?' required min="'+esc(new Date(Date.parse(maputoToday()+'T00:00:00Z')+86400000).toISOString().slice(0,10))+'"':''))+
    field('unit_cost','Custo por unidade (MT, opcional)','','type="number" min="0" step="0.01"')+
-   '<button class="shop-submit" type="submit">Registar entrada de stock</button></form>','Cria um lote e um movimento de entrada, sem alterar vendas anteriores.')+'</div>';
+   '<button class="shop-submit" type="submit">Registar entrada de stock</button></form>',grant.businessType==='pharmacy'?'Lote e validade são obrigatórios. Não é permitido receber medicamentos vencidos; o servidor valida os dados.':'Cria um lote e um movimento de entrada, sem alterar vendas anteriores.')+'</div>';
  }else if(view==='cash'){
   body=renderCashManagement({cash:cashState,account,role:grant.role,pendingOffline});
  }else if(view==='audit'&&grant.role==='owner'){
