@@ -95,3 +95,8 @@
  .shop-scan-dialog .shop-scan-cart-count span{text-align:left;max-width:unset}
 }
 @media(prefers-reduced-motion:reduce){.shop-scan-dialog .shop-scan-guide{animation:none}}
+
+/* Keep fast-product quantity buttons compact despite the legacy 64px cashier rule. */
+.shop-layout.shop-fast-cashier .shop-product-fast .shop-fast-product-actions button{width:44px;min-width:44px;height:48px}
+.shop-layout.shop-fast-cashier .shop-product-fast .shop-fast-product-actions button:disabled{opacity:.4}
+@media(max-width:390px){.shop-layout.shop-fast-cashier .shop-product-fast .shop-fast-product-actions button{width:39px;min-width:39px;height:44px}}

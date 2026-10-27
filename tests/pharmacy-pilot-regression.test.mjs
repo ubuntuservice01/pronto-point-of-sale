@@ -41,7 +41,7 @@ test('Server guards catch returns and transfers recalled during transit',()=>{
   'pronto_private.transfer_action','pronto_private.guard_pharmacy_stock_movement'])
   assert.ok(sql.includes(marker),marker);
  assert.match(sql,/business_type='pharmacy'/);
- assert.match(read('public/sw.js'),/pronto-pos-v89/);
+ assert.match(read('public/sw.js'),/pronto-pos-v90/);
 });
 test('Pilot SQL suite guarantees transaction rollback and rejection cases',()=>{
  const qa=read('tests/sql/pharmacy-pilot-transaction.sql');
