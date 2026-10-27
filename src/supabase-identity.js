@@ -732,6 +732,27 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
     !data||!uuid(data.business_id))throw Error('pharmacy_action_invalid');
   return call('/rest/v1/rpc/pronto_pharmacy_action',{method:'POST',payload:{p_action:action,p_data:data}});
  }
+
+ async function pharmacyTraceSnapshot(businessId,branchId,from,to){
+  if(!uuid(businessId)||!uuid(branchId)||
+   !/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to)
+   throw Error('pharmacy_trace_scope');
+  const data=await call('/rest/v1/rpc/pronto_pharmacy_trace_snapshot',{
+   method:'POST',payload:{p_business:businessId,p_branch:branchId,p_from:from,p_to:to}
+  });
+  if(!data||typeof data!=='object'||!Array.isArray(data.lots)||
+     !Array.isArray(data.dispensations)||!data.totals)throw Error('pharmacy_trace_response');
+  return data;
+ }
+ async function pharmacyLotAction(operation,data){
+  if(!['hold','release'].includes(operation)||!data||!uuid(data.business_id)||
+    !uuid(data.batch_id)||typeof data.reason!=='string'||
+    data.reason.trim().length<12||data.reason.trim().length>500)
+   throw Error('pharmacy_lot_invalid_request');
+  return call('/rest/v1/rpc/pronto_pharmacy_lot_action',{
+   method:'POST',payload:{p_action:operation,p_data:data}
+  });
+ }
  async function pharmacySnapshot(businessId,branchId){
   if(!uuid(businessId)||!uuid(branchId))throw Error('pharmacy_scope');
   const data=await call('/rest/v1/rpc/pronto_pharmacy_snapshot',
@@ -829,5 +850,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,medicineUpsert,medicineDetails,pharmacyAction,pharmacySnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,medicineUpsert,medicineDetails,pharmacyAction,pharmacySnapshot,pharmacyTraceSnapshot,pharmacyLotAction,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

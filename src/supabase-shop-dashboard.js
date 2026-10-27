@@ -10,6 +10,7 @@ import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,renderShopProductResults,shopPaymentPanel} from './supabase-shop-ui.js';
 import {readMedicineFields} from './pharmacy.js';
 import {rxItems} from './pharmacy-review-ui.js';
+import {pharmacyTraceCSV} from './pharmacy-trace-ui.js';
 import {validatePharmacyReceipt,maputoToday} from './pharmacy-batches.js';
 import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
 import {PAYMENT_METHODS,toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
@@ -41,7 +42,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    account.grants[0].role==='stock'?'products':'history',
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
-  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,pharmacy=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
+  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,pharmacy=null,pharmacyTrace=null,traceFrom=maputoDate(new Date(Date.now()-29*86400000)),traceTo=maputoDate(),reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
   transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',settingsSection='personalizacao',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,cashierMode=false,accessBlocked=false,accessCheckBusy=false,closeScanner=null;
  const valueModeProducts=new Set();
  let trialStatus=null,trialStatusBusinessId='';
@@ -109,7 +110,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   finally{pinMetricBusy=false;}
  };
 
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],pharmacy:grant.businessType==='pharmacy'?['owner','manager','cashier']:[],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],branding:['owner'],settings:['owner'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],pharmacy:grant.businessType==='pharmacy'?['owner','manager','cashier']:[],trace:grant.businessType==='pharmacy'?['owner','manager','stock','finance']:[],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],branding:['owner'],settings:['owner'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   closeScanner?.();clearPinKPIs(account.userId);
@@ -159,7 +160,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(!data||accessBlocked)return;
   clearProductPhotoPreview();
   root.innerHTML=renderShopScreen({trialStatus:trialStatusBusinessId===grant.id?trialStatus:null,account,grants:account.grants,grant,branches,branchId,data,cart,valueModeProducts:[...valueModeProducts],view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,pharmacy,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,cashierMode,branding,logoUrl:brandLogoUrl,settingsSection});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,pharmacy,pharmacyTrace,traceFrom,traceTo,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,cashierMode,branding,logoUrl:brandLogoUrl,settingsSection});
   hydrateProductPhotos();
  };
  const refresh=async(selectFirst=false)=>{
@@ -169,7 +170,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    try{trialStatus=grant.role==='owner'?await client.myTrialStatus(grant.id):null;}catch{trialStatus=null;}
    branches=await client.merchantBranches(grant.id);
    if(!branches.length)throw Error('shop_no_branch');
-   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;returns=null;selectedReturnSaleId='';inventory=null;selectedProductId='';inventoryQuery='';report=null;reportScope='branch';audit=null;auditPage=0;auditSearch='';
+   branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;returns=null;selectedReturnSaleId='';inventory=null;selectedProductId='';inventoryQuery='';report=null;pharmacyTrace=null;reportScope='branch';audit=null;auditPage=0;auditSearch='';
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
   data=await client.merchantSnapshot(grant.id,branchId,grant.businessType);
@@ -186,7 +187,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return {settings,logoUrl};
   };
   const [nextBrand,nextCash,nextBranches,nextStaff,nextStaffCash,nextAudit,
-   nextTransfers,nextCredit,nextFinance,nextHolds,nextReturns,nextInventory,nextPharmacy]=await Promise.all([
+   nextTransfers,nextCredit,nextFinance,nextHolds,nextReturns,nextInventory,nextPharmacy,nextPharmacyTrace]=await Promise.all([
     loadBranding(),
     typeof client.cashControl==='function'?client.cashControl('snapshot',cashData({})):null,
     grant.role==='owner'?client.manageBranch('list',{business_id:grant.id}):null,
@@ -199,14 +200,15 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?client.holdList(grant.id,branchId):[],
     typeof client.returnSnapshot==='function'&&['owner','manager'].includes(grant.role)?client.returnSnapshot(grant.id,branchId):null,
     typeof client.inventorySnapshot==='function'&&['owner','manager','stock','finance'].includes(grant.role)?client.inventorySnapshot(grant.id,branchId,grant.businessType):null,
-    grant.businessType==='pharmacy'&&view==='pharmacy'&&typeof client.pharmacySnapshot==='function'?client.pharmacySnapshot(grant.id,branchId):null
+    grant.businessType==='pharmacy'&&view==='pharmacy'&&typeof client.pharmacySnapshot==='function'?client.pharmacySnapshot(grant.id,branchId):null,
+    grant.businessType==='pharmacy'&&view==='trace'&&authorizedView('trace')&&typeof client.pharmacyTraceSnapshot==='function'?client.pharmacyTraceSnapshot(grant.id,branchId,traceFrom,traceTo):null
    ]);
   branding=nextBrand.settings;brandLogoUrl=nextBrand.logoUrl;
   cashState=nextCash?normalizeCashControl(nextCash):null;
   pendingCashOffline=offlineCount();
   branchManagement=nextBranches;staffManagement=nextStaff;staffCash=nextStaffCash;
   audit=nextAudit;transfers=nextTransfers;credit=nextCredit;finance=nextFinance;
-  heldSales=nextHolds;returns=nextReturns;inventory=nextInventory;pharmacy=nextPharmacy;
+  heldSales=nextHolds;returns=nextReturns;inventory=nextInventory;pharmacy=nextPharmacy;pharmacyTrace=nextPharmacyTrace;
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
   void refreshPinMetrics();
@@ -861,8 +863,16 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!control)return showMessage('O controlo de PIN está indisponível nesta sessão.',true);
    control.click();return;
   }
-  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;closeScanner?.();view=el.dataset.shopView;menuOpen=false;notificationsOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}if(view==='pharmacy')void safeLoad();return;}
+  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;closeScanner?.();view=el.dataset.shopView;menuOpen=false;notificationsOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}if(view==='pharmacy'||view==='trace')void safeLoad();return;}
   if(el.hasAttribute('data-shop-pharmacy-refresh')){if(view==='pharmacy')void safeLoad();return;}
+  if(el.hasAttribute('data-pharmacy-trace-csv')){
+   if(!authorizedView('trace')||!pharmacyTrace)return;
+   const csv=pharmacyTraceCSV(pharmacyTrace);
+   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+   const link=document.createElement('a');link.href=url;
+   link.download='rastreabilidade-farmacia-'+traceFrom+'-'+traceTo+'.csv';
+   document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);return;
+  }
   if(el.hasAttribute('data-shop-go-checkout')){root.querySelector('#shop-checkout-panel')?.scrollIntoView({block:'start',behavior:'smooth'});return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
@@ -1074,6 +1084,35 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='pharmacy_trace_filter'){
+   if(!authorizedView('trace')||disconnected())return showMessage('Relatórios farmacêuticos exigem ligação e permissão.',true);
+   const f=new FormData(form),from=String(f.get('from')||''),to=String(f.get('to')||'');
+   const days=(Date.parse(to+'T00:00:00Z')-Date.parse(from+'T00:00:00Z'))/86400000;
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||
+      !Number.isFinite(days)||days<0||days>366)return showMessage('Escolha um período válido de até 366 dias.',true);
+   traceFrom=from;traceTo=to;pharmacyTrace=null;void safeLoad();return;
+  }
+  if(action==='pharmacy_lot_action'){
+   if(!authorizedView('trace')||!['owner','manager'].includes(grant.role)||disconnected())
+    return showMessage('Bloqueio de lotes exige proprietário ou gerente autenticado e ligação.',true);
+   const f=new FormData(form),batch=String(f.get('batch_id')||''),operation=String(f.get('operation')||''),
+     reason=String(f.get('reason')||'').trim();
+   if(!['hold','release'].includes(operation)||reason.length<12||reason.length>500||
+     !pharmacyTrace?.lots?.some(x=>x.batch_id===batch))
+    return showMessage('Selecção do lote ou justificação inválida.',true);
+   if(!await confirmShop(operation==='hold'?
+     'Bloquear imediatamente este lote para vendas e transferências? Separe também o stock físico.':
+     'Confirma a autorização para retirar este bloqueio preventivo? A decisão será auditada.'))return;
+   busy=true;showMessage('A validar o lote no servidor…');
+   try{
+    const outcome=await client.pharmacyLotAction(operation,{business_id:grant.id,batch_id:batch,reason});
+    await refresh();
+    showMessage((outcome?.duplicate?'Este lote já estava bloqueado. ':
+     operation==='hold'?'Lote bloqueado no servidor. Separe os produtos fisicamente.':
+     'Bloqueio retirado e decisão registada na auditoria.'));
+   }catch(e){showMessage('Operação não confirmada. Consulte novamente o estado do lote. ('+String(e.message||'erro')+')',true);}
+   finally{busy=false;}return;
+  }
   if(action==='pharmacy_approve'){
    if(grant.businessType!=='pharmacy'||view!=='pharmacy'||disconnected())return showMessage('A validação exige acesso online à farmácia.',true);
    const fields=new FormData(form),reference=String(fields.get('prescription_reference')||'').trim();
