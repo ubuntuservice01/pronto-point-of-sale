@@ -128,6 +128,8 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
   }
   async function fresh(scenario){
    state.scenario=scenario;state.calls.length=0;state.shopCreated=false;
+   // Clear a previous simulated login before the app can attempt token refresh.
+   await debug.send('Storage.clearDataForOrigin',{origin,storageTypes:'all'});
    await debug.send('Page.navigate',{url:origin+'/?mode=supabase'});
    await until('!!document.querySelector("#pronto-auth-check-form")','login form');
    await js('localStorage.clear(),sessionStorage.clear(),true');

@@ -134,12 +134,13 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   const ids=[...new Set(safe.map(m=>m.business_id))];
   let businesses=[];
   if(ids.length){
-   businesses=await call('/rest/v1/pronto_businesses?select=id,name,status&id=in.('+ids.join(',')+')');
+   businesses=await call('/rest/v1/pronto_businesses?select=id,name,status,business_type&id=in.('+ids.join(',')+')');
    if(!Array.isArray(businesses))throw Error('supabase_response');
   }
   const allowed=new Map(businesses.filter(b=>uuid(b.id)&&b.status==='active').map(b=>[b.id,b]));
   const grants=safe.filter(m=>allowed.has(m.business_id)).map(m=>({
-   id:m.business_id,name:allowed.get(m.business_id).name,role:m.role
+   id:m.business_id,name:allowed.get(m.business_id).name,role:m.role,
+   ...(allowed.get(m.business_id).business_type?{businessType:allowed.get(m.business_id).business_type}:{})
   }));
   // Only a privileged Auth administrator can flag provisional credentials.
   const requiresPasswordChange=user.app_metadata?.pronto_password_change_required===true;

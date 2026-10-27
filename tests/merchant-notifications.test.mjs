@@ -90,7 +90,7 @@ test('Bell state, accessible close, scoped server refresh and context-switch gua
  assert.match(js,/notificationsOpen=!notificationsOpen/);
  assert.match(js,/data-shop-notifications-all/);
  assert.match(js,/refreshAlertBadges/);
- assert.match(js,/client\.inventorySnapshot\(business,branch\)/);
+ assert.match(js,/client\.inventorySnapshot\(business,branch,grant\.businessType\)/);
  assert.match(js,/grant\.id!==business\|\|branchId!==branch/);
  assert.match(js,/client\.isScreenLocked\?\.\(\)/);
  assert.match(js,/event\.key!=='Escape'/);

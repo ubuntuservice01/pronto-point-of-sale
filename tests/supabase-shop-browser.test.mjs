@@ -82,7 +82,8 @@ test('Chrome merchant pilot: stable search and 20 MT cash + 50 MT e-Mola sale', 
    'return {search:!!document.querySelector("#shop-search"),buttons:document.querySelectorAll("[data-shop-method]").length};',
    '})()'
   ].join('');
-  const start=await js(init);assert.deepEqual(start,{search:true,buttons:5});
+  // Five payment methods plus a separate mixed-payment selector.
+  const start=await js(init);assert.deepEqual(start,{search:true,buttons:6});
   const walletColors=await js([
    '(()=>{const mpesa=document.querySelector("[data-shop-method=mpesa]");',
    'const emola=document.querySelector("[data-shop-method=emola]");',
