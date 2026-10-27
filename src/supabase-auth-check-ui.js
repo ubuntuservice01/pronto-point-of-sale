@@ -33,9 +33,40 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
   '</section>';
  };
  let staffWaitTimer=null;
+ // Business details typed before a failed activation stay in memory only (never
+ // storage, never e-mail/password) so a retry after login does not retype them.
+ let pendingProfile=null,pendingEmail='';
+ const forgetPending=()=>{pendingProfile=null;pendingEmail='';};
+ const loginToFinish=email=>{
+  form();
+  const emailInput=root.querySelector('#pronto-login-email');
+  if(emailInput&&email)emailInput.value=email;
+  root.querySelector(email?'#pronto-login-password':'#pronto-login-email')?.focus();
+ };
+ const activated=({businessName,expiresAt,trialDays})=>{
+  const until=new Date(expiresAt).toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric',timeZone:'Africa/Maputo'});
+  shell('<div class="pronto-activation-success" role="status" aria-live="polite">'+
+   '<span class="pronto-activation-check" aria-hidden="true">✓</span>'+
+   '<span class="pronto-login-eyebrow">Negócio activado</span>'+
+   '<h2 tabindex="-1">A sua loja está pronta</h2>'+
+   '<p><strong>'+escape(businessName)+'</strong> foi criada e o teste gratuito de '+trialDays+' dias está activo.</p>'+
+   '<p class="pronto-activation-until">Teste válido até <strong>'+escape(until)+'</strong></p>'+
+   '<p id="pronto-activation-error" role="alert"></p>'+
+   '<button type="button" class="primary full" id="pronto-activation-continue">Continuar · criar o meu PIN</button></div>');
+  root.querySelector('.pronto-activation-success h2')?.focus();
+  const button=root.querySelector('#pronto-activation-continue');
+  button.onclick=async()=>{
+   button.disabled=true;
+   try{await ready(await client.account(),false);}
+   catch{root.querySelector('#pronto-activation-error').textContent='A loja está activa, mas não foi possível abrir o painel. Verifique a ligação e tente novamente.';button.disabled=false;}
+  };
+ };
  const registration=(alreadySignedIn=false)=>{
   // Only an explicit true means this account is already authenticated.
   const resuming=alreadySignedIn===true;
+  // Once this browser holds the new account's session, only the shop activation
+  // may be repeated: a second signup would collide with the account just created.
+  let identityReady=resuming;
   shell('<div class="pronto-login-heading"><span class="pronto-login-eyebrow">10 dias grátis</span><h2>Registar o meu negócio</h2><p>Crie a sua loja gratuitamente. Sem cartão bancário.</p></div>'+
    '<form id="pronto-self-register" class="pronto-register-form">'+
    '<label>O seu nome<input name="owner_name" required minlength="2" maxlength="120" autocomplete="name"></label>'+
@@ -53,35 +84,59 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
    '<button class="primary full" type="submit">Criar negócio e iniciar teste</button></form>'+
    '<button class="secondary full" type="button" id="pronto-register-back">Já tenho conta · Entrar</button>');
   root.querySelector('#pronto-register-back').onclick=form;
-  if(resuming){
-   for(const field of ['email','password','confirm']){const input=root.querySelector('[name="'+field+'"]');if(input){input.required=false;input.closest('label').hidden=true;}}
-   root.querySelector('.pronto-login-heading p').textContent='Complete os dados para activar o seu teste de 10 dias.';
-  }
   const node=root.querySelector('#pronto-self-register');
+  const activationOnly=(hint)=>{
+   node.dataset.activationOnly='true';
+   for(const field of ['email','password','confirm']){const input=node.querySelector('[name="'+field+'"]');if(input){input.required=false;input.value='';input.closest('label').hidden=true;}}
+   root.querySelector('.pronto-login-heading h2').textContent='Activar o meu negócio';
+   root.querySelector('.pronto-login-heading p').textContent=hint;
+   node.querySelector('[type="submit"]').textContent=resuming&&!node.dataset.retried?'Activar negócio e teste de 10 dias':'Repetir activação do negócio';
+  };
+  if(resuming){
+   activationOnly('A sua conta já existe. Complete os dados para activar o seu teste de 10 dias.');
+   if(pendingProfile)for(const [key,value] of Object.entries(pendingProfile)){
+    const input=node.elements[key];if(!input)continue;
+    if(input.type==='checkbox')input.checked=value===true;else input.value=value;
+   }
+  }
   node.addEventListener('submit',async event=>{
    event.preventDefault();const f=new FormData(node),button=node.querySelector('[type="submit"]'),error=root.querySelector('#pronto-register-error');
    const email=String(f.get('email')||'').trim().toLowerCase(),password=String(f.get('password')||'');
-   if(!resuming&&password!==f.get('confirm')){error.textContent='As palavras-passe não coincidem.';return;}
+   if(!identityReady&&password!==f.get('confirm')){error.textContent='As palavras-passe não coincidem.';return;}
    const profile={owner_name:String(f.get('owner_name')||'').trim(),business_name:String(f.get('business_name')||'').trim(),
     phone:String(f.get('phone')||'').trim(),whatsapp:String(f.get('whatsapp')||'').trim(),industry:String(f.get('industry')||''),
     address:String(f.get('address')||'').trim(),accept_terms:f.get('accept_terms')==='on',
     marketing_consent:f.get('marketing_consent')==='on'};
    if(!normalizeMozambiquePhone(profile.phone)){error.textContent='Introduza um número de telemóvel moçambicano válido (por exemplo, 84 123 4567).';return;}
    button.disabled=true;error.textContent='';
-   let stage='identidade';
+   pendingProfile=profile;if(email)pendingEmail=email;
+   let stage='identidade',alreadyRegistered=false;
    try{
     // Auth-first flow supports verified-email projects. Retry on login is safe.
-    if(!resuming){
+    if(!identityReady){
      const result=await client.selfServiceSignUp(email,password,profile.owner_name);
      if(result.needsEmailConfirmation){
       error.textContent='O registo foi iniciado. Confirme o e-mail recebido para continuar.';
+      const loginButton=root.querySelector('#pronto-register-back');
+      loginButton.textContent='Já confirmei o e-mail · Entrar e activar';
+      loginButton.onclick=()=>loginToFinish(email);
       button.disabled=false;return;
      }
+     identityReady=true;
     }
     stage='negócio';
-    await client.registerSelfServiceBusiness(profile);
-    stage='acesso';
-    await ready(await client.account(),false);
+    let created=null;
+    try{created=await client.registerSelfServiceBusiness(profile);}
+    catch(e){
+     // An earlier attempt may have committed although its answer was lost.
+     // Verify that shop instead of creating, or claiming, a second one.
+     if(e.message!=='account_already_registered')throw e;
+     alreadyRegistered=true;
+    }
+    stage='confirmação';
+    const confirmed=await confirmSelfServiceActivation(client,{expectedBusinessId:alreadyRegistered?null:String(created?.business_id||'')});
+    forgetPending();
+    activated(confirmed);
    }catch(e){
     const errors={
      supabase_rate_limit:'Muitas tentativas de registo. Aguarde alguns minutos.',
@@ -103,21 +158,29 @@ export function startSupabaseIdentityCheck(root=document.querySelector('#app')) 
      phone_login_unavailable:'O acesso por telemóvel está temporariamente indisponível.',
      terms_required:'Aceite os termos de utilização para activar a loja.',
      invalid_registration:'Verifique o nome, o nome do negócio, o telemóvel e o WhatsApp (mínimo 7 dígitos).',
-     login_required:'A sessão terminou. Entre com o seu e-mail para concluir o registo da loja.'
+     login_required:'A sessão terminou. Entre com o seu e-mail para concluir o registo da loja.',
+     supabase_unauthorized:'A sessão terminou. Entre com o seu e-mail ou telemóvel para concluir a activação da loja.'
     };
-    const fallback=stage==='negócio'?'A conta foi criada, mas a loja ainda não foi activada. Entre com o seu e-mail e conclua o registo.':
-     stage==='acesso'?'A loja foi criada, mas o painel não abriu. Entre com o seu e-mail para continuar.':
-     'O registo não foi concluído. Nenhuma loja foi criada. Verifique os dados e tente novamente.';
-    error.textContent=(errors[e.message]||fallback)+' [Etapa: '+stage+']';
+    const fallback=stage==='negócio'?'A conta foi criada, mas a loja ainda não foi activada. Corrija os dados se necessário e toque em «Repetir activação do negócio».':
+     stage==='confirmação'?(alreadyRegistered&&e.message==='activation_unconfirmed'?errors.account_already_registered:
+      'Ainda não foi possível confirmar a loja e o teste de 10 dias. Nada foi duplicado. Toque em «Repetir activação do negócio» para verificar novamente.'):
+      'O registo não foi concluído. Nenhuma loja foi criada. Verifique os dados e tente novamente.';
+    const known=stage==='confirmação'?null:errors[e.message];
+    error.textContent=(known||fallback)+' [Etapa: '+stage+']';
+    if(identityReady){
+     // The account exists from here on: never offer a new signup again.
+     node.dataset.retried='true';
+     activationOnly('A sua conta já foi criada. Falta apenas activar o negócio e o teste de 10 dias.');
+     if(['login_required','supabase_unauthorized','verify_email_first'].includes(e.message)){
+      const loginButton=root.querySelector('#pronto-register-back');
+      loginButton.textContent='Entrar para concluir a activação →';
+      loginButton.onclick=()=>loginToFinish(pendingEmail);
+     }
+    }
     if(stage==='identidade'&&['registration_email_exists','registration_conflict'].includes(e.message)){
      const loginButton=root.querySelector('#pronto-register-back');
      loginButton.textContent='Entrar na conta existente →';
-     loginButton.onclick=()=>{
-      form();
-      const emailInput=root.querySelector('#pronto-login-email');
-      if(emailInput)emailInput.value=email;
-      root.querySelector('#pronto-login-password')?.focus();
-     };
+     loginButton.onclick=()=>loginToFinish(email);
     }
     button.disabled=false;
    }
