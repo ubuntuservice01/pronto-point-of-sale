@@ -55,8 +55,19 @@ function simulatedSupabase(state){
   }
   if(path==='/auth/v1/signup')return reply(200,s.signupWithoutSession?{id:USER,email:'nova@loja.test'}:{...session,user:{id:USER,email:'nova@loja.test'}});
   if(path==='/rest/v1/rpc/pronto_self_service_register'){
-   if(s.registerError)return reply(s.registerError[0],{code:'P0001',message:s.registerError[1],details:null,hint:null});
-   state.shopCreated=true;return reply(200,{business_id:SHOP,expires_at:new Date(Date.now()+10*864e5).toISOString()});
+   // Mirrors the server guard: one shop per identity.
+   if(state.shopCreated||s.hasShop)return reply(409,{code:'23505',message:'account_already_registered',details:null,hint:null});
+   // registerErrors: one answer per attempt; 'committed' = shop saved but response lost.
+   const failure=Array.isArray(s.registerErrors)?s.registerErrors.shift():s.registerError;
+   if(failure){if(failure[2]==='committed')state.shopCreated=true;return reply(failure[0],{code:'P0001',message:failure[1],details:null,hint:null});}
+   state.shopCreated=true;return reply(200,{business_id:SHOP,branch_id:'44444444-4444-4444-8444-444444444444',expires_at:new Date(Date.now()+10*864e5).toISOString(),trial_days:10});
+  }
+  if(path==='/rest/v1/rpc/pronto_my_trial_status'){
+   if(!(state.shopCreated||s.hasShop))return reply(403,{code:'42501',message:'not_authorized'});
+   if(s.trialStatus!==undefined)return reply(200,s.trialStatus);
+   const start=Date.now();
+   return reply(200,{started_at:new Date(start).toISOString(),trial_expires_at:new Date(start+10*864e5).toISOString(),
+    expires_at:new Date(start+10*864e5).toISOString(),is_trial:true,expired:false});
   }
   if(path==='/auth/v1/user')return reply(200,{id:USER,email:s.email,app_metadata:{}});
   if(path==='/rest/v1/rpc/pronto_admin_status')return reply(200,false);
@@ -150,6 +161,9 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
    'if(el.type==="checkbox")el.checked=v;else{el.focus();el.value=v;el.dispatchEvent(new Event("input",{bubbles:true}));}}'+
    'f.querySelector("[type=submit]").click();return true;})()');
   const pinScreen='!!document.querySelector("#pronto-pin-form")&&!!document.querySelector("#pronto-pin-title")';
+  const successScreen='!!document.querySelector(".pronto-activation-success #pronto-activation-continue")';
+  const count=path=>state.calls.filter(c=>c.path===path&&c.method==='POST').length;
+  const errorText='document.querySelector("#pronto-register-error")?.textContent||""';
 
   // 1) Phone + password: only the Edge Function is used, never the e-mail grant.
   await fresh({email:'ana@loja.test',hasShop:true});
@@ -178,6 +192,11 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
   await fill('#pronto-self-register',signupData);
   const signup=await waitForCall('/auth/v1/signup','signup request from registration form');
   await waitForCall('/rest/v1/rpc/pronto_self_service_register','shop registration request');
+  await until(successScreen,'green success screen after confirmed signup');
+  assert.match(await js('document.querySelector(".pronto-activation-success").innerText'),/teste gratuito de 10 dias está activo/);
+  assert.ok(state.calls.some(c=>c.path==='/rest/v1/rpc/pronto_my_trial_status'),'trial must be read back before success');
+  assert.ok(!state.calls.some(c=>c.path==='/rest/v1/rpc/pronto_session_pin'),'PIN gate waits for the owner to continue');
+  await js('document.querySelector("#pronto-activation-continue").click(),true');
   await until(pinScreen,'PIN screen after signup');
   assert.equal(signup.payload.email,'nova@loja.test');
   assert.equal(signup.payload.data.display_name,'Ana Macuácua');
@@ -201,6 +220,54 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
   await fill('#pronto-self-register',signupData);
   await until('/Confirme o e-mail recebido/.test(document.querySelector("#pronto-register-error").textContent)','confirmation message');
   assert.ok(!state.calls.some(c=>c.path==='/rest/v1/rpc/pronto_self_service_register'),'no shop RPC without a session');
+
+  // 6) Account created, shop activation fails once: only the activation is repeated.
+  await fresh({email:'nova@loja.test',hasShop:false,registerErrors:[[400,'trial_unavailable']]});
+  await js('document.querySelector("#pronto-show-register").click(),true');
+  await until('!!document.querySelector("#pronto-self-register")','registration form (retry)');
+  await fill('#pronto-self-register',signupData);
+  await until('/teste gratuito está temporariamente indisponível/.test('+errorText+')','first activation failure');
+  assert.ok(!(await js(successScreen)),'no success screen after a failed activation');
+  assert.equal(await js('document.querySelector("[name=email]").closest("label").hidden'),true,'email field hidden: account exists');
+  assert.equal(await js('document.querySelector("#pronto-self-register [type=submit]").textContent'),'Repetir activação do negócio');
+  assert.equal(await js('document.querySelector("[name=business_name]").value'),'Mercearia da Ana','business details kept');
+  await js('document.querySelector("#pronto-self-register [type=submit]").click(),true');
+  await until(successScreen,'success after activation retry');
+  assert.equal(count('/auth/v1/signup'),1,'retry must not sign up again');
+  assert.equal(count('/rest/v1/rpc/pronto_self_service_register'),2);
+
+  // 7) The shop was saved but the answer was lost: the retry confirms it, nothing is duplicated.
+  await fresh({email:'nova@loja.test',hasShop:false,registerErrors:[[500,'internal_error','committed']]});
+  await js('document.querySelector("#pronto-show-register").click(),true');
+  await until('!!document.querySelector("#pronto-self-register")','registration form (lost answer)');
+  await fill('#pronto-self-register',signupData);
+  await until('/loja ainda não foi activada/.test('+errorText+')','lost-answer failure message');
+  await js('document.querySelector("#pronto-self-register [type=submit]").click(),true');
+  await until(successScreen,'success after confirming the committed shop');
+  assert.equal(count('/auth/v1/signup'),1);
+
+  // 8) The RPC says OK but the trial cannot be read back as a live 10-day trial: no green screen.
+  await fresh({email:'nova@loja.test',hasShop:false,trialStatus:null});
+  await js('document.querySelector("#pronto-show-register").click(),true');
+  await until('!!document.querySelector("#pronto-self-register")','registration form (unconfirmed trial)');
+  await fill('#pronto-self-register',signupData);
+  await until('/Ainda não foi possível confirmar a loja e o teste de 10 dias/.test('+errorText+')','unconfirmed trial message');
+  assert.ok(!(await js(successScreen)),'no success screen without a confirmed trial');
+  assert.ok(!(await js(pinScreen)),'no PIN/dashboard without a confirmed trial');
+
+  // 9) Account without shop signs in later: it is offered activation only, then the green screen.
+  await fresh({email:'nova@loja.test',hasShop:false});
+  await fill('#pronto-auth-check-form',{email:'84 123 4567',password:'senha-correcta-123'});
+  await until('!!document.querySelector("#pronto-complete-registration")','activation offer after login');
+  await js('document.querySelector("#pronto-complete-registration").click(),true');
+  await until('!!document.querySelector("#pronto-self-register")','activation-only form');
+  assert.equal(await js('document.querySelector("[name=password]").closest("label").hidden'),true);
+  const {email:_e,password:_p,confirm:_c,...business}=signupData;
+  await fill('#pronto-self-register',business);
+  await until(successScreen,'success after activation from login');
+  assert.equal(count('/auth/v1/signup'),0,'logged-in activation never signs up');
+  await js('document.querySelector("#pronto-activation-continue").click(),true');
+  await until(pinScreen,'PIN screen after activation from login');
 
   assert.deepEqual(state.unexpected,[],'unsimulated Supabase calls');
   assert.deepEqual(state.leaked,[],'requests to external hosts');
