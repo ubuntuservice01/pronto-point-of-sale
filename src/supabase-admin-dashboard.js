@@ -34,6 +34,10 @@ export function prepareAdminProvisioning(form,FormDataImpl=FormData){
   business_id:value('business_id'),email:value('email').toLowerCase(),
   display_name:value('display_name'),role:value('role')
  }};
+ if(action==='pharmacy_professional_set')return {action,data:{
+   business_id:value('business_id'),user_id:value('user_id'),license_reference:value('license_reference'),
+   valid_until:value('valid_until'),active:value('active')==='true'
+ }};
  if(action==='member_assign')return {action,data:{
   business_id:value('business_id'),user_id:value('user_id'),
   display_name:value('display_name'),role:value('role')
@@ -124,7 +128,8 @@ export async function mountUbuntuAdminDashboard({root,client,account,onLogout}){
    if(item.action==='member_create'){
     const account=await client.provisionMember(item.data);
     showProntoCredentials(account);
-   }else await client.adminMutate(item.action,item.data);
+   }else if(item.action==='pharmacy_professional_set')await client.pharmacyAction('professional_set',item.data);
+   else await client.adminMutate(item.action,item.data);
    [data,insights]=await Promise.all([client.adminOverview(),client.adminInsights()]);
    render();
    message.textContent=item.action==='member_create'?

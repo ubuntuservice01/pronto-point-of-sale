@@ -26,7 +26,7 @@ export function normalizeMerchantSnapshot(raw){
  const products=raw.products.map(p=>({
   id:p.id,code:String(p.code||''),name:String(p.name||''),category:String(p.category||''),
   unit:String(p.unit||''),priceCents:Number(p.price_cents),stock:Number(p.stock),minStock:Number(p.min_stock),photoPath:p.photo_path||null,
-  allowFractional:p.allow_fractional===undefined?undefined:p.allow_fractional===true
+  allowFractional:p.allow_fractional===undefined?undefined:p.allow_fractional===true,requiresPrescription:p.requires_prescription===true
  })).filter(p=>p.id&&p.name&&Number.isSafeInteger(p.priceCents)&&p.priceCents>0&&Number.isFinite(p.stock));
  return {businessId:raw.business_id,branchId:raw.branch_id,role:raw.role,products,
   branches:raw.branches.map(b=>({id:b.id,name:String(b.name||'')})),

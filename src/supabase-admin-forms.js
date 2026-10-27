@@ -64,7 +64,15 @@ export function renderProvisioningForms(tab,data){
    (members.length?'<div class="pronto-admin-table-wrap"><table class="pronto-admin-table"><thead><tr><th>Empresa</th><th>Utilizador</th><th>Perfil</th><th>Estado</th></tr></thead><tbody>'+
    members.map(({b,m})=>'<tr><td>'+esc(b.name)+'</td><td><strong>'+esc(m.name||m.email)+'</strong><small>'+esc(m.email)+'</small></td><td>'+esc(roles.find(r=>r[0]===m.role)?.[1]||m.role)+'</td><td>'+(m.active?'Activo':'Inactivo')+'</td></tr>').join('')+
    '</tbody></table></div>':'<p>Ainda não existem contas associadas às empresas.</p>')+'</section>';
-  return '<div class="pronto-admin-form-sections">'+invite+'<details class="pronto-admin-panel"><summary>Já existe uma conta? Associação avançada</summary>'+associate+'</details>'+list+'</div>'+help;
+  const verify=block('Validação de profissional de farmácia',
+   'Apenas o Super Administrador deve activar profissionais após verificar externamente a identidade, habilitação e validade do registo profissional. Nunca aprove apenas pela declaração do comerciante.',
+   '<label>Estabelecimento'+selectBusinesses(businesses)+'</label>'+
+   field('UUID da conta do profissional','user_id','text','maxlength="36" pattern="[0-9a-fA-F-]{36}"')+
+   field('Referência de inscrição profissional','license_reference','text','maxlength="100"',false)+
+   field('Validade da inscrição','valid_until','date','',false)+
+   '<label>Decisão<select name="active"><option value="true">Activar após verificação documental</option><option value="false">Revogar autorização</option></select></label>',
+   'pharmacy_professional_set','Guardar validação profissional');
+  return '<div class="pronto-admin-form-sections">'+invite+'<details class="pronto-admin-panel"><summary>Já existe uma conta? Associação avançada</summary>'+associate+'</details>'+list+'<details class="pronto-admin-panel"><summary>💊 Validação profissional para farmácias</summary>'+verify+'</details></div>'+help;
  }
  return '';
 }

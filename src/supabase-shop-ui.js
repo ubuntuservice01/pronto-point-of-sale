@@ -13,6 +13,7 @@ import {renderSuspendedCash} from './supabase-staff-cash-ui.js';
 import {renderAuditView} from './supabase-audit-ui.js';
 import {renderMedicineFields,businessTypeLabel} from './pharmacy.js';
 import {maputoToday} from './pharmacy-batches.js';
+import {renderPharmacyReviews} from './pharmacy-review-ui.js';
 
 const methodLabels={cash:'Dinheiro',mpesa:'M-Pesa',emola:'e-Mola',transfer:'Transferência',bank:'Banco',mixed:'Repartido'};
 const paymentMethodButtons=(method,extraClass='',label='Forma de pagamento')=>
@@ -69,6 +70,7 @@ export function shopPaymentPanel({method,cart,products,discount='0',session,role
   (method!=='credit'?'<label class="shop-confirm"><input type="checkbox" name="confirmed" value="yes"> Confirmei os pagamentos digitais na conta da loja, quando aplicável</label>':'')+
   '<p class="shop-help">Os pagamentos M-Pesa, e-Mola, transferência e Banco devem ser confirmados manualmente.</p>'+
   (['owner','manager','cashier'].includes(role)?'<button type="button" class="shop-credit-toggle" data-shop-credit aria-pressed="'+(method==='credit')+'">'+(method==='credit'?'Voltar a pagamento imediato':'Vender a crédito')+'</button>':'')+
+  (cart.some(i=>products.some(p=>p.id===i.productId&&p.requiresPrescription))?'<p class="shop-help">💊 Medicamentos sujeitos a receita: ao confirmar, será preparado um pedido de validação profissional. O pagamento só deve ser recebido após autorização.</p>':'')+
   creditWarning+(method==='credit'?'<p id="shop-checkout-feedback" class="shop-error" role="alert" hidden></p>':'')+
   '<button class="shop-submit" type="submit" '+((!session&&!allowNoSession)||!cart.length||err||(method==='credit'&&!credit)?'disabled':'')+'>'+(method==='credit'?'Registar dívida':'Concluir venda')+' · '+MONEY(total)+'</button></form>',
   'Só conclua após confirmar o recebimento.')+'</div>';
@@ -173,11 +175,11 @@ export function renderShopProductResults(products=[],query=''){
  return cards+(matching.length>80?'<p class="shop-help" role="status">A mostrar 80 de '+matching.length+' produtos. Pesquise pelo nome ou código para encontrar os restantes.</p>':'');
 }
 
-export function renderShopScreen({trialStatus=null,account,grants,grant,branches,branchId,data,cart,valueModeProducts=[],view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,cashierMode=false,branding=null,logoUrl='',settingsSection='personalizacao'}){
+export function renderShopScreen({trialStatus=null,account,grants,grant,branches,branchId,data,cart,valueModeProducts=[],view,method,discount,query,feedback,pending,draftAvailable=false,credit=null,customerQuery='',debtFilter='open',selectedCustomerId='',creditDue='',finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],returns=null,selectedReturnSaleId='',inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom='',reportTo='',reportScope='branch',branchManagement=null,transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditSearch='',staffCash=null,pharmacy=null,cashState=null,pendingOffline=0,menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,cashierMode=false,branding=null,logoUrl='',settingsSection='personalizacao'}){
  const products=data?.products||[];
  const session=cashState?ownOpenSession(cashState,account.userId):data?.sessions.find(s=>s.operatorId===account.userId)||null;
  const branch=branches.find(b=>b.id===branchId);
- const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['settings','Definições'],['audit','Auditoria'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],settings:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
+ const nav=[['sell','Vender'],['products','Produtos e stock'],['cash','Caixa'],['history','Vendas recentes'],['customers','Clientes'],['debts','Gestão de dívidas'],['suppliers','Fornecedores'],['purchases','Compras'],['expenses','Despesas'],['held','Vendas em espera'],['returns','Devoluções'],['pharmacy','Receitas médicas'],['inventory','Inventário'],['alerts','Alertas'],['shopping_list','Lista de compras'],['reports','Relatórios'],['team','Colaboradores'],['settings','Definições'],['audit','Auditoria'],['branches','Filiais'],['transfers','Transferências']].filter(([key])=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],pharmacy:grant.businessType==='pharmacy'?['owner','manager','cashier']:[],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],team:['owner'],settings:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[key].includes(grant.role));
  const canViewAlerts=nav.some(([key])=>key==='alerts');
  const notificationData=canViewAlerts?inventoryNotificationSummary(inventory,grant.businessType==='pharmacy'?90:alertDays):{total:0,items:[]};
  const notificationCount=notificationData.total;
@@ -235,7 +237,9 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
      '<button type="button" data-shop-hold-resume="'+esc(h.id)+'">Retomar</button></div>').join(''):
      '<p class="shop-help">Ainda não há vendas suspensas. Pode guardar o carrinho para atender outro cliente.</p>')+
    '</section>');
-  if(pending)body+='<div class="shop-pending"><strong>Venda com confirmação pendente</strong><p>Não crie outra venda antes de verificar se esta foi concluída. Pode repetir o mesmo pedido sem duplicar o registo ou descartá-lo após conferência.</p><button type="button" data-shop-retry>Repetir o mesmo pedido</button><button type="button" data-shop-discard>Descartar pedido pendente</button></div>';
+  if(pending)body+='<div class="shop-pending"><strong>Venda com confirmação pendente</strong>'+
+   (grant.businessType==='pharmacy'?'<p>Referência da venda: <strong>'+esc(pending.idempotency_key||'')+'</strong>. Caso tenha medicamentos sujeitos a receita, abra Receitas médicas numa conta de profissional habilitado para autorizar a dispensação. Depois utilize «Repetir o mesmo pedido».</p>':'')+
+   '<p>Não crie outra venda antes de verificar se esta foi concluída. Pode repetir o mesmo pedido sem duplicar o registo ou descartá-lo após conferência.</p><button type="button" data-shop-retry>Repetir o mesmo pedido</button><button type="button" data-shop-discard>Descartar pedido pendente</button></div>';
  }else if(view==='customers'||view==='debts'){
   body=renderCreditView({view,credit,role:grant.role,query:customerQuery,filter:debtFilter,session,selectedCustomerId});
  }else if(['suppliers','purchases','expenses'].includes(view)){
@@ -250,6 +254,8 @@ export function renderShopScreen({trialStatus=null,account,grants,grant,branches
     '<div class="credit-debt-actions"><button type="button" data-shop-hold-resume="'+esc(h.id)+'">Retomar</button><button type="button" data-shop-hold-delete="'+esc(h.id)+'">Eliminar</button></div></article>').join(''):'<p class="shop-help">Não existem vendas suspensas nesta filial.</p>')+'</section>';
  }else if(view==='returns'){
   body=renderReturnView({returns,selectedSaleId:selectedReturnSaleId,session});
+ }else if(view==='pharmacy'&&grant.businessType==='pharmacy'){
+  body=renderPharmacyReviews(pharmacy);
  }else if(['inventory','alerts','shopping_list'].includes(view)){
   body=renderInventoryView({view,inventory,role:grant.role,selectedProductId,alertDays,query:inventoryQuery,businessType:grant.businessType});
  }else if(view==='reports'){

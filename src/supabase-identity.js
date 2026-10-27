@@ -626,11 +626,16 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   });
   return normalizeCreditSnapshot(data);
  }
- async function merchantSnapshot(businessId,branchId){
+ async function merchantSnapshot(businessId,branchId,businessType='general'){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   const payload={p_business:businessId,p_branch:branchId};
   const result=await call('/rest/v1/rpc/pronto_merchant_snapshot',{method:'POST',payload});
-  return normalizeMerchantSnapshot({...result,products:await withFractionSettings(result.products,businessId,branchId)});
+  const [products,details]=await Promise.all([
+   withFractionSettings(result.products,businessId,branchId),
+   businessType==='pharmacy'?medicineDetails(businessId):Promise.resolve([])
+  ]);
+  const rx=new Map(details.map(d=>[d.product_id,d.requires_prescription===true]));
+  return normalizeMerchantSnapshot({...result,products:products.map(p=>({...p,requires_prescription:rx.get(p.id)===true}))});
  }
  async function ownerAuditSnapshot(businessId,page=0){
   if(!uuid(businessId)||!Number.isInteger(page)||page<0||page>100)throw Error('audit_scope');
@@ -722,6 +727,18 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    throw Error('cash_action_invalid');
   return call('/rest/v1/rpc/pronto_cash_control',{method:'POST',payload:{p_action:action,p_data:data}});
  }
+ async function pharmacyAction(action,data){
+  if(!['request','approve','professional_set'].includes(action)||
+    !data||!uuid(data.business_id))throw Error('pharmacy_action_invalid');
+  return call('/rest/v1/rpc/pronto_pharmacy_action',{method:'POST',payload:{p_action:action,p_data:data}});
+ }
+ async function pharmacySnapshot(businessId,branchId){
+  if(!uuid(businessId)||!uuid(branchId))throw Error('pharmacy_scope');
+  const data=await call('/rest/v1/rpc/pronto_pharmacy_snapshot',
+    {method:'POST',payload:{p_business:businessId,p_branch:branchId}});
+  if(!data||!Array.isArray(data.requests)||typeof data.can_approve!=='boolean')throw Error('pharmacy_response');
+  return data;
+ }
  async function merchantAction(action,data){
   if(!['product_create','stock_receive','cash_open','cash_close','sale_complete','customer_save','credit_policy','credit_sale','debt_payment'].includes(action))
    throw Error('shop_action_invalid');
@@ -812,5 +829,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,medicineUpsert,medicineDetails,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,medicineUpsert,medicineDetails,pharmacyAction,pharmacySnapshot,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }

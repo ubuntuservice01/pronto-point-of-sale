@@ -9,6 +9,7 @@ import {saveOfflineCash,restoreOfflineCash,clearOfflineCash,offlineCashKeys} fro
 import {showProntoCredentials} from './pronto-credentials-ui.js';
 import {renderShopScreen,renderShopProductResults,shopPaymentPanel} from './supabase-shop-ui.js';
 import {readMedicineFields} from './pharmacy.js';
+import {rxItems} from './pharmacy-review-ui.js';
 import {validatePharmacyReceipt,maputoToday} from './pharmacy-batches.js';
 import {findScannedShopProduct,openShopCodeScanner} from './shop-mobile-scanner.js';
 import {PAYMENT_METHODS,toCents,toQuantity,makeSaleRequest,cartTotal,esc,MONEY} from './supabase-shop-core.js';
@@ -40,7 +41,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    account.grants[0].role==='stock'?'products':'history',
   method='cash',discount='0',query='',notice='',busy=false,pending=null,pendingCSV=null,
   credit=null,selectedCustomerId='',customerQuery='',debtFilter='open',creditDue='',pendingPayment=null,
-  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
+  finance=null,supplierId='',purchaseLines=1,pendingFinance=null,heldSales=[],resumedHoldId=null,holdIdToSave=null,returns=null,selectedReturnSaleId='',pendingReturn=null,pendingCashMove=null,inventory=null,selectedProductId='',alertDays=30,inventoryQuery='',report=null,pharmacy=null,reportFrom=maputoDate(new Date(Date.now()-29*86400000)),reportTo=maputoDate(),reportScope='branch',branchManagement=null,
   transfers=null,transferLineCount=1,pendingTransfer=null,staffManagement=null,audit=null,auditPage=0,auditSearch='',staffCash=null,cashState=null,pendingCashOffline=0,branding=null,brandLogoUrl='',settingsSection='personalizacao',menuOpen=false,sidebarCollapsed=false,notificationsOpen=false,cashierMode=false,accessBlocked=false,accessCheckBusy=false,closeScanner=null;
  const valueModeProducts=new Set();
  let trialStatus=null,trialStatusBusinessId='';
@@ -108,7 +109,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   finally{pinMetricBusy=false;}
  };
 
- const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],branding:['owner'],settings:['owner'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
+ const authorizedView=target=>({sell:['owner','manager','cashier'],products:['owner','manager','stock'],cash:['owner','manager','cashier'],history:['owner','manager','cashier','finance'],customers:['owner','manager','cashier','finance'],debts:['owner','manager','cashier','finance'],suppliers:['owner','manager','stock','finance'],purchases:['owner','manager','stock','finance'],expenses:['owner','manager','finance'],held:['owner','manager','cashier'],returns:['owner','manager'],pharmacy:grant.businessType==='pharmacy'?['owner','manager','cashier']:[],inventory:['owner','manager','stock','finance'],alerts:['owner','manager','stock','finance'],shopping_list:['owner','manager','stock','finance'],reports:['owner','manager','cashier','finance'],branding:['owner'],settings:['owner'],team:['owner'],audit:['owner'],branches:['owner'],transfers:['owner','manager','stock','finance']})[target]?.includes(grant.role)===true;
  const disconnected=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
  const leave=async()=>{
   closeScanner?.();clearPinKPIs(account.userId);
@@ -158,7 +159,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   if(!data||accessBlocked)return;
   clearProductPhotoPreview();
   root.innerHTML=renderShopScreen({trialStatus:trialStatusBusinessId===grant.id?trialStatus:null,account,grants:account.grants,grant,branches,branchId,data,cart,valueModeProducts:[...valueModeProducts],view,method,discount,query,feedback:notice,pending,
-   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,cashierMode,branding,logoUrl:brandLogoUrl,settingsSection});
+   draftAvailable:hasShopDraft(localStorage,scope()),credit,selectedCustomerId,customerQuery,debtFilter,creditDue,finance,supplierId,purchaseLines,pendingFinance,heldSales,returns,selectedReturnSaleId,inventory,selectedProductId,alertDays,inventoryQuery,report,reportFrom,reportTo,reportScope,branchManagement,transfers,transferLineCount,pendingTransfer,staffManagement,audit,auditSearch,staffCash,pharmacy,cashState,pendingOffline:pendingCashOffline,menuOpen,sidebarCollapsed,notificationsOpen,cashierMode,branding,logoUrl:brandLogoUrl,settingsSection});
   hydrateProductPhotos();
  };
  const refresh=async(selectFirst=false)=>{
@@ -171,7 +172,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    branchId=branches[0].id;cart=[];pending=null;method='cash';discount='0';query='';credit=null;selectedCustomerId='';customerQuery='';debtFilter='open';creditDue='';finance=null;supplierId='';purchaseLines=1;heldSales=[];resumedHoldId=null;holdIdToSave=null;returns=null;selectedReturnSaleId='';inventory=null;selectedProductId='';inventoryQuery='';report=null;reportScope='branch';audit=null;auditPage=0;auditSearch='';
    view=['owner','manager','cashier'].includes(grant.role)?'sell':grant.role==='stock'?'products':'history';
   }
-  data=await client.merchantSnapshot(grant.id,branchId);
+  data=await client.merchantSnapshot(grant.id,branchId,grant.businessType);
   // Independent snapshots run in parallel so a slow secondary screen does not
   // force 10+ sequential network round-trips on a mobile connection.
   const loadBranding=async()=>{
@@ -185,7 +186,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    return {settings,logoUrl};
   };
   const [nextBrand,nextCash,nextBranches,nextStaff,nextStaffCash,nextAudit,
-   nextTransfers,nextCredit,nextFinance,nextHolds,nextReturns,nextInventory]=await Promise.all([
+   nextTransfers,nextCredit,nextFinance,nextHolds,nextReturns,nextInventory,nextPharmacy]=await Promise.all([
     loadBranding(),
     typeof client.cashControl==='function'?client.cashControl('snapshot',cashData({})):null,
     grant.role==='owner'?client.manageBranch('list',{business_id:grant.id}):null,
@@ -197,14 +198,15 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     typeof client.financeSnapshot==='function'?client.financeSnapshot(grant.id,branchId):null,
     typeof client.holdList==='function'&&['owner','manager','cashier'].includes(grant.role)?client.holdList(grant.id,branchId):[],
     typeof client.returnSnapshot==='function'&&['owner','manager'].includes(grant.role)?client.returnSnapshot(grant.id,branchId):null,
-    typeof client.inventorySnapshot==='function'&&['owner','manager','stock','finance'].includes(grant.role)?client.inventorySnapshot(grant.id,branchId,grant.businessType):null
+    typeof client.inventorySnapshot==='function'&&['owner','manager','stock','finance'].includes(grant.role)?client.inventorySnapshot(grant.id,branchId,grant.businessType):null,
+    grant.businessType==='pharmacy'&&view==='pharmacy'&&typeof client.pharmacySnapshot==='function'?client.pharmacySnapshot(grant.id,branchId):null
    ]);
   branding=nextBrand.settings;brandLogoUrl=nextBrand.logoUrl;
   cashState=nextCash?normalizeCashControl(nextCash):null;
   pendingCashOffline=offlineCount();
   branchManagement=nextBranches;staffManagement=nextStaff;staffCash=nextStaffCash;
   audit=nextAudit;transfers=nextTransfers;credit=nextCredit;finance=nextFinance;
-  heldSales=nextHolds;returns=nextReturns;inventory=nextInventory;
+  heldSales=nextHolds;returns=nextReturns;inventory=nextInventory;pharmacy=nextPharmacy;
   if(credit&&selectedCustomerId&&!credit.customers.some(c=>c.id===selectedCustomerId&&c.active))selectedCustomerId='';
   render();
   void refreshPinMetrics();
@@ -859,7 +861,8 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    if(!control)return showMessage('O controlo de PIN está indisponível nesta sessão.',true);
    control.click();return;
   }
-  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;closeScanner?.();view=el.dataset.shopView;menuOpen=false;notificationsOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}return;}
+  if(el.hasAttribute('data-shop-view')){if(!authorizedView(el.dataset.shopView))return;closeScanner?.();view=el.dataset.shopView;menuOpen=false;notificationsOpen=false;notice='';render();if(view==='reports')void loadReports();if(view==='audit'){audit=null;void loadAudit();}if(view==='pharmacy')void safeLoad();return;}
+  if(el.hasAttribute('data-shop-pharmacy-refresh')){if(view==='pharmacy')void safeLoad();return;}
   if(el.hasAttribute('data-shop-go-checkout')){root.querySelector('#shop-checkout-panel')?.scrollIntoView({block:'start',behavior:'smooth'});return;}
   if(el.hasAttribute('data-shop-method')){if(lockPending())return;method=el.dataset.shopMethod;updatePanel();return;}
   if(el.hasAttribute('data-shop-retry'))return void processSale();
@@ -1016,6 +1019,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     const totalText=(tempTotal/100).toFixed(2);
     const idem=crypto.randomUUID();
     if(method==='credit'){
+     if(grant.businessType==='pharmacy'&&rxItems(cart,data.products).length)throw Error('pharmacy_credit_not_enabled');
      const customer=credit?.customers.find(c=>c.id===selectedCustomerId&&c.active);
      if(!customer)throw Error('debt_customer_required');
      const outstanding=credit.debts.filter(d=>d.customerId===customer.id&&d.balance>0).reduce((n,d)=>n+d.balance,0);
@@ -1036,6 +1040,20 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      cart,products:data.products,discount:disc,allocations,idempotencyKey:idem,
      cashReceived:givenCash||'0'});
     if(selectedCustomerId)pending.customer_id=selectedCustomerId;
+    const rx=grant.businessType==='pharmacy'?rxItems(cart,data.products):[];
+    if(rx.length){
+     if(disconnected())throw Error('pharmacy_connection_required');
+     if(typeof client.pharmacyAction!=='function')throw Error('pharmacy_validation_unavailable');
+     // A review is tied to the exact idempotency key, product, quantity, seller and branch.
+     // Keep this pending request unchanged until a verified pharmacist approves it.
+     for(const item of rx){
+      await client.pharmacyAction('request',{business_id:grant.id,branch_id:branchId,
+       sale_key:pending.idempotency_key,product_id:item.productId,quantity:item.quantity});
+     }
+     render();
+     showMessage('Venda preparada. Solicite a validação profissional na área Receitas médicas. Referência: '+pending.idempotency_key+'. Não receba o pagamento até à aprovação.');
+     return;
+    }
     await processSale();
    }catch(e){
     pending=null;
@@ -1048,13 +1066,26 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      debt_customer_required:'Seleccione o cliente antes de registar uma dívida.',
      debt_due_date:'Seleccione um prazo de pagamento válido.',
      debt_blocked:'Este cliente está bloqueado para novas dívidas. Contacte o gerente.',
-     debt_limit:'Limite de crédito insuficiente. Solicite ao proprietário ou gerente para actualizar o limite na opção Clientes.'
+     debt_limit:'Limite de crédito insuficiente. Solicite ao proprietário ou gerente para actualizar o limite na opção Clientes.',
+     pharmacy_credit_not_enabled:'Vendas a crédito de medicamentos sujeitos a receita ainda não estão disponíveis. Utilize o caixa normal após validação profissional.'
     }[e.message]||'Corrija os valores e as quantidades antes de concluir. ('+e.message+')',true);
    }
    return;
   }
   const action=form.dataset.shopForm;
   if(!action)return;
+  if(action==='pharmacy_approve'){
+   if(grant.businessType!=='pharmacy'||view!=='pharmacy'||disconnected())return showMessage('A validação exige acesso online à farmácia.',true);
+   const fields=new FormData(form),reference=String(fields.get('prescription_reference')||'').trim();
+   if(!fields.has('checked')||reference.length<4||reference.length>100)return showMessage('Confirme a conferência da receita e introduza uma referência válida.',true);
+   busy=true;showMessage('A registar autorização profissional…');
+   try{await client.pharmacyAction('approve',{business_id:grant.id,branch_id:branchId,
+     sale_key:String(fields.get('sale_key')||''),product_id:String(fields.get('product_id')||''),
+     prescription_reference:reference,checked:true});
+    await refresh();showMessage('Receita validada e registada. O vendedor pode concluir a venda com a mesma referência.');}
+   catch(error){showMessage('Não foi possível autorizar a receita. Verifique a sua habilitação, a validade do pedido e a ligação. ('+error.message+')',true);}
+   finally{busy=false;}return;
+  }
   if(['cash_configure','cash_request_close','cash_remote','cash_note_difference'].includes(action)){
    if(['cash_request_close','cash_remote'].includes(action)&&offlineCount()>0)
     return showMessage('Este dispositivo tem movimentos por reconciliar. Sincronize antes de fechar ou bloquear. Podem existir movimentos noutros dispositivos que não são visíveis.',true);
