@@ -8,7 +8,8 @@ test('public register click always starts a new signup, not logged-in resume',()
  assert.match(authUI,/pronto-show-register'\)\.onclick=\(\)=>registration\(false\)/);
  assert.match(authUI,/const resuming=alreadySignedIn===true/);
  assert.doesNotMatch(authUI,/pronto-show-register'\)\.onclick=registration;/);
- assert.match(authUI,/if\(!resuming\)\{/);
+ assert.match(authUI,/let identityReady=resuming;/);
+ assert.match(authUI,/if\(!identityReady\)\{/);
  assert.match(authUI,/await client\.selfServiceSignUp\(email,password,profile\.owner_name\)/);
  assert.doesNotMatch(authUI,/await client\.signIn\(email,password\);/);
 });
