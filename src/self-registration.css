@@ -10,3 +10,15 @@
 
 .pronto-learn-more{display:block;margin:14px 0 3px;text-align:center;font-size:12px;font-weight:760;color:#087f68;text-decoration:none}
 .pronto-learn-more:hover,.pronto-learn-more:focus-visible{text-decoration:underline}
+
+/* Shown only after the server confirmed the new shop and its 10-day trial. */
+.login-panel:has(.pronto-activation-success){background:linear-gradient(160deg,#087f68 0%,#0b6b4f 100%);border-color:#087f68;color:#fff}
+.pronto-activation-success{display:grid;gap:10px;text-align:center;justify-items:center;padding:8px 2px}
+.pronto-activation-success .pronto-login-eyebrow{color:#d8f5e6;background:rgba(255,255,255,.14)}
+.pronto-activation-success h2{color:#fff;margin:0;outline:none}
+.pronto-activation-success p{color:#e6f7ee;margin:0;line-height:1.5}
+.pronto-activation-success strong{color:#fff}
+.pronto-activation-check{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:#fff;color:#087f68;font-size:40px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.pronto-activation-until{font-size:14px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.14)}
+#pronto-activation-error{color:#ffe1e1;font-size:13px;min-height:0}
+.pronto-activation-success #pronto-activation-continue{background:#fff;color:#087f68;border-color:#fff;margin-top:6px}
