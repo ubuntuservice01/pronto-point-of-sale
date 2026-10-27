@@ -181,7 +181,7 @@ test('Chrome: phone login, wrong password, instant signup and duplicate phone wi
   await until(pinScreen,'PIN screen after signup');
   assert.equal(signup.payload.email,'nova@loja.test');
   assert.equal(signup.payload.data.display_name,'Ana Macuácua');
-  const register=state.calls.find(c=>c.path==='/rest/v1/rpc/pronto_self_service_register');
+  const register=state.calls.find(c=>c.path==='/rest/v1/rpc/pronto_self_service_register'&&c.method==='POST');
   assert.equal(register.payload.p_data.phone,'84 123 4567');
   assert.equal(register.payload.p_data.accept_terms,true);
   assert.ok(state.calls.indexOf(signup)<state.calls.indexOf(register),'signup must happen before the shop RPC');
