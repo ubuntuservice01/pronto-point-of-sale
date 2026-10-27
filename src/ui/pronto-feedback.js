@@ -8,6 +8,10 @@ export function clearProntoFeedback(){
  if(dismissTimer!==null){clearTimeout(dismissTimer);dismissTimer=null;}
  if(current){current.remove();current=null;}
 }
+// Remove temporary progress banners after an operation completes, but preserve results.
+export function clearProntoLoadingFeedback(){
+ if(current?.className==='pronto-feedback pronto-feedback-loading')clearProntoFeedback();
+}
 export function showProntoFeedback(message,{kind='info',duration}={}){
  if(typeof document==='undefined'||!document.body)return;
  clearProntoFeedback();

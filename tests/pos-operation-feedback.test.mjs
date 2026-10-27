@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {prontoFeedbackKind,showProntoFeedback,clearProntoFeedback} from '../src/ui/pronto-feedback.js';
+import {prontoFeedbackKind,showProntoFeedback,clearProntoFeedback,clearProntoLoadingFeedback} from '../src/ui/pronto-feedback.js';
 const read=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8');
 
 test('Operation messages distinguish in progress, confirmed success, and failure',()=>{
@@ -78,4 +78,37 @@ test('Toast element can close safely without HTML injection',()=>{
   if(original===undefined)delete globalThis.document;
   else globalThis.document=original;
  }
+});
+
+test('Finishing an operation removes only the in-progress banner and keeps the final result',()=>{
+ class FakeElement {
+  constructor(tag){this.tag=tag;this.children=[];this.attributes={};this.textContent='';}
+  setAttribute(k,v){this.attributes[k]=v;}
+  append(...nodes){this.children.push(...nodes);}
+  addEventListener(){}
+  remove(){this.removed=true;}
+ }
+ const previous=globalThis.document;
+ globalThis.document={body:new FakeElement('body'),createElement:tag=>new FakeElement(tag)};
+ try{
+  const pending=showProntoFeedback('A processar operação…',{kind:'loading'});
+  assert.equal(pending.removed,undefined);
+  clearProntoLoadingFeedback();
+  assert.equal(pending.removed,true,'completed work removes the spinner');
+  const success=showProntoFeedback('Venda concluída.',{kind:'success',duration:2000});
+  clearProntoLoadingFeedback();
+  assert.equal(success.removed,undefined,'success remains visible');
+  const error=showProntoFeedback('Não foi possível concluir.',{kind:'error',duration:2000});
+  clearProntoLoadingFeedback();
+  assert.equal(error.removed,undefined,'failure remains visible');
+ }finally{
+  clearProntoFeedback();
+  if(previous===undefined)delete globalThis.document;else globalThis.document=previous;
+ }
+});
+test('Every busy finalizer releases the spinner, including initial loading and transactions',()=>{
+ const shop=read('src/supabase-shop-dashboard.js');
+ assert.match(shop,/const finishBusy=\(\)=>\{busy=false;clearProntoLoadingFeedback\(\);\}/);
+ assert.doesNotMatch(shop,/finally\s*\{\s*busy=false\s*;/);
+ assert.equal((shop.match(/finally\{finishBusy\(\);/g)||[]).length,35);
 });

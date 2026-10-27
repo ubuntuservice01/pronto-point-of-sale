@@ -1,7 +1,7 @@
 import {normalizeCashControl,ownOpenSession,cashSessionsCSV} from './supabase-cash-ui.js';
 import {showConfirmModal,showSuccessModal,showInfoModal} from './ui/pronto-modal.js';
 import {catalogFeedback} from './ui/pronto-catalog-controls.js';
-import {showProntoFeedback,clearProntoFeedback,prontoFeedbackKind} from './ui/pronto-feedback.js';
+import {showProntoFeedback,clearProntoFeedback,clearProntoLoadingFeedback,prontoFeedbackKind} from './ui/pronto-feedback.js';
 import {startProntoLoading} from './ui/pronto-loading.js';
 import {customerMessage} from './customer-copy.js';
 import {confirmedSaleReceipt,showSaleCompleteModal,printSaleReceipt} from './ui/pronto-sale-success.js';
@@ -118,6 +118,9 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   aborter.abort();root.innerHTML='';
   try{await client.signOut();}finally{onLogout();}
  };
+ // Every operation that acquires the busy flag must release its progress banner.
+ // Confirmed success or actionable failure notifications are preserved.
+ const finishBusy=()=>{busy=false;clearProntoLoadingFeedback();};
  const showMessage=(text,warning=false)=>{
   const safe=customerMessage(text,{warning});
   notice=safe;
@@ -225,8 +228,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     loading?.cancel();await leave();return;
    }
    showMessage('Não foi possível abrir os dados da loja. Confirme a licença e a ligação à internet.',true);
-  }finally{
-   busy=false;
+  }finally{finishBusy();
    if(loading){if(succeeded)void loading.finish();else loading.cancel();}
   }
  };
@@ -314,7 +316,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    report=await client.reportsSnapshot(grant.id,reportScope==='all'?null:branchId,reportFrom,reportTo);
    render();showMessage('Relatório actualizado. Os valores são operacionais e não substituem documentos fiscais.');
   }catch(error){report=null;render();showMessage('Não foi possível obter o relatório. Verifique as datas e permissões. ('+error.message+')',true);}
-  finally{busy=false;}
+  finally{finishBusy();}
  };
  const loadAudit=async()=>{
   if(disconnected())return showMessage('É necessário estar online para consultar a auditoria.',true);
@@ -323,7 +325,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   try{audit=await client.ownerAuditSnapshot(grant.id,auditPage);
    render();showMessage('Histórico de actividades actualizado.');}
   catch(error){audit=null;render();showMessage('Não foi possível consultar a auditoria. ('+error.message+')',true);}
-  finally{busy=false;}
+  finally{finishBusy();}
  };
  const lockPending=()=>{if(!pending)return false;showMessage('Existe uma venda por confirmar. Reenvie o mesmo pedido ou confira a venda antes de descartá-lo.',true);return true;};
  const add=(id,delta=1)=>{
@@ -419,7 +421,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
   }catch(e){
    render();
    showMessage('Venda ainda sem confirmação. Verifique a sessão e clique em «Repetir o mesmo pedido» para evitar duplicações. ('+String(e.message||'erro')+')',true);
-  }finally{busy=false;}
+  }finally{finishBusy();}
  };
  const execute=async(action,payload,productPhoto=null,medicine=null)=>{
   if(busy)return;
@@ -479,7 +481,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     'Operação rejeitada ou sem confirmação. Verifique os dados antes de tentar novamente. ('+String(e.message||'erro')+')';
    showMessage(detail,true);
    void showInfoModal({title:'Operação não concluída',message:detail,confirmText:'OK'});
-  }finally{busy=false;}
+  }finally{finishBusy();}
  };
  // Close the notification popover without re-rendering a merchant's input form.
  root.addEventListener('pointerdown',event=>{
@@ -562,7 +564,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      await refresh();
      showMessage('Controlo remoto actualizado. O servidor já aplica o novo acesso.');
     }catch(error){showMessage('Não foi possível alterar o acesso. ('+error.message+')',true);}
-    finally{busy=false;}
+    finally{finishBusy();}
    })();return;
   }
   if(el.hasAttribute('data-staff-suspend')||el.hasAttribute('data-staff-reactivate')){
@@ -580,7 +582,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      showMessage(mode==='suspend'?'Acesso ao negócio suspenso no servidor.':
       'Acesso reactivado. O colaborador deverá voltar a entrar para actualizar a interface.');
     }catch(error){showMessage('Não foi possível alterar o acesso. ('+error.message+')',true);}
-    finally{busy=false;}
+    finally{finishBusy();}
    })();return;
   }
   if(el.hasAttribute('data-transfer-add')){
@@ -614,7 +616,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      showMessage((result.duplicate?'Operação já confirmada. ':mode==='receive'?'Stock recebido na filial de destino. ':'Stock devolvido à filial de origem. ')+
       'Ref. '+String(transferId).slice(0,8)+'.');
     }catch(error){showMessage('O movimento não foi confirmado. Actualize a lista e verifique o estado antes de repetir. ('+error.message+')',true);}
-    finally{busy=false;}
+    finally{finishBusy();}
    })();return;
   }
   if(el.hasAttribute('data-catalog-action')){
@@ -655,7 +657,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      catalog_unconfirmed:'A alteração não foi confirmada. Actualize os dados antes de repetir.'
     };
     showMessage(known[error.message]||'Não foi possível confirmar a operação. Actualize a lista antes de repetir.',true);
-   }finally{busy=false;}
+   }finally{finishBusy();}
    return;
   }
   if(el.hasAttribute('data-finance-supplier')){supplierId=el.dataset.financeSupplier;render();return;}
@@ -700,7 +702,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     branches=await client.merchantBranches(grant.id);
     await refresh();showMessage('Estado da filial actualizado.');
    }catch(e){showMessage('Operação não realizada: '+e.message,true);}
-   finally{busy=false;}})();return;
+   finally{finishBusy();}})();return;
   }
   if(el.hasAttribute('data-audit-prev')||el.hasAttribute('data-audit-next')){
    if(grant.role!=='owner')return;
@@ -743,7 +745,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     });
     showMessage('Relatório Excel preparado.');
    }catch(e){showMessage('Não foi possível exportar o Excel: '+String(e.message||'erro'),true);}
-   finally{busy=false;}
+   finally{finishBusy();}
    return;
   }
   if(el.hasAttribute('data-report-export')){
@@ -768,7 +770,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     });
     showMessage('Lista de compras Excel preparada. Confirme as quantidades antes de encomendar.');
    }catch(e){showMessage('Não foi possível exportar a lista Excel: '+String(e.message||'erro'),true);}
-   finally{busy=false;}
+   finally{finishBusy();}
    return;
   }
   if(el.hasAttribute('data-inventory-export')){
@@ -790,7 +792,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      holdIdToSave=null;cart=[];selectedCustomerId='';discount='0';method='cash';view='held';
      await refresh();showMessage('Venda suspensa na filial. O stock não foi reservado.');
     }catch(error){showMessage('Sem confirmação do servidor. Verifique a lista antes de repetir com a mesma referência.',true);}
-    finally{busy=false;}
+    finally{finishBusy();}
    })();return;
   }
   if(el.hasAttribute('data-shop-hold-resume')){
@@ -807,7 +809,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     try{await client.holdAction('hold_delete',cashData({hold_id:el.dataset.shopHoldDelete}));
      await refresh();showMessage('Carrinho em espera eliminado.');}
     catch{showMessage('Não foi possível remover o carrinho.',true);}
-    finally{busy=false;}
+    finally{finishBusy();}
    })();return;
   }
 
@@ -1004,7 +1006,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     brandLogoUrl=branding.logoPath?await client.documentLogoUrl(branding.logoPath):'';
     render();showMessage('Personalização guardada e aplicada aos documentos.');
    }catch(e){showMessage('Não foi possível guardar a personalização: '+String(e.message||'erro'),true);}
-   finally{busy=false;}
+   finally{finishBusy();}
    return;
   }
   if(form.id==='shop-reports-form'){
@@ -1111,7 +1113,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      operation==='hold'?'Lote bloqueado no servidor. Separe os produtos fisicamente.':
      'Bloqueio retirado e decisão registada na auditoria.'));
    }catch(e){showMessage('Operação não confirmada. Consulte novamente o estado do lote. ('+String(e.message||'erro')+')',true);}
-   finally{busy=false;}return;
+   finally{finishBusy();}return;
   }
   if(action==='pharmacy_approve'){
    if(grant.businessType!=='pharmacy'||view!=='pharmacy'||disconnected())return showMessage('A validação exige acesso online à farmácia.',true);
@@ -1123,7 +1125,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      prescription_reference:reference,checked:true});
     await refresh();showMessage('Receita validada e registada. O vendedor pode concluir a venda com a mesma referência.');}
    catch(error){showMessage('Não foi possível autorizar a receita. Verifique a sua habilitação, a validade do pedido e a ligação. ('+error.message+')',true);}
-   finally{busy=false;}return;
+   finally{finishBusy();}return;
   }
   if(['cash_configure','cash_request_close','cash_remote','cash_note_difference'].includes(action)){
    if(['cash_request_close','cash_remote'].includes(action)&&offlineCount()>0)
@@ -1159,7 +1161,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      command==='request_close'?'Pedido de fecho registado. Conte o dinheiro e confirme o valor.':
      command==='note_difference'?'Justificação adicionada ao histórico sem modificar os valores.':'Operação confirmada e auditada.');
    }catch(error){showMessage('Não foi possível confirmar a operação. Consulte o estado da sessão antes de repetir. ('+error.message+')',true);}
-   finally{busy=false;}
+   finally{finishBusy();}
    return;
   }
   if(action==='suspended_cash_close'){
@@ -1185,7 +1187,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      (result.difference_cents/100).toFixed(2)+' MT.'+
      (refreshed?'':' Actualização da lista indisponível; consulte o histórico antes de repetir.'),!refreshed);
    }catch(error){showMessage('Não foi possível confirmar o encerramento. Verifique o histórico antes de tentar novamente. ('+error.message+')',true);}
-   finally{busy=false;}
+   finally{finishBusy();}
    return;
   }
   if(['branch_create','branch_rename'].includes(action)){
@@ -1200,7 +1202,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     branches=await client.merchantBranches(grant.id);
     await refresh();showMessage('Filial actualizada com sucesso.');
    }catch(e){showMessage('Falha na gestão da filial: '+e.message,true);}
-   finally{busy=false;}
+   finally{finishBusy();}
    return;
   }
   if(action==='staff_access_schedule'){
@@ -1222,7 +1224,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      schedule_enabled:enabled,start_time:start,end_time:end,weekdays});
     await refresh();showMessage('Horário guardado. Use «Usar horário» para activar o controlo automático.');
    }catch(error){showMessage('Não foi possível guardar o horário. ('+error.message+')',true);}
-   finally{busy=false;}
+   finally{finishBusy();}
    return;
   }
   if(action==='staff_role_change'){
@@ -1237,7 +1239,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     await client.ownerStaffAction('role_change',{business_id:grant.id,user_id:id,role});
     await refresh();showMessage('Função alterada no servidor. O colaborador deverá entrar novamente para actualizar o menu.');
    }catch(error){showMessage('Não foi possível alterar a função. ('+error.message+')',true);}
-   finally{busy=false;}
+   finally{finishBusy();}
    return;
   }
   if(action==='transfer_send'){
@@ -1273,7 +1275,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      'Aguardamos confirmação de recepção na outra filial.');
    }catch(error){
     render();showMessage('A expedição pode estar registada. Consulte o histórico antes de repetir; a mesma referência será reutilizada. ('+error.message+')',true);
-   }finally{busy=false;}
+   }finally{finishBusy();}
    return;
   }
   if(action==='csv_import'){
@@ -1305,7 +1307,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }catch(error){
     showMessage('Importação não confirmada: '+String(error.message||'erro')+
      '. Se o pedido já foi enviado, mantenha a mesma referência antes de tentar novamente.',true);
-   }finally{busy=false;}
+   }finally{finishBusy();}
    return;
   }
 
@@ -1320,7 +1322,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     await client.medicineUpsert({business_id:grant.id,product_id:productId,...medicine});
     await refresh();render();showMessage('Ficha farmacêutica guardada com sucesso.');
    }catch(error){showMessage('Não foi possível guardar a ficha. Verifique as permissões e tente novamente. ('+error.message+')',true);}
-   finally{busy=false;}return;
+   finally{finishBusy();}return;
   }
   if(action==='photo_upload'){
    if(pending||pendingFinance||disconnected())return showMessage('Conclua operações pendentes e ligue-se à internet antes de enviar fotografias.',true);
@@ -1333,7 +1335,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     await client.uploadProductPhoto({businessId:grant.id,branchId,productId,expectedRevision,file});
     photoCache.clear();await refresh();render();showMessage('Fotografia guardada. A imagem só está disponível aos utilizadores autorizados.');
    }catch(error){showMessage('Não foi possível guardar a fotografia. Verifique formato, tamanho e versão do produto. ('+error.message+')',true);}
-   finally{busy=false;}return;
+   finally{finishBusy();}return;
   }
   if(['product_update','inventory_adjust','inventory_count'].includes(action)){
    if(disconnected()||pending||pendingFinance||pendingPayment)return showMessage('Conclua primeiro as operações pendentes e confirme a ligação.',true);
@@ -1372,7 +1374,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     }
     await refresh();render();showMessage('Inventário actualizado. Stock actual: '+String(result.stock||0));
    }catch(error){showMessage('A alteração não foi confirmada. Actualize os dados antes de repetir. ('+error.message+')',true);}
-   finally{busy=false;}return;
+   finally{finishBusy();}return;
   }
   if(action==='return_confirm'){
    if(lockPending()||disconnected())return showMessage('A devolução exige ligação ao servidor.',true);
@@ -1411,7 +1413,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      (Number(result.amount_cents||0)/100).toFixed(2)+' MT. O reembolso digital, se aplicável, é manual.');
    }catch(error){
     showMessage('Devolução por confirmar. Verifique o histórico antes de repetir; o pedido mantém a mesma referência. ('+error.message+')',true);
-   }finally{busy=false;}
+   }finally{finishBusy();}
    return;
   }
   if(action==='cash_offline_sync'){
@@ -1439,7 +1441,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
    }catch(error){
     pendingCashOffline=offlineCount();render();
     showMessage('Sincronizados '+done+' de '+keys.length+'. Os restantes continuam guardados. ('+error.message+')',true);
-   }finally{busy=false;}
+   }finally{finishBusy();}
    return;
   }
   if(action==='cash_move'){
@@ -1464,7 +1466,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      pendingCashMove=null;pendingCashOffline=offlineCount();render();
      showMessage('Movimento guardado encriptado. Não foi somado ao caixa. Sincronize assim que tiver Internet.');
     }catch(error){showMessage('Não foi possível guardar o movimento. ('+error.message+')',true);}
-    finally{busy=false;}return;
+    finally{finishBusy();}return;
    }
    busy=true;showMessage('A enviar movimento…');
    try{
@@ -1479,7 +1481,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
       showMessage('Confirmação incerta. Pedido encriptado com a mesma referência para reenvio seguro.',true);
      }catch{showMessage('Confirmação incerta e gravação offline falhou. Não crie outro pedido.',true);}
     }else showMessage('Movimento por confirmar. Mantenha a referência e confira antes de repetir. ('+error.message+')',true);
-   }finally{busy=false;}return;
+   }finally{finishBusy();}return;
   }
   if(['supplier_save','purchase_receive','purchase_payment','expense_add','expense_schedule_save'].includes(action)){
    if(lockPending())return;
@@ -1552,8 +1554,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     void showSuccessModal({title:titles[action],message:summary,confirmText:'OK'});
    }catch(error){
     showMessage('A operação pode estar pendente ou foi rejeitada. Confira os registos antes de repetir. '+String(error.message||''),true);
-   }finally{
-    busy=false;
+   }finally{finishBusy();
     if(submitButton?.isConnected){submitButton.disabled=false;submitButton.removeAttribute('aria-busy');}
    }
    return;
@@ -1590,7 +1591,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     render();showMessage(action==='debt_payment'?'Cobrança registada e reconciliada com o caixa.':'Dados actualizados com sucesso.');
    }catch(error){
     showMessage(action==='debt_payment'?'Cobrança por confirmar. Não altere o pedido nem o repita com outra referência; confira o histórico ou reenvie o mesmo pedido.':'O servidor rejeitou a operação: '+error.message,true);
-   }finally{busy=false;}
+   }finally{finishBusy();}
    return;
   }
   if(action==='team_invite'){
@@ -1616,7 +1617,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
      not_authorized:'Não tem autorização para esta operação.',
      supabase_unauthorized:'Sessão expirada. Saia e volte a entrar.'};
     showMessage(messages[error.message]||'Não foi possível criar o colaborador.',true);
-   }finally{busy=false;}
+   }finally{finishBusy();}
    return;
   }
   if(action==='draft_save'||action==='draft_restore'){
@@ -1642,7 +1643,7 @@ export async function mountSupabaseMerchantPilot({root,client,account,onLogout})
     }
    }catch(e){showMessage(e.message==='pending_checkout'?'Resolva o pedido pendente antes de recuperar outro.':
     'Não foi possível guardar ou recuperar o rascunho. Confirme a frase, o dispositivo e a loja.',true);
-   }finally{busy=false;}
+   }finally{finishBusy();}
    return;
   }
   if(action==='cash_close'&&offlineCount()>0)return showMessage('Sincronize os movimentos pendentes antes do fecho definitivo.',true);
