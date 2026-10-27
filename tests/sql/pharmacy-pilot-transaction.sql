@@ -50,14 +50,18 @@ begin
  begin
    perform pronto_private.transfer_action('receive',jsonb_build_object(
      'business_id',v_business,'transfer_id',v_transfer));
- exception when sqlstate '42501' then v_denied:=true;end;
+ exception when sqlstate '42501' then
+   if SQLERRM='pharmacy_transfer_quarantined_during_transit' then v_denied:=true;end if;
+ end;
  if not v_denied then raise exception 'unexpected_pilot_quarantined_transfer_accepted';end if;
 
  v_denied:=false;
  begin
    insert into public.pronto_batches(business_id,product_id,lot_number,expires_on,qty)
    values(v_business,v_product2,'LOT-X-001',v_today+120,3);
- exception when sqlstate '42501' then v_denied:=true;end;
+ exception when sqlstate '42501' then
+   if SQLERRM='pharmacy_lot_recalled_receipt_blocked' then v_denied:=true;end if;
+ end;
  if not v_denied then raise exception 'unexpected_pilot_recalled_cross_branch_receipt_accepted';end if;
 
  v_denied:=false;
@@ -65,7 +69,9 @@ begin
    insert into public.pronto_stock_movements(business_id,product_id,batch_id,kind,qty_delta)
    select v_business,v_product2,id,'sale',-1 from public.pronto_batches
     where business_id=v_business and product_id=v_product2 limit 1;
- exception when sqlstate '42501' then v_denied:=true;end;
+ exception when sqlstate '42501' then
+   if SQLERRM='pharmacy_batch_on_hold' then v_denied:=true;end if;
+ end;
  if not v_denied then raise exception 'unexpected_pilot_recalled_cross_branch_sale_accepted';end if;
 
  v_denied:=false;
