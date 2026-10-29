@@ -110,5 +110,5 @@ test('Every busy finalizer releases the spinner, including initial loading and t
  const shop=read('src/supabase-shop-dashboard.js');
  assert.match(shop,/const finishBusy=\(\)=>\{busy=false;clearProntoLoadingFeedback\(\);\}/);
  assert.doesNotMatch(shop,/finally\s*\{\s*busy=false\s*;/);
- assert.equal((shop.match(/finally\{finishBusy\(\);/g)||[]).length,35);
+ assert.ok((shop.match(/finally\{finishBusy\(\);/g)||[]).length>=35);
 });

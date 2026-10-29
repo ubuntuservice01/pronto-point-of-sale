@@ -82,6 +82,6 @@ test('The stock-check menu is limited to authorised roles and all businesses',()
 test('RPC enforces tenant, branch, date scope and captures historical movements',()=>{
  for(const fragment of ['v_role is null',"p_branch is null",'p_end>v_today','p_end-p_start>3660',
   'where m.business_id=p_business and m.product_id=p.id','m.created_at>=v_until',
-  'm.kind=\\'sale\\'','coalesce(a.after_delta,0)','pronto_stock_conference_snapshot',
+  "m.kind='sale'",'coalesce(a.after_delta,0)','pronto_stock_conference_snapshot',
   'revoke all on function public.pronto_stock_conference_snapshot'])assert.ok(sql.includes(fragment),fragment);
 });
