@@ -94,6 +94,7 @@ export function renderInventoryView({view,inventory,role,selectedProductId='',al
     'Reveja e confirme quantidades antes de comprar. O sistema não envia encomendas automaticamente.')+'</div>';
  }
  return '<div class="shop-two">'+box('Produtos e inventário',
+  '<button type="button" data-stock-conference-open class="shop-submit">📋 Conferência física · Excel / PDF</button>'+
   '<label>Pesquisar produto<input id="shop-inventory-search" type="search" value="'+esc(query)+'" placeholder="Nome ou código"></label>'+
   '<div class="credit-list">'+products.slice(0,300).map(p=>
    '<button type="button" class="credit-list-item" data-inventory-select="'+esc(p.id)+'"><strong>'+

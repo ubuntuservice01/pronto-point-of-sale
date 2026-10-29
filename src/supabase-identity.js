@@ -14,6 +14,7 @@ import {normalizeCreditSnapshot} from './supabase-credit-ui.js';
 import {normalizeFinanceSnapshot} from './supabase-finance-ui.js';
 import {normalizeReturnSnapshot} from './supabase-returns-ui.js';
 import {normalizeInventorySnapshot} from './supabase-inventory-ui.js';
+import {normalizeStockConference} from './stock-conference-ui.js';
 import {normalizeReports} from './supabase-reports-ui.js';
 import {normalizeDocumentBranding,serializeDocumentBranding} from './supabase-document-branding.js';
 import {normalizeTransferSnapshot} from './supabase-transfers-ui.js';
@@ -536,6 +537,15 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
    throw Error('photo_url_invalid');
   return u.href;
  }
+ async function stockConferenceSnapshot(businessId,branchId,from,to){
+  if(!uuid(businessId)||!uuid(branchId)||
+   !/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to)
+   throw Error('stock_conference_scope');
+  const response=await call('/rest/v1/rpc/pronto_stock_conference_snapshot',{
+   method:'POST',payload:{p_business:businessId,p_branch:branchId,p_start:from,p_end:to}
+  });
+  return normalizeStockConference(response);
+ }
  async function inventorySnapshot(businessId,branchId,businessType='general'){
   if(!uuid(businessId)||!uuid(branchId))throw Error('shop_scope');
   const result=await call('/rest/v1/rpc/pronto_inventory_snapshot',{
@@ -866,5 +876,5 @@ export function createProntoIdentity({ url, publishableKey, fetchImpl = fetch, s
   }
   clearSession();
  }
- return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,medicineUpsert,medicineDetails,pharmacyAction,pharmacySnapshot,pharmacyTraceSnapshot,pharmacyLotAction,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
+ return {selfServiceSignUp,registerSelfServiceBusiness,trialOverview,myTrialStatus,restoreSession,unlockReloadedScreen,changeInitialPassword,changeOwnAdminPassword,resetMemberPassword,recoverPinWithPassword,sessionPin,lockScreen,isScreenLocked,signIn,account,adminOverview,adminMutate,adminControl,adminCritical,adminInsights,provisionMember,provisionShopStaff,merchantBranches,documentSettings,saveDocumentSettings,uploadDocumentLogo,documentLogoUrl,merchantSnapshot,medicineUpsert,medicineDetails,pharmacyAction,pharmacySnapshot,pharmacyTraceSnapshot,pharmacyLotAction,creditSnapshot,financeSnapshot,financeAction,holdList,holdAction,returnSnapshot,returnAction,inventorySnapshot,stockConferenceSnapshot,inventoryAction,catalogLifecycle,productFractionSettings,productFractionUpdate,reportsSnapshot,uploadProductPhoto,productPhotoUrl,createProductWithPhoto,merchantAction,cashControl,importProductsCSV,manageBranch,transferSnapshot,transferAction,ownerStaffSnapshot,ownerStaffAction,ownerStaffAccessAction,myAccessStatus,ownerAuditSnapshot,ownerSuspendedCash,ownerCloseSuspendedCash,requestPasswordRecovery,completePasswordRecovery,signOut};
 }
